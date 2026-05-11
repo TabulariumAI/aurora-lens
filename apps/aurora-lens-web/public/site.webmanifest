@@ -1,0 +1,20 @@
+{
+  "name": "Tabularium AI Lens",
+  "short_name": "AI Lens",
+  "icons": [
+    {
+      "src": "/icons/ai-lens-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/ai-lens-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "display": "standalone",
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#005168"
+}

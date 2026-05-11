@@ -1,0 +1,21 @@
+export { AuroraLens } from "./core/AuroraLens";
+export type {
+  AuroraLensDecoder,
+  AuroraLensOptions,
+  AuroraLensState,
+  AuroraLensStatus,
+  AuroraLensViewMode,
+  CopySelectionResult,
+  PageContext,
+  PageFigure,
+  PageMetadataHits,
+  PagePoint,
+  PageRect,
+  PageToken,
+  PartialSelectionTheme,
+  SelectedGroup,
+  SelectionColor,
+  SelectionCounts,
+  SelectionTheme,
+  RasterPage,
+} from "./core/types";

@@ -1,0 +1,28 @@
+{
+  "name": "tabularium-ai-lens",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tabularium AI Lens package and web demo workspace.",
+  "author": "Tabularium AI",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tabularium-ai/tabularium-ai-lens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tabularium-ai/tabularium-ai-lens/issues"
+  },
+  "homepage": "https://github.com/tabularium-ai/tabularium-ai-lens#readme",
+  "workspaces": [
+    "packages/aurora-lens",
+    "apps/aurora-lens-web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev:web": "npm run build --workspace @tabularium/aurora-lens && npm run dev --workspace @tabularium/aurora-lens-web",
+    "example:build": "npm run example:build --workspace @tabularium/aurora-lens",
+    "example:test": "npm run example:test --workspace @tabularium/aurora-lens",
+    "test": "npm run build --workspace @tabularium/aurora-lens && npm test --workspaces",
+    "web:test:browser": "npm run test:browser --workspace @tabularium/aurora-lens-web"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@tabularium/aurora-lens-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tabularium AI Lens web demo app.",
+  "author": "Tabularium AI",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tabularium-ai/tabularium-ai-lens.git",
+    "directory": "apps/aurora-lens-web"
+  },
+  "bugs": {
+    "url": "https://github.com/tabularium-ai/tabularium-ai-lens/issues"
+  },
+  "homepage": "https://github.com/tabularium-ai/tabularium-ai-lens/tree/main/apps/aurora-lens-web#readme",
+  "scripts": {
+    "dev": "node ./scripts/dev.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:browser": "playwright test"
+  },
+  "keywords": [
+    "document-viewer",
+    "tiff",
+    "metadata",
+    "ocr",
+    "react",
+    "vite",
+    "tabularium"
+  ],
+  "dependencies": {
+    "@tabularium/aurora-lens": "file:../../packages/aurora-lens",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.11",
+    "vitest": "^4.1.5"
+  }
+}

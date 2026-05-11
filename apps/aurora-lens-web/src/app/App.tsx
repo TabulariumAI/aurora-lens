@@ -1,0 +1,265 @@
+import { useCallback, useMemo, useRef, useState } from "react";
+import type { AuroraLens } from "@tabularium/aurora-lens";
+import { AuroraTiffDecoder } from "../aurora/AuroraTiffDecoder";
+import { DetailsPanel } from "../components/DetailsPanel";
+import { LensHost } from "../components/LensHost";
+import { LoaderPanel } from "../components/LoaderPanel";
+import { selectionTheme } from "../lens/selectionTheme";
+import { VIEWER_SAMPLES, type ViewerSample } from "../samples";
+import type { AuroraLensState, AuroraLensStatus, HostViewerStatus, ViewerDetails } from "../lens/types";
+import { useViewerSession } from "./useViewerSession";
+
+const TIFF_FILE_TYPE = "image/tiff";
+
+const emptyLensState: AuroraLensState = {
+  viewMode: "page",
+  status: "idle",
+  sourceName: null,
+  pageIndex: -1,
+  pageCount: 0,
+  pageWidth: null,
+  pageHeight: null,
+  zoom: 1,
+  coordinates: null,
+  displayCoordinates: null,
+  selectionCounts: {
+    tokens: 0,
+    figures: 0,
+    context: 0,
+  },
+  drawMode: false,
+  canZoomIn: false,
+  canZoomOut: false,
+  canFitWidth: false,
+  canFitHeight: false,
+  canFitPage: false,
+  canActualSize: false,
+  canGoFirst: false,
+  canGoPrevious: false,
+  canGoNext: false,
+  canGoLast: false,
+  canShowThumbnails: false,
+  canSearch: false,
+  canDraw: false,
+  canClearSelection: false,
+  canCopy: false,
+};
+
+interface ResolvedViewerInput {
+  file: File;
+  metadata: unknown | null;
+}
+
+export function App() {
+  const decoder = useMemo(() => new AuroraTiffDecoder(), []);
+  const [lensState, setLensState] = useState<AuroraLensState>(emptyLensState);
+  const [lensStatus, setLensStatus] = useState<AuroraLensStatus>("idle");
+  const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const lensRef = useRef<AuroraLens | null>(null);
+
+  const resetViewerState = useCallback((clearInput: boolean) => {
+    lensRef.current?.clear();
+    setLensState(emptyLensState);
+    setLensStatus("idle");
+    setError("");
+    if (clearInput && fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }, []);
+
+  const {
+    beginViewerOperation,
+    isViewerOperationCurrent,
+    saveViewerSession,
+    clearSession,
+  } = useViewerSession({
+    lensRef,
+    lensState,
+    onRestoreError: setError,
+    resetViewerState,
+  });
+
+  const loadResolvedInput = useCallback(async (input: ResolvedViewerInput, operationId: number) => {
+    if (!isViewerOperationCurrent(operationId)) {
+      return;
+    }
+
+    const lens = lensRef.current;
+    if (!lens) {
+      setError("Tabularium AI Lens is not ready.");
+      await clearSession(operationId);
+      return;
+    }
+
+    resetViewerState(false);
+    try {
+      if (input.metadata !== null) {
+        await lens.loadMetadata(input.metadata);
+        if (!isViewerOperationCurrent(operationId)) {
+          return;
+        }
+      }
+
+      await lens.decodeTiff(input.file, 0);
+      if (!isViewerOperationCurrent(operationId)) {
+        return;
+      }
+
+      await saveViewerSession({
+        fileName: input.file.name,
+        fileType: input.file.type,
+        fileBlob: input.file,
+        metadata: input.metadata,
+        pageIndex: 0,
+        operationId,
+      });
+    } catch (reason: unknown) {
+      if (!isViewerOperationCurrent(operationId) || (reason instanceof DOMException && reason.name === "AbortError")) {
+        return;
+      }
+      resetViewerState(false);
+      setError(reason instanceof Error ? reason.message : String(reason));
+      await clearSession(operationId);
+    }
+  }, [clearSession, isViewerOperationCurrent, resetViewerState, saveViewerSession]);
+
+  const loadFiles = useCallback((fileList: FileList | File[]) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) {
+      beginViewerOperation();
+      resetViewerState(false);
+      void clearSession();
+      return;
+    }
+    if (files.length > 1) {
+      beginViewerOperation();
+      resetViewerState(false);
+      void clearSession();
+      setError("Choose or drop one TIFF file at a time.");
+      return;
+    }
+
+    const file = files[0];
+    if (!isTiffFile(file)) {
+      beginViewerOperation();
+      resetViewerState(false);
+      void clearSession();
+      setError("Choose a .tif or .tiff file.");
+      return;
+    }
+
+    const operationId = beginViewerOperation();
+    void loadResolvedInput({ file, metadata: null }, operationId);
+  }, [beginViewerOperation, clearSession, loadResolvedInput, resetViewerState]);
+
+  const loadSample = useCallback((sample: ViewerSample) => {
+    const operationId = beginViewerOperation();
+    resetViewerState(true);
+    void (async () => {
+      const [metadataResponse, tiffResponse] = await Promise.all([
+        fetch(sample.metadataUrl),
+        fetch(sample.tiffUrl),
+      ]);
+      if (!metadataResponse.ok) {
+        throw new Error(`Could not load ${sample.metadataUrl}.`);
+      }
+      if (!tiffResponse.ok) {
+        throw new Error(`Could not load ${sample.tiffUrl}.`);
+      }
+      const metadata = await metadataResponse.json();
+      const blob = await tiffResponse.blob();
+      if (!isViewerOperationCurrent(operationId)) {
+        return;
+      }
+
+      await loadResolvedInput({
+        file: new File([blob], sample.tiffName, { type: TIFF_FILE_TYPE }),
+        metadata,
+      }, operationId);
+    })().catch(async (reason: unknown) => {
+      if (!isViewerOperationCurrent(operationId) || (reason instanceof DOMException && reason.name === "AbortError")) {
+        return;
+      }
+      setError(reason instanceof Error ? reason.message : String(reason));
+      await clearSession(operationId);
+    });
+  }, [beginViewerOperation, clearSession, isViewerOperationCurrent, loadResolvedInput, resetViewerState]);
+
+  const hostStatus = useMemo<HostViewerStatus>(() => toHostStatus(lensStatus, lensState), [lensState, lensStatus]);
+  const details = useMemo(() => toDetails(lensState), [lensState]);
+  const progressText = useMemo(() => toProgressText(lensStatus, lensState), [lensState, lensStatus]);
+
+  return (
+    <main className="app-shell">
+      <section className="workspace" aria-label="Document viewer workspace">
+        <LoaderPanel
+          disabled={lensStatus === "loadingPage" || lensStatus === "loadingThumbnails"}
+          fileInputRef={fileInputRef}
+          samples={VIEWER_SAMPLES}
+          onFiles={loadFiles}
+          onSample={loadSample}
+        />
+        <LensHost
+          decoder={decoder}
+          lensRef={lensRef}
+          progressText={progressText}
+          state={lensState}
+          status={lensStatus}
+          onError={(reason) => setError(reason.message)}
+          onStateChange={setLensState}
+          onStatusChange={setLensStatus}
+        />
+        <DetailsPanel details={details} error={error} pageCount={lensState.pageCount} status={hostStatus} />
+      </section>
+    </main>
+  );
+}
+
+function isTiffFile(file: File) {
+  return file.type === TIFF_FILE_TYPE || /\.tiff?$/i.test(file.name);
+}
+
+function toHostStatus(status: AuroraLensStatus, state: AuroraLensState): HostViewerStatus {
+  if (status === "loadingPage" || status === "loadingThumbnails" || status === "copyingSelection") {
+    return "loading";
+  }
+  if (state.pageCount > 0) {
+    return "ready";
+  }
+  return "empty";
+}
+
+function toDetails(state: AuroraLensState): ViewerDetails {
+  return {
+    source: state.sourceName || "None",
+    page: state.pageCount > 0 && state.pageIndex >= 0 ? `${state.pageIndex + 1} of ${state.pageCount}` : "None",
+    size: state.pageWidth && state.pageHeight ? `${state.pageWidth} x ${state.pageHeight}` : "None",
+    zoom: `${Math.round(state.zoom * 100)}%`,
+    tokens: String(state.selectionCounts.tokens),
+    figures: String(state.selectionCounts.figures),
+    context: String(state.selectionCounts.context),
+    theme: {
+      context: selectionTheme.context,
+      figure: selectionTheme.figure,
+      tokenHigh: selectionTheme.token.high,
+      tokenMedium: selectionTheme.token.medium,
+      tokenLow: selectionTheme.token.low,
+      confidence: {
+        high: `>=${selectionTheme.confidence.high}%`,
+        medium: `>=${selectionTheme.confidence.medium}%`,
+        low: `<${selectionTheme.confidence.medium}%`,
+      },
+    },
+  };
+}
+
+function toProgressText(status: AuroraLensStatus, state: AuroraLensState) {
+  if (status === "loadingPage") {
+    return state.pageCount > 0 ? "Loading page..." : "Decoding TIFF page...";
+  }
+  if (status === "copyingSelection") {
+    return "Copying selection...";
+  }
+  return "Loading...";
+}
