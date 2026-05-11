@@ -76,8 +76,6 @@ See [docs/metadata-schema.md](docs/metadata-schema.md).
 npm install
 npm test
 npm run build
-npm run example:build
-npm run example:test
 npm pack --dry-run
 ```
 

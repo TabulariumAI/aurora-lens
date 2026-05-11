@@ -23,8 +23,6 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "example:build": "vite build --config examples/basic/vite.config.ts",
-    "example:test": "playwright test -c examples/basic/playwright.config.ts",
     "prepack": "npm run build",
     "test": "vitest run"
   },

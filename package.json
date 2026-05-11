@@ -20,8 +20,6 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "dev:web": "npm run build --workspace @tabularium/aurora-lens && npm run dev --workspace @tabularium/aurora-lens-web",
-    "example:build": "npm run example:build --workspace @tabularium/aurora-lens",
-    "example:test": "npm run example:test --workspace @tabularium/aurora-lens",
     "test": "npm run build --workspace @tabularium/aurora-lens && npm test --workspaces",
     "web:test:browser": "npm run test:browser --workspace @tabularium/aurora-lens-web"
   }

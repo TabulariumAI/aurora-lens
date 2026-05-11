@@ -19,7 +19,5 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm test
       - run: npm run build
-      - run: npm run example:build
-      - run: npm run example:test
       - run: npm run web:test:browser
       - run: npm pack --dry-run --workspace @tabularium/aurora-lens

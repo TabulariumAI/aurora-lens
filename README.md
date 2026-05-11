@@ -31,8 +31,6 @@ npm run dev:web
 ```sh
 npm test
 npm run build
-npm run example:build
-npm run example:test
 npm run web:test:browser
 npm audit --audit-level=moderate
 ```
