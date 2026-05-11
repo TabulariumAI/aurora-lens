@@ -1,1 +1,1 @@
-export { AuroraLensView } from "./AuroraLensView";
+export { ReactViewer } from "./ReactViewer";

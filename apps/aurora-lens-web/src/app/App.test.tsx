@@ -2,13 +2,13 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { selectionTheme } from "../lens/selectionTheme";
-import type { AuroraLensState, AuroraLensStatus } from "../lens/types";
+import type { ViewerState, ViewerStatus } from "../lens/types";
 import type { ViewerSession } from "./viewerSessionDb";
 
 const lensMock = vi.hoisted(() => ({
   decoder: undefined as unknown,
   selectionTheme: undefined as unknown,
-  status: "idle" as AuroraLensStatus,
+  status: "idle" as ViewerStatus,
   state: {
     viewMode: "page",
     status: "idle",
@@ -37,8 +37,8 @@ const lensMock = vi.hoisted(() => ({
     canDraw: false,
     canClearSelection: false,
     canCopy: false,
-  } as AuroraLensState,
-  onStateChange: undefined as ((state: AuroraLensState) => void) | undefined,
+  } as ViewerState,
+  onStateChange: undefined as ((state: ViewerState) => void) | undefined,
   onStatusChange: undefined as ((status: string) => void) | undefined,
   instance: {
     actualSize: vi.fn(),
@@ -98,10 +98,10 @@ vi.mock("./viewerSessionDb", () => ({
 vi.mock("@tabularium/aurora-lens/react", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
-    AuroraLensView: React.forwardRef(function MockAuroraLensView(props: {
+    ReactViewer: React.forwardRef(function MockReactViewer(props: {
       decoder?: unknown;
       selectionTheme?: unknown;
-      onStateChange?: (state: AuroraLensState) => void;
+      onStateChange?: (state: ViewerState) => void;
       onStatusChange?: (status: string) => void;
       onThumbnailSelect?: (pageIndex: number) => void;
     }, ref) {

@@ -6,12 +6,12 @@ import { LensHost } from "../components/LensHost";
 import { LoaderPanel } from "../components/LoaderPanel";
 import { selectionTheme } from "../lens/selectionTheme";
 import { VIEWER_SAMPLES, type ViewerSample } from "../samples";
-import type { AuroraLensState, AuroraLensStatus, HostViewerStatus, ViewerDetails } from "../lens/types";
+import type { ViewerState, ViewerStatus, HostViewerStatus, ViewerDetails } from "../lens/types";
 import { useViewerSession } from "./useViewerSession";
 
 const TIFF_FILE_TYPE = "image/tiff";
 
-const emptyLensState: AuroraLensState = {
+const emptyLensState: ViewerState = {
   viewMode: "page",
   status: "idle",
   sourceName: null,
@@ -52,8 +52,8 @@ interface ResolvedViewerInput {
 
 export function App() {
   const decoder = useMemo(() => new AuroraTiffDecoder(), []);
-  const [lensState, setLensState] = useState<AuroraLensState>(emptyLensState);
-  const [lensStatus, setLensStatus] = useState<AuroraLensStatus>("idle");
+  const [lensState, setLensState] = useState<ViewerState>(emptyLensState);
+  const [lensStatus, setLensStatus] = useState<ViewerStatus>("idle");
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lensRef = useRef<AuroraLens | null>(null);
@@ -220,7 +220,7 @@ function isTiffFile(file: File) {
   return file.type === TIFF_FILE_TYPE || /\.tiff?$/i.test(file.name);
 }
 
-function toHostStatus(status: AuroraLensStatus, state: AuroraLensState): HostViewerStatus {
+function toHostStatus(status: ViewerStatus, state: ViewerState): HostViewerStatus {
   if (status === "loadingPage" || status === "loadingThumbnails" || status === "copyingSelection") {
     return "loading";
   }
@@ -230,7 +230,7 @@ function toHostStatus(status: AuroraLensStatus, state: AuroraLensState): HostVie
   return "empty";
 }
 
-function toDetails(state: AuroraLensState): ViewerDetails {
+function toDetails(state: ViewerState): ViewerDetails {
   return {
     source: state.sourceName || "None",
     page: state.pageCount > 0 && state.pageIndex >= 0 ? `${state.pageIndex + 1} of ${state.pageCount}` : "None",
@@ -254,7 +254,7 @@ function toDetails(state: AuroraLensState): ViewerDetails {
   };
 }
 
-function toProgressText(status: AuroraLensStatus, state: AuroraLensState) {
+function toProgressText(status: ViewerStatus, state: ViewerState) {
   if (status === "loadingPage") {
     return state.pageCount > 0 ? "Loading page..." : "Decoding TIFF page...";
   }

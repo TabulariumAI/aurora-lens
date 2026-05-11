@@ -1,6 +1,6 @@
-export type AuroraLensViewMode = "page" | "thumbnails";
+export type ViewMode = "page" | "thumbnails";
 
-export type AuroraLensStatus =
+export type ViewerStatus =
   | "idle"
   | "loadingPage"
   | "loadingThumbnails"
@@ -59,9 +59,9 @@ export interface PartialSelectionTheme {
   };
 }
 
-export interface AuroraLensState {
-  viewMode: AuroraLensViewMode;
-  status: AuroraLensStatus;
+export interface ViewerState {
+  viewMode: ViewMode;
+  status: ViewerStatus;
   sourceName: string | null;
   pageIndex: number;
   pageCount: number;
@@ -89,17 +89,17 @@ export interface AuroraLensState {
   canCopy: boolean;
 }
 
-export interface AuroraLensDecoder {
+export interface ViewerDecoder {
   decode(file: File, pageIndex: number): Promise<RasterPage>;
   thumbnail(file: File, pageIndex: number, maxSize: number): Promise<RasterPage>;
   close?(): void;
 }
 
-export interface AuroraLensOptions {
-  decoder: AuroraLensDecoder;
+export interface ViewerOptions {
+  decoder: ViewerDecoder;
   selectionTheme?: PartialSelectionTheme;
-  onStateChange?: (state: AuroraLensState) => void;
-  onStatusChange?: (status: AuroraLensStatus) => void;
+  onStateChange?: (state: ViewerState) => void;
+  onStatusChange?: (status: ViewerStatus) => void;
   onThumbnailSelect?: (pageIndex: number) => void;
   onError?: (error: Error) => void;
 }

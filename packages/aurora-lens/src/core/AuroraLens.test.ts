@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuroraLens } from "./AuroraLens";
-import type { AuroraLensDecoder, AuroraLensState, AuroraLensStatus, RasterPage } from "./types";
+import type { ViewerDecoder, ViewerState, ViewerStatus, RasterPage } from "./types";
 
 let mockPageCount = 2;
 let decoderMessages: Array<{ kind: "page" | "thumbnail"; pageIndex: number }> = [];
 
-class DecoderMock implements AuroraLensDecoder {
+class DecoderMock implements ViewerDecoder {
   async decode(file: File, pageIndex: number) {
     decoderMessages.push({ kind: "page", pageIndex });
     return rasterPage(file.name, pageIndex, 100 + pageIndex, 200 + pageIndex);
@@ -73,8 +73,8 @@ describe("AuroraLens", () => {
   });
 
   it("loads one decoded page and reports stable state", async () => {
-    const states: AuroraLensState[] = [];
-    const statuses: AuroraLensStatus[] = [];
+    const states: ViewerState[] = [];
+    const statuses: ViewerStatus[] = [];
     const lens = new AuroraLens(document.createElement("div"), {
       decoder: new DecoderMock(),
       onStateChange: (state) => states.push(state),
@@ -134,7 +134,7 @@ describe("AuroraLens", () => {
   });
 
   it("clears selection when navigating pages", async () => {
-    const states: AuroraLensState[] = [];
+    const states: ViewerState[] = [];
     const lens = new AuroraLens(document.createElement("div"), {
       decoder: new DecoderMock(),
       onStateChange: (state) => states.push(state),
@@ -158,7 +158,7 @@ describe("AuroraLens", () => {
   });
 
   it("reports thumbnail selection without opening the page internally", async () => {
-    const states: AuroraLensState[] = [];
+    const states: ViewerState[] = [];
     const container = document.createElement("div");
     const selected: number[] = [];
     const lens = new AuroraLens(container, {
@@ -206,7 +206,7 @@ describe("AuroraLens", () => {
   });
 
   it("opens a selected page through the public page API", async () => {
-    const states: AuroraLensState[] = [];
+    const states: ViewerState[] = [];
     const lens = new AuroraLens(document.createElement("div"), {
       decoder: new DecoderMock(),
       onStateChange: (state) => states.push(state),

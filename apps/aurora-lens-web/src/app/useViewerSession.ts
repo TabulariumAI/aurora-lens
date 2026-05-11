@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 import type { AuroraLens } from "@tabularium/aurora-lens";
-import type { AuroraLensState } from "../lens/types";
+import type { ViewerState } from "../lens/types";
 import {
   ACTIVE_VIEWER_SESSION_ID,
   deleteActiveViewerSession,
@@ -25,7 +25,7 @@ export interface SaveViewerSessionInput {
 
 interface UseViewerSessionOptions {
   lensRef: RefObject<AuroraLens | null>;
-  lensState: AuroraLensState;
+  lensState: ViewerState;
   onRestoreError: (message: string) => void;
   resetViewerState: (clearInput: boolean) => void;
 }

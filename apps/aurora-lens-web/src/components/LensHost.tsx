@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { AuroraLensView } from "@tabularium/aurora-lens/react";
-import type { AuroraLens, AuroraLensDecoder } from "@tabularium/aurora-lens";
+import { ReactViewer } from "@tabularium/aurora-lens/react";
+import type { AuroraLens, ViewerDecoder } from "@tabularium/aurora-lens";
 import { selectionTheme } from "../lens/selectionTheme";
-import type { AuroraLensState, AuroraLensStatus } from "../lens/types";
+import type { ViewerState, ViewerStatus } from "../lens/types";
 import { ProgressBar } from "./ProgressBar";
 import { ViewerFooter } from "./ViewerFooter";
 import { ViewerToolbar } from "./ViewerToolbar";
 
 interface LensHostProps {
-  decoder: AuroraLensDecoder;
+  decoder: ViewerDecoder;
   lensRef: RefObject<AuroraLens | null>;
   progressText: string;
-  state: AuroraLensState;
-  status: AuroraLensStatus;
+  state: ViewerState;
+  status: ViewerStatus;
   onError: (error: Error) => void;
-  onStateChange: (state: AuroraLensState) => void;
-  onStatusChange: (status: AuroraLensStatus) => void;
+  onStateChange: (state: ViewerState) => void;
+  onStatusChange: (status: ViewerStatus) => void;
 }
 
 export function LensHost({ decoder, lensRef, progressText, state, status, onError, onStateChange, onStatusChange }: LensHostProps) {
@@ -84,7 +84,7 @@ export function LensHost({ decoder, lensRef, progressText, state, status, onErro
           onZoomOut={() => lensRef.current?.zoomOut()}
         />
         <div className="viewer-body">
-          <AuroraLensView
+          <ReactViewer
             ref={lensRef}
             decoder={decoder}
             selectionTheme={selectionTheme}

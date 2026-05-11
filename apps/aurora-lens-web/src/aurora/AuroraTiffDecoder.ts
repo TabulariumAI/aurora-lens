@@ -1,4 +1,4 @@
-import type { AuroraLensDecoder, RasterPage } from "@tabularium/aurora-lens";
+import type { ViewerDecoder, RasterPage } from "@tabularium/aurora-lens";
 
 type DecodeKind = "page" | "thumbnail";
 
@@ -15,7 +15,7 @@ interface WorkerResponse {
   error?: string;
 }
 
-export class AuroraTiffDecoder implements AuroraLensDecoder {
+export class AuroraTiffDecoder implements ViewerDecoder {
   private readonly worker = new Worker(new URL("./auroraTiffWorker.ts", import.meta.url), { type: "module" });
   private readonly pending = new Map<number, PendingRequest>();
   private nextId = 1;

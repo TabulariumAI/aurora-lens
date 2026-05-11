@@ -1,4 +1,4 @@
-import type { AuroraLensState, AuroraLensStatus, SelectionColor } from "@tabularium/aurora-lens";
+import type { ViewerState, ViewerStatus, SelectionColor } from "@tabularium/aurora-lens";
 
 export interface ViewerDetails {
   source: string;
@@ -24,4 +24,4 @@ export interface ViewerDetails {
 
 export type HostViewerStatus = "empty" | "loading" | "ready";
 
-export type { AuroraLensState, AuroraLensStatus, SelectionColor };
+export type { ViewerState, ViewerStatus, SelectionColor };

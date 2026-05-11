@@ -1,10 +1,10 @@
 export { AuroraLens } from "./core/AuroraLens";
 export type {
-  AuroraLensDecoder,
-  AuroraLensOptions,
-  AuroraLensState,
-  AuroraLensStatus,
-  AuroraLensViewMode,
+  ViewerDecoder,
+  ViewerOptions,
+  ViewerState,
+  ViewerStatus,
+  ViewMode,
   CopySelectionResult,
   PageContext,
   PageFigure,

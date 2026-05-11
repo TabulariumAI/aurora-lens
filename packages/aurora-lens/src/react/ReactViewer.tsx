@@ -1,8 +1,8 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from "react";
 import { AuroraLens } from "../core/AuroraLens";
-import type { AuroraLensOptions } from "../core/types";
+import type { ViewerOptions } from "../core/types";
 
-export const AuroraLensView = forwardRef<AuroraLens, AuroraLensOptions>(function AuroraLensView(options, ref) {
+export const ReactViewer = forwardRef<AuroraLens, ViewerOptions>(function ReactViewer(options, ref) {
   const hostRef = useRef<HTMLDivElement>(null);
   const lensRef = useRef<AuroraLens | null>(null);
   const optionsRef = useRef(options);

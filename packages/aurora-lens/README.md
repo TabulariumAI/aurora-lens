@@ -14,15 +14,15 @@ npm install @tabularium/aurora-lens
 
 ```tsx
 import { useMemo, useRef } from "react";
-import { AuroraLensView } from "@tabularium/aurora-lens/react";
-import type { AuroraLens, AuroraLensDecoder } from "@tabularium/aurora-lens";
+import { ReactViewer } from "@tabularium/aurora-lens/react";
+import type { AuroraLens, ViewerDecoder } from "@tabularium/aurora-lens";
 
-export function Viewer({ decoder }: { decoder: AuroraLensDecoder }) {
+export function Viewer({ decoder }: { decoder: ViewerDecoder }) {
   const lensRef = useRef<AuroraLens | null>(null);
   const stableDecoder = useMemo(() => decoder, [decoder]);
 
   return (
-    <AuroraLensView
+    <ReactViewer
       ref={lensRef}
       decoder={stableDecoder}
       onError={(error) => console.error(error)}
@@ -33,13 +33,13 @@ export function Viewer({ decoder }: { decoder: AuroraLensDecoder }) {
 
 ## Decoder Contract
 
-Applications own decoding. Provide an `AuroraLensDecoder` implementation that returns RGBA pixels for a requested page.
+Applications own decoding. Provide an `ViewerDecoder` implementation that returns RGBA pixels for a requested page.
 Because the decoder is host-owned, release decoder resources from the host application lifecycle.
 
 ```ts
-import type { AuroraLensDecoder, RasterPage } from "@tabularium/aurora-lens";
+import type { ViewerDecoder, RasterPage } from "@tabularium/aurora-lens";
 
-export class AppDecoder implements AuroraLensDecoder {
+export class AppDecoder implements ViewerDecoder {
   async decode(file: File, pageIndex: number): Promise<RasterPage> {
     return decodePageInYourApplication(file, pageIndex);
   }
@@ -81,7 +81,7 @@ npm pack --dry-run
 
 ## Public Repository Notes
 
-This package does not include the proprietary Aurora runtime. Host applications provide decoding through the `AuroraLensDecoder` contract.
+This package does not include the proprietary Aurora runtime. Host applications provide decoding through the `ViewerDecoder` contract.
 
 Generated build output, Playwright reports, test results, and local environment files are ignored by Git. Source, tests, documentation, and package metadata are the public repository surface.
 

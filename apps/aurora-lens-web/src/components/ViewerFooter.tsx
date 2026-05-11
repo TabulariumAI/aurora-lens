@@ -1,8 +1,8 @@
-import type { AuroraLensState } from "../lens/types";
+import type { ViewerState } from "../lens/types";
 import { ViewerIcon, type ViewerIconName } from "./ViewerIcon";
 
 interface ViewerFooterProps {
-  state: AuroraLensState;
+  state: ViewerState;
   onFirstPage: () => void;
   onLastPage: () => void;
   onNextPage: () => void;

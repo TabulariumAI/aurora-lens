@@ -5,11 +5,11 @@ import { normalizeSelectionTheme } from "./selectionTheme";
 import { SelectionManager } from "./SelectionManager";
 import { ThumbnailViewer } from "./ThumbnailViewer";
 import type {
-  AuroraLensDecoder,
-  AuroraLensOptions,
-  AuroraLensState,
-  AuroraLensStatus,
-  AuroraLensViewMode,
+  ViewerDecoder,
+  ViewerOptions,
+  ViewerState,
+  ViewerStatus,
+  ViewMode,
   CopySelectionResult,
   DecodedPage,
   PageMetadataHits,
@@ -21,7 +21,7 @@ import type {
 export class AuroraLens {
   private readonly metadata = new MetadataHelper();
   private readonly selection: SelectionManager;
-  private readonly decoder: AuroraLensDecoder;
+  private readonly decoder: ViewerDecoder;
   private readonly pageViewer: PageViewer;
   private readonly thumbnailViewer: ThumbnailViewer;
   private file: File | null = null;
@@ -30,14 +30,14 @@ export class AuroraLens {
   private thumbnailJobs = new Set<number>();
   private thumbnailKeep = new Set<number>();
   private thumbnailRun = 0;
-  private viewMode: AuroraLensViewMode = "page";
-  private status: AuroraLensStatus = "idle";
+  private viewMode: ViewMode = "page";
+  private status: ViewerStatus = "idle";
   private coordinates: PagePoint | null = null;
   private displayCoordinates: PagePoint | null = null;
   private pageCount = 0;
   private runId = 0;
 
-  constructor(private readonly container: HTMLElement, private readonly options: AuroraLensOptions) {
+  constructor(private readonly container: HTMLElement, private readonly options: ViewerOptions) {
     assertContainer(container);
     assertDecoder(options.decoder);
     this.decoder = options.decoder;
@@ -265,7 +265,7 @@ export class AuroraLens {
     }
   }
 
-  private showView(viewMode: AuroraLensViewMode) {
+  private showView(viewMode: ViewMode) {
     this.pageViewer.element().style.display = viewMode === "page" ? "block" : "none";
     this.thumbnailViewer.element().style.display = viewMode === "thumbnails" ? "grid" : "none";
   }
@@ -341,7 +341,7 @@ export class AuroraLens {
     return pages;
   }
 
-  private setStatus(status: AuroraLensStatus) {
+  private setStatus(status: ViewerStatus) {
     this.status = status;
     this.emitStatus();
     this.emitState();
@@ -363,7 +363,7 @@ export class AuroraLens {
     this.options.onStateChange?.(this.state());
   }
 
-  private state(): AuroraLensState {
+  private state(): ViewerState {
     const busy = this.status === "loadingPage" || this.status === "loadingThumbnails" || this.status === "copyingSelection";
     const hasPage = Boolean(this.page);
     const pageIndex = this.page?.pageIndex ?? -1;

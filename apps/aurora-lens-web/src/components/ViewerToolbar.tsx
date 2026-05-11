@@ -1,9 +1,9 @@
-import type { AuroraLensState } from "../lens/types";
+import type { ViewerState } from "../lens/types";
 import type { MouseEvent } from "react";
 import { ViewerIcon, type ViewerIconName } from "./ViewerIcon";
 
 interface ViewerToolbarProps {
-  state: AuroraLensState;
+  state: ViewerState;
   searchOpen: boolean;
   searchText: string;
   copyConfirmed: boolean;
