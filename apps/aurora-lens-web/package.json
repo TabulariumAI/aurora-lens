@@ -7,13 +7,13 @@
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tabularium-ai/aurora-lens.git",
+    "url": "https://github.com/tabulariumai/aurora-lens.git",
     "directory": "apps/aurora-lens-web"
   },
   "bugs": {
-    "url": "https://github.com/tabularium-ai/aurora-lens/issues"
+    "url": "https://github.com/tabulariumai/aurora-lens/issues"
   },
-  "homepage": "https://github.com/tabularium-ai/aurora-lens/tree/main/apps/aurora-lens-web#readme",
+  "homepage": "https://github.com/tabulariumai/aurora-lens/tree/main/apps/aurora-lens-web#readme",
   "scripts": {
     "dev": "node ./scripts/dev.mjs",
     "build": "tsc --noEmit && vite build",

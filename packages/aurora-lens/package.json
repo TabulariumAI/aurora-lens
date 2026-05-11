@@ -40,13 +40,13 @@
   "author": "Tabularium AI",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tabularium-ai/aurora-lens.git",
+    "url": "https://github.com/tabulariumai/aurora-lens.git",
     "directory": "packages/aurora-lens"
   },
   "bugs": {
-    "url": "https://github.com/tabularium-ai/aurora-lens/issues"
+    "url": "https://github.com/tabulariumai/aurora-lens/issues"
   },
-  "homepage": "https://github.com/tabularium-ai/aurora-lens/tree/main/packages/aurora-lens#readme",
+  "homepage": "https://github.com/tabulariumai/aurora-lens/tree/main/packages/aurora-lens#readme",
   "sideEffects": false,
   "dependencies": {
     "fuse.js": "6.6.2"
