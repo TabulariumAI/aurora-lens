@@ -40,6 +40,7 @@ const lensMock = vi.hoisted(() => ({
   } as ViewerState,
   onStateChange: undefined as ((state: ViewerState) => void) | undefined,
   onStatusChange: undefined as ((status: string) => void) | undefined,
+  onAddError: undefined as ((error: Error) => void) | undefined,
   onError: undefined as ((error: Error) => void) | undefined,
   instance: {
     actualSize: vi.fn(),
@@ -77,6 +78,29 @@ vi.mock("../aurora/AuroraTiffDecoder", () => ({
   },
 }));
 
+vi.mock("@tabularium/aurora-lens", () => {
+  const DECODER_ERROR_EMPTY_DOCUMENT = "empty_document";
+  const DECODER_ERROR_PAGE_OUT_OF_RANGE = "page_out_of_range";
+  const DECODER_ERROR_PAGE_SIZE = "page_size";
+  const DECODER_ERROR_UNKNOWN = "unknown";
+  const DECODER_ERROR_UNREADABLE_DOCUMENT = "unreadable_document";
+  class DecoderError extends Error {
+    constructor(readonly code: string, message: string) {
+      super(message);
+      this.name = "DecoderError";
+    }
+  }
+  return {
+    DECODER_ERROR_EMPTY_DOCUMENT,
+    DECODER_ERROR_PAGE_OUT_OF_RANGE,
+    DECODER_ERROR_PAGE_SIZE,
+    DECODER_ERROR_UNKNOWN,
+    DECODER_ERROR_UNREADABLE_DOCUMENT,
+    DecoderError,
+    isDecoderError: (error: unknown) => error instanceof DecoderError,
+  };
+});
+
 vi.mock("@tabularium/aurora-lens/react", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
@@ -86,6 +110,7 @@ vi.mock("@tabularium/aurora-lens/react", async () => {
       selectionTheme?: unknown;
       onStateChange?: (state: ViewerState) => void;
       onStatusChange?: (status: string) => void;
+      onAddError?: (error: Error) => void;
       onError?: (error: Error) => void;
       onReady?: (lens: typeof lensMock.instance) => void;
     }, ref) {
@@ -96,6 +121,7 @@ vi.mock("@tabularium/aurora-lens/react", async () => {
       React.useEffect(() => {
         lensMock.onStateChange = props.onStateChange;
         lensMock.onStatusChange = props.onStatusChange;
+        lensMock.onAddError = props.onAddError;
         lensMock.onError = props.onError;
         props.onStateChange?.(lensMock.state);
         props.onStatusChange?.(lensMock.status);
@@ -103,6 +129,7 @@ vi.mock("@tabularium/aurora-lens/react", async () => {
         return () => {
           lensMock.onStateChange = undefined;
           lensMock.onStatusChange = undefined;
+          lensMock.onAddError = undefined;
           lensMock.onError = undefined;
         };
       }, []);
@@ -127,6 +154,7 @@ describe("App", () => {
     lensMock.selectionTheme = undefined;
     lensMock.onStateChange = undefined;
     lensMock.onStatusChange = undefined;
+    lensMock.onAddError = undefined;
     lensMock.onError = undefined;
     lensMock.status = "idle";
     lensMock.state = {
@@ -247,6 +275,41 @@ describe("App", () => {
 
     expect(lensMock.instance.clear).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alertdialog", { name: "Viewer Error" })).not.toBeInTheDocument();
+  });
+
+  it("shows main document decoder errors as a dialog", async () => {
+    const { DecoderError } = await import("@tabularium/aurora-lens");
+    lensMock.instance.decodeTiff.mockRejectedValue(new DecoderError("empty_document", "Empty document."));
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText("Load TIFF"), {
+      target: {
+        files: [new File(["tiff"], "empty.tiff", { type: "image/tiff" })],
+      },
+    });
+
+    const dialog = await screen.findByRole("alertdialog", { name: "Document Error" });
+    expect(within(dialog).getByText("This document does not contain readable pages.")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(screen.queryByRole("alertdialog", { name: "Document Error" })).not.toBeInTheDocument();
+  });
+
+  it("shows add-page decoder errors as a dialog", async () => {
+    const { DecoderError } = await import("@tabularium/aurora-lens");
+    render(<App />);
+
+    act(() => {
+      lensMock.onAddError?.(new DecoderError("page_size", "Page size rejected."));
+    });
+
+    const dialog = screen.getByRole("alertdialog", { name: "Add Pages Error" });
+    expect(within(dialog).getByText("Some pages did not match the configured page size. The pages that loaded successfully were kept.")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(screen.queryByRole("alertdialog", { name: "Add Pages Error" })).not.toBeInTheDocument();
   });
 
   it("loads selected samples through Tabularium AI Lens", async () => {
@@ -377,8 +440,32 @@ describe("App", () => {
       },
     });
 
-    expect(screen.getByText("Choose or drop one TIFF file at a time.")).toBeInTheDocument();
+    const dialog = screen.getByRole("alertdialog", { name: "Document Error" });
+    expect(within(dialog).getByText("Choose or drop one TIFF file at a time.")).toBeInTheDocument();
     expect(lensMock.instance.decodeTiff).not.toHaveBeenCalled();
+    expect(lensMock.instance.clear).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-TIFF files without clearing the current viewer", async () => {
+    render(<App />);
+
+    const tiff = new File(["tiff"], "sample.tiff", { type: "image/tiff" });
+    fireEvent.change(screen.getByLabelText("Load TIFF"), {
+      target: {
+        files: [tiff],
+      },
+    });
+    await waitFor(() => expect(lensMock.instance.decodeTiff).toHaveBeenCalledTimes(1));
+
+    fireEvent.change(screen.getByLabelText("Load TIFF"), {
+      target: {
+        files: [new File(["pdf"], "document_1.pdf", { type: "application/pdf" })],
+      },
+    });
+
+    const dialog = screen.getByRole("alertdialog", { name: "Document Error" });
+    expect(within(dialog).getByText("Choose a .tif or .tiff file.")).toBeInTheDocument();
+    expect(lensMock.instance.decodeTiff).toHaveBeenCalledTimes(1);
     expect(lensMock.instance.clear).toHaveBeenCalledTimes(1);
   });
 

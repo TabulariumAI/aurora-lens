@@ -19,6 +19,7 @@ export const ReactViewer = forwardRef<AuroraLens, ViewerOptions>(function ReactV
       decoder: options.decoder,
       sessionStore: options.sessionStore ?? new IndexedDbViewerSessionStore(),
       selectionTheme: options.selectionTheme,
+      onAddError: (error) => optionsRef.current.onAddError?.(error),
       onError: (error) => optionsRef.current.onError?.(error),
       onStateChange: (state) => optionsRef.current.onStateChange?.(state),
       onStatusChange: (status) => optionsRef.current.onStatusChange?.(status),

@@ -3,11 +3,13 @@ import { ReactViewer } from "@tabularium/aurora-lens/react";
 import type { AuroraLens, ViewerDecoder, ViewerReady } from "@tabularium/aurora-lens";
 import { selectionTheme } from "../lens/selectionTheme";
 import type { ViewerState, ViewerStatus } from "../lens/types";
+import { AlertDialog } from "./AlertDialog";
 import { ProgressBar } from "./ProgressBar";
 import { ViewerFooter } from "./ViewerFooter";
 import { ViewerToolbar } from "./ViewerToolbar";
 
 interface LensHostProps {
+  addError: string;
   allowEdit: boolean;
   decoder: ViewerDecoder;
   fatalError: string;
@@ -15,14 +17,18 @@ interface LensHostProps {
   progressText: string;
   state: ViewerState;
   status: ViewerStatus;
+  viewerError: string;
+  onAddError: (error: Error) => void;
+  onAddErrorOk: () => void;
   onError: (error: Error) => void;
   onFatalErrorOk: () => void;
   onReady: (viewer: ViewerReady) => void;
   onStateChange: (state: ViewerState) => void;
   onStatusChange: (status: ViewerStatus) => void;
+  onViewerErrorOk: () => void;
 }
 
-export function LensHost({ allowEdit, decoder, fatalError, lensRef, progressText, state, status, onError, onFatalErrorOk, onReady, onStateChange, onStatusChange }: LensHostProps) {
+export function LensHost({ addError, allowEdit, decoder, fatalError, lensRef, progressText, state, status, viewerError, onAddError, onAddErrorOk, onError, onFatalErrorOk, onReady, onStateChange, onStatusChange, onViewerErrorOk }: LensHostProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [copyConfirmed, setCopyConfirmed] = useState(false);
@@ -93,25 +99,26 @@ export function LensHost({ allowEdit, decoder, fatalError, lensRef, progressText
             allowEdit={allowEdit}
             decoder={decoder}
             selectionTheme={selectionTheme}
+            onAddError={onAddError}
             onError={onError}
             onReady={onReady}
             onStateChange={onStateChange}
             onStatusChange={onStatusChange}
           />
-          {status === "idle" ? <div className="viewer-message viewer-overlay">Choose, drop, or select a sample TIFF file.</div> : null}
+          {status === "idle" && !viewerError ? <div className="viewer-message viewer-overlay">Choose, drop, or select a sample TIFF file.</div> : null}
           {isBusy ? (
             <div className="viewer-message viewer-overlay">
               <ProgressBar text={progressText} />
             </div>
           ) : null}
+          {viewerError ? (
+            <AlertDialog title="Document Error" message={viewerError} onOk={onViewerErrorOk} />
+          ) : null}
           {fatalError ? (
-            <div className="viewer-message viewer-overlay viewer-error-overlay" role="alertdialog" aria-modal="true" aria-labelledby="viewer-fatal-error-heading">
-              <div className="viewer-error-dialog">
-                <h2 id="viewer-fatal-error-heading">Viewer Error</h2>
-                <p>{fatalError}</p>
-                <button type="button" onClick={onFatalErrorOk}>OK</button>
-              </div>
-            </div>
+            <AlertDialog title="Viewer Error" message={fatalError} onOk={onFatalErrorOk} />
+          ) : null}
+          {addError ? (
+            <AlertDialog title="Add Pages Error" message={addError} onOk={onAddErrorOk} />
           ) : null}
         </div>
         <ViewerFooter

@@ -1,5 +1,16 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { AuroraLens, PageSizeConfig, ViewerReady } from "@tabularium/aurora-lens";
+import {
+  DECODER_ERROR_EMPTY_DOCUMENT,
+  DECODER_ERROR_PAGE_OUT_OF_RANGE,
+  DECODER_ERROR_PAGE_SIZE,
+  DECODER_ERROR_UNKNOWN,
+  DECODER_ERROR_UNREADABLE_DOCUMENT,
+  isDecoderError,
+  type AuroraLens,
+  type DecoderErrorCode,
+  type PageSizeConfig,
+  type ViewerReady,
+} from "@tabularium/aurora-lens";
 import { AuroraTiffDecoder } from "../aurora/AuroraTiffDecoder";
 import { DetailsPanel } from "../components/DetailsPanel";
 import { LensHost } from "../components/LensHost";
@@ -9,6 +20,13 @@ import { VIEWER_SAMPLES, type ViewerSample } from "../samples";
 import type { ViewerState, ViewerStatus, HostViewerStatus, ViewerDetails } from "../lens/types";
 
 const TIFF_FILE_TYPE = "image/tiff";
+const mainDocumentErrorMessages: Record<DecoderErrorCode, string> = {
+  [DECODER_ERROR_EMPTY_DOCUMENT]: "This document does not contain readable pages.",
+  [DECODER_ERROR_PAGE_OUT_OF_RANGE]: "The requested page is outside the document.",
+  [DECODER_ERROR_PAGE_SIZE]: "We could not open this document.",
+  [DECODER_ERROR_UNKNOWN]: "We could not open this document.",
+  [DECODER_ERROR_UNREADABLE_DOCUMENT]: "This document could not be read.",
+};
 
 const emptyLensState: ViewerState = {
   viewMode: "page",
@@ -56,6 +74,8 @@ export function App() {
   const [allowEdit, setAllowEdit] = useState(true);
   const [validationConfig, setValidationConfig] = useState<PageSizeConfig | null>(null);
   const [error, setError] = useState("");
+  const [addError, setAddError] = useState("");
+  const [viewerError, setViewerError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lensRef = useRef<AuroraLens | null>(null);
   const operationIdRef = useRef(0);
@@ -65,6 +85,8 @@ export function App() {
     setLensState(emptyLensState);
     setLensStatus("idle");
     setError("");
+    setAddError("");
+    setViewerError("");
     if (clearInput && fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -125,7 +147,7 @@ export function App() {
         return;
       }
       resetViewerState(false);
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setViewerError(mainDocumentErrorMessage(reason));
     }
   }, [isViewerOperationCurrent, resetViewerState]);
 
@@ -138,16 +160,14 @@ export function App() {
     }
     if (files.length > 1) {
       beginViewerOperation();
-      resetViewerState(false);
-      setError("Choose or drop one TIFF file at a time.");
+      setViewerError("Choose or drop one TIFF file at a time.");
       return;
     }
 
     const file = files[0];
     if (!isTiffFile(file)) {
       beginViewerOperation();
-      resetViewerState(false);
-      setError("Choose a .tif or .tiff file.");
+      setViewerError("Choose a .tif or .tiff file.");
       return;
     }
 
@@ -183,7 +203,7 @@ export function App() {
       if (!isViewerOperationCurrent(operationId) || (reason instanceof DOMException && reason.name === "AbortError")) {
         return;
       }
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setViewerError(mainDocumentErrorMessage(reason));
     });
   }, [beginViewerOperation, isViewerOperationCurrent, loadResolvedInput, resetViewerState]);
 
@@ -202,6 +222,7 @@ export function App() {
           onSample={loadSample}
         />
         <LensHost
+          addError={addError}
           allowEdit={allowEdit}
           decoder={decoder}
           fatalError={lensStatus === "error" ? error : ""}
@@ -209,8 +230,12 @@ export function App() {
           progressText={progressText}
           state={lensState}
           status={lensStatus}
+          viewerError={viewerError}
+          onAddError={(reason) => setAddError(addPagesErrorMessage(reason))}
+          onAddErrorOk={() => setAddError("")}
           onError={(reason) => setError(reason.message)}
           onFatalErrorOk={acknowledgeFatalError}
+          onViewerErrorOk={() => setViewerError("")}
           onReady={restoreViewerSession}
           onStateChange={setLensState}
           onStatusChange={setLensStatus}
@@ -276,4 +301,21 @@ function toProgressText(status: ViewerStatus, state: ViewerState) {
     return "Copying selection...";
   }
   return "Loading...";
+}
+
+function mainDocumentErrorMessage(error: unknown) {
+  if (!isDecoderError(error)) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  return mainDocumentErrorMessages[error.code];
+}
+
+function addPagesErrorMessage(error: unknown) {
+  if (!isDecoderError(error)) {
+    return "We could not add those pages.";
+  }
+  if (error.code === DECODER_ERROR_PAGE_SIZE) {
+    return "Some pages did not match the configured page size. The pages that loaded successfully were kept.";
+  }
+  return "Some pages could not be added. The pages that loaded successfully were kept.";
 }

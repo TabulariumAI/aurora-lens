@@ -109,6 +109,7 @@ export interface ViewerOptions {
   decoder: ViewerDecoder;
   sessionStore?: ViewerSessionStore;
   selectionTheme?: PartialSelectionTheme;
+  onAddError?: (error: Error) => void;
   onReady?: (viewer: ViewerReady) => void;
   onStateChange?: (state: ViewerState) => void;
   onStatusChange?: (status: ViewerStatus) => void;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuroraLens } from "./AuroraLens";
 import { ACTIVE_VIEWER_SESSION_ID, insertPageRecords } from "./viewerSessionStore";
+import { DECODER_ERROR_UNKNOWN, DecoderError } from "./DecoderError";
 import type { ViewerDecoder, ViewerDocumentInput, ViewerImportSink, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore, ViewerState, ViewerStatus, RasterPage } from "./types";
 import type { PageSizeConfig } from "./pageSizeValidation";
 
@@ -86,6 +87,20 @@ class ImportGateDecoder extends DecoderMock {
     await this.sink.pageReady(rasterPage("insert.tiff", 0, 85, 110, 2), 0);
     await this.sink.pageReady(rasterPage("insert.tiff", 1, 85, 110, 2), 1);
     this.resolveImport();
+  }
+}
+
+class FailingDecodeDecoder extends DecoderMock {
+  async decode() {
+    throw new DecoderError(DECODER_ERROR_UNKNOWN, "Decode failed.");
+  }
+}
+
+class PartialImportDecoder extends DecoderMock {
+  async importPages(_files: File[], sink: ViewerImportSink) {
+    await sink.pageCount(3);
+    await sink.pageReady(rasterPage("insert.tiff", 0, 85, 110, 3), 0);
+    throw new DecoderError(DECODER_ERROR_UNKNOWN, "Import failed.");
   }
 }
 
@@ -266,6 +281,28 @@ describe("AuroraLens", () => {
     expect(lens.search("Builders")).toBeNull();
   });
 
+  it("clears stored pages and bubbles main document decode errors", async () => {
+    const errors: Error[] = [];
+    const store = new MemorySessionStore(sessionRecord());
+    store.blobs = [
+      { pageId: "page-1", blob: new Blob(["one"]), updatedAt: 1 },
+      { pageId: "page-2", blob: new Blob(["two"]), updatedAt: 1 },
+    ];
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      decoder: new FailingDecodeDecoder(),
+      sessionStore: store,
+      onError: (error) => errors.push(error),
+    });
+    const error = await lens.decodeTiff(new File(["bad"], "bad.tiff", { type: "image/tiff" }), 0).catch((reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(DecoderError);
+    expect(store.session).toBeNull();
+    expect(store.blobs).toEqual([]);
+    expect(store.metadata).toEqual([]);
+    expect(errors).toEqual([]);
+  });
+
   it("updates package-owned session storage when pages change", async () => {
     const store = new MemorySessionStore();
     const lens = new AuroraLens(document.createElement("div"), {
@@ -370,6 +407,38 @@ describe("AuroraLens", () => {
     ]);
     expect(store.blobs.map((blob) => blob.pageId)).toEqual(["page-1", "page-2", "page-3", "page-4"]);
     expect(store.session?.document.currentPageId).toBe("page-1");
+  });
+
+  it("keeps successful imported pages and removes failed pending pages", async () => {
+    const errors: Error[] = [];
+    const store = new MemorySessionStore();
+    const container = document.createElement("div");
+    const lens = new AuroraLens(container, {
+      allowEdit: true,
+      decoder: new PartialImportDecoder(),
+      sessionStore: store,
+      onAddError: (error) => errors.push(error),
+    });
+
+    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await flush();
+    await lens.showThumbnails();
+    const error = await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1).catch((reason: unknown) => reason);
+
+    expect(error).toBeInstanceOf(DecoderError);
+    expect(errors).toEqual([error]);
+    expect(store.session?.pages.map((page) => ({
+      pageId: page.pageId,
+      sequenceNumber: page.sequenceNumber,
+      sourcePageIndex: page.sourcePageIndex,
+    }))).toEqual([
+      { pageId: "page-1", sequenceNumber: 1, sourcePageIndex: 0 },
+      { pageId: "page-3", sequenceNumber: 2, sourcePageIndex: 0 },
+      { pageId: "page-2", sequenceNumber: 3, sourcePageIndex: 1 },
+    ]);
+    expect(store.blobs.map((blob) => blob.pageId)).toEqual(["page-1", "page-2", "page-3"]);
+    expect(store.session?.document.currentPageId).toBe("page-1");
+    expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3"]);
   });
 
   it("keeps intelligence labels tied to page identity after thumbnail reorder", async () => {
@@ -1230,6 +1299,33 @@ class MemorySessionStore implements ViewerSessionStore {
     return orderedPages;
   }
 
+  async removePages(pageIds: string[], updatedAt: number) {
+    if (!this.session) {
+      return [];
+    }
+    const pageIdSet = new Set(pageIds);
+    const orderedPages = this.session.pages
+      .filter((page) => !pageIdSet.has(page.pageId))
+      .map((value, index) => ({
+        ...value,
+        sequenceNumber: index + 1,
+        updatedAt,
+      }));
+    const currentPage = orderedPages.find((page) => page.pageId === this.session?.document.currentPageId)!;
+    this.session = {
+      ...this.session,
+      document: {
+        ...this.session.document,
+        updatedAt,
+      },
+      pages: orderedPages,
+      currentPage,
+    };
+    this.blobs = this.blobs.filter((record) => !pageIdSet.has(record.pageId));
+    this.metadata = this.metadata.filter((record) => !pageIdSet.has(record.pageId));
+    return orderedPages;
+  }
+
   async readPageValidationConfig() {
     return this.validationConfig ?? {
       formats: [
@@ -1336,6 +1432,10 @@ class FailingReadSessionStore implements ViewerSessionStore {
     return [];
   }
 
+  async removePages(_pageIds: string[], _updatedAt: number) {
+    return [];
+  }
+
   async saveCurrentPage(_pageId: string, _updatedAt: number) {}
 
   async savePageBlob(_record: ViewerPageBlobRecord) {}
@@ -1394,4 +1494,20 @@ function pageRecords(count: number): ViewerPageRecord[] {
     });
   }
   return pages;
+}
+
+function sessionRecord(): ViewerSession {
+  const pages = pageRecords(2);
+  return {
+    document: {
+      id: ACTIVE_VIEWER_SESSION_ID,
+      fileName: "stored.tiff",
+      fileType: "image/tiff",
+      fileBlob: new Blob(["stored"], { type: "image/tiff" }),
+      currentPageId: "page-1",
+      updatedAt: 1,
+    },
+    pages,
+    currentPage: pages[0],
+  };
 }

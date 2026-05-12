@@ -3,6 +3,7 @@ import { MetadataRepository } from "./MetadataRepository";
 import { MetadataHelper } from "./MetadataHelper";
 import { PageViewer } from "./PageViewer";
 import { ACTIVE_VIEWER_SESSION_ID, reorderPageRecords } from "./viewerSessionStore";
+import { DECODER_ERROR_PAGE_SIZE, DecoderError } from "./DecoderError";
 import { normalizeSelectionTheme } from "./selectionTheme";
 import { SelectionManager } from "./SelectionManager";
 import { ThumbnailViewer } from "./ThumbnailViewer";
@@ -188,41 +189,51 @@ export class AuroraLens {
     assertFile(file);
     assertPageIndex(pageIndex);
     const newFile = this.file !== file;
-    if (newFile) {
-      this.persistenceRun += 1;
-      this.revokePage();
-      this.revokeThumbnails();
-      this.file = file;
-      this.pageCount = 0;
-      this.sessionPages = [];
-      this.metadataPageIds = new Set();
-      this.storedPageIds = new Set();
-      this.selection.clear();
-      if (!this.metadataPending) {
-        this.metadataInput = null;
-        this.metadata.clear();
+    try {
+      if (newFile) {
+        this.persistenceRun += 1;
+        this.revokePage();
+        this.revokeThumbnails();
+        this.file = file;
+        this.pageCount = 0;
+        this.sessionPages = [];
+        this.metadataPageIds = new Set();
+        this.storedPageIds = new Set();
+        this.selection.clear();
+        if (!this.metadataPending) {
+          this.metadataInput = null;
+          this.metadata.clear();
+        }
       }
-    }
-    const page = await this.loadPage(pageIndex, {
-      loadMetadata: !newFile,
-      saveCurrentPage: !newFile,
-      setReady: !newFile,
-    });
-    if (newFile && page) {
-      if (this.sessionStore) {
-        const persistenceRun = this.persistenceRun;
-        await this.resetStoredDocument(file, page);
-        await this.loadStoredPageMetadata(page.pageId, page.pageIndex);
-        await this.saveCurrentPage(page.pageId);
-        void this.saveRemainingPageData(file, page.pageIndex, persistenceRun).catch((error: unknown) => {
-          if (persistenceRun === this.persistenceRun) {
-            this.failStoredDocumentPersistence(error);
-          }
-        });
+      const page = await this.loadPage(pageIndex, {
+        loadMetadata: !newFile,
+        saveCurrentPage: !newFile,
+        setReady: !newFile,
+      });
+      if (newFile && page) {
+        if (this.sessionStore) {
+          const persistenceRun = this.persistenceRun;
+          await this.resetStoredDocument(file, page);
+          await this.loadStoredPageMetadata(page.pageId, page.pageIndex);
+          await this.saveCurrentPage(page.pageId);
+          void this.saveRemainingPageData(file, page.pageIndex, persistenceRun).catch((error: unknown) => {
+            if (persistenceRun === this.persistenceRun) {
+              this.failStoredDocumentPersistence(error);
+            }
+          });
+        }
+        this.pageViewer.render();
+        this.metadataPending = false;
+        this.setStatus("ready");
       }
-      this.pageViewer.render();
-      this.metadataPending = false;
-      this.setStatus("ready");
+    } catch (error) {
+      if (newFile) {
+        await this.deleteSession().catch(() => undefined);
+        this.clearView();
+      } else {
+        this.fail(error);
+      }
+      throw error;
     }
   }
 
@@ -244,9 +255,9 @@ export class AuroraLens {
 
     this.persistenceRun += 1;
     this.setStatus("loadingPage");
+    let records: ViewerPageRecord[] = [];
     try {
       const config = await this.readPageValidationConfig();
-      let records: ViewerPageRecord[] = [];
       await this.decoder.importPages(inputFiles, {
         pageCount: async (count) => {
           const updatedAt = Date.now();
@@ -278,7 +289,9 @@ export class AuroraLens {
       });
       this.setStatus("ready");
     } catch (error) {
-      this.fail(error);
+      await this.removeImportedPages(records);
+      this.setStatus("ready");
+      this.options.onAddError?.(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -448,42 +461,37 @@ export class AuroraLens {
     const runId = this.runId + 1;
     this.runId = runId;
     this.setStatus("loadingPage");
-    try {
-      const storedPage = await this.loadStoredRaster(pageIndex);
-      const sourcePageIndex = this.sourcePageIndex(pageIndex);
-      const raster = storedPage ?? await this.decoder.decode(this.file, sourcePageIndex);
-      if (!this.sessionPages.length) {
-        this.sessionPages = this.createPageRecords(raster.pageCount, Date.now());
-      }
-      const page = await this.toPage(raster, undefined, pageIndex);
-      if (runId !== this.runId) {
-        URL.revokeObjectURL(page.url);
-        return null;
-      }
-      if (options.loadMetadata) {
-        await this.loadStoredPageMetadata(page.pageId, page.pageIndex);
-      }
-      this.revokePage();
-      this.page = page;
-      this.pageCount = page.pageCount;
-      this.viewMode = "page";
-      this.coordinates = null;
-      this.displayCoordinates = null;
-      this.selection.clear();
-      this.showView("page");
-      this.pageViewer.show(page);
-      this.revokeThumbnails();
-      if (options.saveCurrentPage) {
-        await this.saveCurrentPage(page.pageId);
-      }
-      if (options.setReady) {
-        this.setStatus("ready");
-      }
-      return page;
-    } catch (error) {
-      this.fail(error);
-      throw error;
+    const storedPage = await this.loadStoredRaster(pageIndex);
+    const sourcePageIndex = this.sourcePageIndex(pageIndex);
+    const raster = storedPage ?? await this.decoder.decode(this.file, sourcePageIndex);
+    if (!this.sessionPages.length) {
+      this.sessionPages = this.createPageRecords(raster.pageCount, Date.now());
     }
+    const page = await this.toPage(raster, undefined, pageIndex);
+    if (runId !== this.runId) {
+      URL.revokeObjectURL(page.url);
+      return null;
+    }
+    if (options.loadMetadata) {
+      await this.loadStoredPageMetadata(page.pageId, page.pageIndex);
+    }
+    this.revokePage();
+    this.page = page;
+    this.pageCount = page.pageCount;
+    this.viewMode = "page";
+    this.coordinates = null;
+    this.displayCoordinates = null;
+    this.selection.clear();
+    this.showView("page");
+    this.pageViewer.show(page);
+    this.revokeThumbnails();
+    if (options.saveCurrentPage) {
+      await this.saveCurrentPage(page.pageId);
+    }
+    if (options.setReady) {
+      this.setStatus("ready");
+    }
+    return page;
   }
 
   private showView(viewMode: ViewMode) {
@@ -703,6 +711,32 @@ export class AuroraLens {
     } : page);
   }
 
+  private async removeImportedPages(records: ViewerPageRecord[]) {
+    const pageIds = records
+      .filter((record) => !this.storedPageIds.has(record.pageId))
+      .map((record) => record.pageId);
+    if (!this.sessionStore || !pageIds.length) {
+      return;
+    }
+    this.sessionPages = await this.sessionStore.removePages(pageIds, Date.now());
+    const thumbnails = new Map(this.thumbnails.filter((page): page is ThumbnailPage => Boolean(page)).map((page) => [page.pageId, page]));
+    this.thumbnails = this.sessionPages.map((record, index) => {
+      const page = thumbnails.get(record.pageId);
+      return page ? {
+        ...page,
+        pageIndex: index,
+        pageNumber: index + 1,
+        pageCount: this.sessionPages.length,
+      } : undefined;
+    });
+    this.storedPageIds = new Set(Array.from(this.storedPageIds).filter((pageId) => !pageIds.includes(pageId)));
+    this.pageCount = this.sessionPages.length;
+    await this.refreshCurrentPageOrder();
+    if (this.viewMode === "thumbnails") {
+      this.thumbnailViewer.update(this.pageIds(), this.thumbnails, this.state().pageIndex, this.thumbnailMetadata());
+    }
+  }
+
   private async reorderPages(request: ThumbnailReorderRequest) {
     if (this.sessionPages.length) {
       this.sessionPages = this.reorderedPages(request.fromPageIndex, request.toPageIndex, Date.now());
@@ -889,11 +923,11 @@ export class AuroraLens {
     const validation = validateRasterPageSize({
       width: page.width,
       height: page.height,
-      xResolution: 0,
-      yResolution: 0,
+      xResolution: "xResolution" in page && typeof page.xResolution === "number" ? page.xResolution : 0,
+      yResolution: "yResolution" in page && typeof page.yResolution === "number" ? page.yResolution : 0,
     }, config);
     if (!validation.valid) {
-      throw new Error(`${page.sourceName}: page ${importIndex + 1} rejected. ${validation.reason}`);
+      throw new DecoderError(DECODER_ERROR_PAGE_SIZE, `${page.sourceName}: page ${importIndex + 1} rejected. ${validation.reason}`);
     }
     return {
       ...page,

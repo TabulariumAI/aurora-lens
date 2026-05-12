@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACTIVE_VIEWER_SESSION_ID, insertPageRecords, validateViewerSession } from "./viewerSessionStore";
+import { ACTIVE_VIEWER_SESSION_ID, insertPageRecords, removePageRecords, validateViewerSession } from "./viewerSessionStore";
 
 describe("viewerSessionStore", () => {
   it("validates a persisted viewer session", () => {
@@ -66,6 +66,20 @@ describe("viewerSessionStore", () => {
       pageRecord("page-3", 2, 0, 2),
       pageRecord("page-4", 3, 1, 2),
       pageRecord("page-2", 4, 1, 2),
+    ]);
+  });
+
+  it("removes page records and resequences the stored order", () => {
+    const pages = [
+      pageRecord("page-1", 1, 0),
+      pageRecord("page-2", 2, 0),
+      pageRecord("page-3", 3, 1),
+      pageRecord("page-4", 4, 1),
+    ];
+
+    expect(removePageRecords(pages, new Set(["page-2", "page-3"]), 2)).toEqual([
+      pageRecord("page-1", 1, 0, 2),
+      pageRecord("page-4", 2, 1, 2),
     ]);
   });
 });

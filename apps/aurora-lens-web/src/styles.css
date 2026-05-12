@@ -419,6 +419,55 @@ button:disabled {
   box-shadow: none;
 }
 
+.alert-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 31, 42, 0.32);
+}
+
+.alert-dialog {
+  width: min(420px, 100%);
+  padding: 22px 24px 20px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.alert-dialog h2 {
+  margin: 0 0 10px;
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.alert-dialog p {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.alert-dialog button {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--surface);
+  font-weight: 700;
+}
+
+.alert-dialog button:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
 .viewer-footer .viewer-tool-button {
   min-width: 40px;
   height: 34px;

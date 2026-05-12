@@ -1,5 +1,14 @@
 export { AuroraLens } from "./core/AuroraLens";
 export {
+  DECODER_ERROR_EMPTY_DOCUMENT,
+  DECODER_ERROR_PAGE_OUT_OF_RANGE,
+  DECODER_ERROR_PAGE_SIZE,
+  DECODER_ERROR_UNKNOWN,
+  DECODER_ERROR_UNREADABLE_DOCUMENT,
+  DecoderError,
+  isDecoderError,
+} from "./core/DecoderError";
+export {
   DEFAULT_PDF_RASTER_DPI,
   configurePdfWorker,
   decodePdfBytes,
@@ -22,6 +31,9 @@ export {
   VIEWER_VALIDATION_STORE_NAME,
   validateViewerSession,
 } from "./core/viewerSessionStore";
+export type {
+  DecoderErrorCode,
+} from "./core/DecoderError";
 export type {
   ViewerDecoder,
   ViewerImportSink,

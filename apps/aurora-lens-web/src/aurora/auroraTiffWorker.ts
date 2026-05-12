@@ -1,4 +1,12 @@
-import type { RasterPage } from "@tabularium/aurora-lens";
+import {
+  DECODER_ERROR_EMPTY_DOCUMENT,
+  DECODER_ERROR_PAGE_OUT_OF_RANGE,
+  DECODER_ERROR_UNKNOWN,
+  DECODER_ERROR_UNREADABLE_DOCUMENT,
+  DecoderError,
+  type DecoderErrorCode,
+  type RasterPage,
+} from "@tabularium/aurora-lens";
 import createAuroraTiffModule from "./vendor/auroraTiff.js";
 import type { AuroraTiffModule } from "./auroraTiff";
 
@@ -30,6 +38,7 @@ interface ImportRequest {
 interface DecodeResponse {
   id: number;
   kind: DecodeKind | "importCount" | "importPage" | "importDone";
+  errorCode?: DecoderErrorCode;
   importIndex?: number;
   pageCount?: number;
   page?: RasterPage;
@@ -52,6 +61,7 @@ workerScope.onmessage = (event: MessageEvent<DecodeRequest>) => {
       workerScope.postMessage({
         id: request.id,
         kind: "importDone",
+        errorCode: errorCode(reason),
         error: reason instanceof Error ? reason.message : String(reason),
       });
     });
@@ -66,6 +76,7 @@ workerScope.onmessage = (event: MessageEvent<DecodeRequest>) => {
       workerScope.postMessage({
         id: request.id,
         kind: request.kind,
+        errorCode: errorCode(reason),
         error: reason instanceof Error ? reason.message : String(reason),
       });
     });
@@ -79,10 +90,10 @@ async function decode(request: PageRequest): Promise<RasterPage> {
   try {
     const pageCount = module._TiffCountDirectories(handle);
     if (pageCount <= 0) {
-      throw new Error("The selected file does not contain readable pages.");
+      throw new DecoderError(DECODER_ERROR_EMPTY_DOCUMENT, "The selected file does not contain readable pages.");
     }
     if (request.pageIndex < 0 || request.pageIndex >= pageCount) {
-      throw new Error(`Page ${request.pageIndex + 1} is outside the available page range.`);
+      throw new DecoderError(DECODER_ERROR_PAGE_OUT_OF_RANGE, `Page ${request.pageIndex + 1} is outside the available page range.`);
     }
     setDirectory(module, handle, request.pageIndex);
     const image = readImage(module, handle);
@@ -148,7 +159,7 @@ function countTiffPages(module: AuroraTiffModule, file: DecodeFile) {
   try {
     const pageCount = module._TiffCountDirectories(handle);
     if (pageCount <= 0) {
-      throw new Error("The selected file does not contain readable pages.");
+      throw new DecoderError(DECODER_ERROR_EMPTY_DOCUMENT, "The selected file does not contain readable pages.");
     }
     return pageCount;
   } finally {
@@ -178,7 +189,7 @@ function createTiff(module: AuroraTiffModule, bytes: Uint8Array): number {
     module.HEAPU8.set(bytes, pointer);
     const handle = module._TiffCreate(pointer, bytes.byteLength);
     if (!handle) {
-      throw new Error("Failed to open the selected file.");
+      throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "Failed to open the selected file.");
     }
     return handle;
   } finally {
@@ -189,7 +200,7 @@ function createTiff(module: AuroraTiffModule, bytes: Uint8Array): number {
 function setDirectory(module: AuroraTiffModule, handle: number, pageIndex: number) {
   const ok = module._TiffSetDirectory(handle, pageIndex);
   if (!ok) {
-    throw new Error(`Failed to open page ${pageIndex + 1}.`);
+    throw new DecoderError(DECODER_ERROR_PAGE_OUT_OF_RANGE, `Failed to open page ${pageIndex + 1}.`);
   }
 }
 
@@ -202,7 +213,7 @@ function readImage(module: AuroraTiffModule, handle: number) {
   try {
     const ok = module._TiffReadRGBA(handle, pointer, byteLength);
     if (!ok) {
-      throw new Error("Failed to decode the selected page.");
+      throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "Failed to decode the selected page.");
     }
     return {
       width,
@@ -217,7 +228,11 @@ function readImage(module: AuroraTiffModule, handle: number) {
 function allocate(module: AuroraTiffModule, byteLength: number): number {
   const pointer = module._malloc(byteLength);
   if (!pointer) {
-    throw new Error("AuroraTiff could not allocate decoder memory.");
+    throw new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff could not allocate decoder memory.");
   }
   return pointer;
+}
+
+function errorCode(error: unknown): DecoderErrorCode {
+  return error instanceof DecoderError ? error.code : DECODER_ERROR_UNKNOWN;
 }

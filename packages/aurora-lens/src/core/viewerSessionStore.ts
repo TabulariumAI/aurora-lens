@@ -62,6 +62,7 @@ export interface ViewerSession {
 export interface ViewerSessionStore {
   resetDocument(input: ViewerDocumentInput): Promise<ViewerPageRecord[]>;
   insertPages(insertIndex: number, pages: ViewerPageRecord[], blobs: ViewerPageBlobRecord[], updatedAt: number): Promise<ViewerPageRecord[]>;
+  removePages(pageIds: string[], updatedAt: number): Promise<ViewerPageRecord[]>;
   readPageValidationConfig(): Promise<PageSizeConfig>;
   saveCurrentPage(pageId: string, updatedAt: number): Promise<void>;
   savePageBlob(record: ViewerPageBlobRecord): Promise<void>;
@@ -121,6 +122,37 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
       });
       newBlobs.forEach((blob) => {
         transaction.objectStore(VIEWER_PAGE_BLOB_STORE_NAME).put(blob);
+      });
+      await requestToPromise(transaction.objectStore(VIEWER_DOCUMENT_STORE_NAME).put({
+        ...document,
+        updatedAt,
+      }));
+      await transactionDone(transaction);
+      return orderedPages;
+    } finally {
+      database.close();
+    }
+  }
+
+  async removePages(pageIds: string[], updatedAt: number): Promise<ViewerPageRecord[]> {
+    const database = await this.open();
+    try {
+      const transaction = database.transaction([VIEWER_DOCUMENT_STORE_NAME, VIEWER_PAGE_STORE_NAME, VIEWER_PAGE_BLOB_STORE_NAME, VIEWER_PAGE_METADATA_STORE_NAME], "readwrite");
+      const document = validateDocument(await requestToPromise(transaction.objectStore(VIEWER_DOCUMENT_STORE_NAME).get(ACTIVE_VIEWER_SESSION_ID)));
+      const pageStore = transaction.objectStore(VIEWER_PAGE_STORE_NAME);
+      const pages = validatePages(await requestToPromise(pageStore.getAll()));
+      const pageIdSet = new Set(pageIds);
+      const orderedPages = removePageRecords(pages, pageIdSet, updatedAt);
+      if (!orderedPages.some((page) => page.pageId === document.currentPageId)) {
+        throw invalidSessionError();
+      }
+      pageIdSet.forEach((pageId) => {
+        pageStore.delete(pageId);
+        transaction.objectStore(VIEWER_PAGE_BLOB_STORE_NAME).delete(pageId);
+        transaction.objectStore(VIEWER_PAGE_METADATA_STORE_NAME).delete(pageId);
+      });
+      orderedPages.forEach((page) => {
+        pageStore.put(page);
       });
       await requestToPromise(transaction.objectStore(VIEWER_DOCUMENT_STORE_NAME).put({
         ...document,
@@ -359,6 +391,18 @@ export function reorderPageRecords(pages: ViewerPageRecord[], fromPageIndex: num
 export function insertPageRecords(pages: ViewerPageRecord[], insertIndex: number, newPages: ViewerPageRecord[], updatedAt: number): ViewerPageRecord[] {
   const orderedPages = [...pages];
   orderedPages.splice(insertIndex, 0, ...newPages);
+  return orderedPages.map((value, index) => ({
+    ...value,
+    sequenceNumber: index + 1,
+    updatedAt,
+  }));
+}
+
+export function removePageRecords(pages: ViewerPageRecord[], pageIds: Set<string>, updatedAt: number): ViewerPageRecord[] {
+  const orderedPages = pages.filter((page) => !pageIds.has(page.pageId));
+  if (!orderedPages.length || orderedPages.length === pages.length) {
+    throw invalidSessionError();
+  }
   return orderedPages.map((value, index) => ({
     ...value,
     sequenceNumber: index + 1,

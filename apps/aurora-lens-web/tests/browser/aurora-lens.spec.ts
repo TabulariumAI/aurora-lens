@@ -257,6 +257,33 @@ test("adds TIFF pages from thumbnail add button and stores the inserted pages", 
   await expect.poll(() => storedPageIndex(page)).toBe(0);
 });
 
+test("rejects a PDF without clearing the stored TIFF session", async ({ page }) => {
+  await page.goto("/");
+
+  const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
+  await page.getByLabel("Load TIFF").setInputFiles(fixture);
+  const details = page.getByLabel("Page details");
+  await expect(details.getByText("sample-multipage.tiff")).toBeVisible();
+  await expect(details.getByText("1 of 2")).toBeVisible();
+  const pagesBefore = await storedPages(page);
+  const blobCountBefore = await storedBlobCount(page);
+  const pageIndexBefore = await storedPageIndex(page);
+
+  const pdf = path.resolve("public/samples/sample-pdf/document_1.pdf");
+  await page.getByLabel("Load TIFF").setInputFiles(pdf);
+
+  const dialog = page.getByRole("alertdialog", { name: "Document Error" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Choose a .tif or .tiff file.");
+  await expect.poll(() => dialog.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgba(8, 31, 42, 0.32)");
+  await expect.poll(() => dialog.locator(".alert-dialog").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(255, 255, 255)");
+  await expect.poll(() => storedPages(page)).toEqual(pagesBefore);
+  await expect.poll(() => storedBlobCount(page)).toBe(blobCountBefore);
+  await expect.poll(() => storedPageIndex(page)).toBe(pageIndexBefore);
+  await expect(details.getByText("sample-multipage.tiff")).toBeVisible();
+  await expect(details.getByText("1 of 2")).toBeVisible();
+});
+
 test("clears sample metadata when a user-selected TIFF is loaded", async ({ page }) => {
   await page.route("**/samples/sample-1/sample.json", async (route) => {
     await route.fulfill({

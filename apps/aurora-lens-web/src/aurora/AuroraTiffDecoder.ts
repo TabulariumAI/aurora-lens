@@ -1,4 +1,4 @@
-import type { ViewerDecoder, ViewerImportSink, RasterPage } from "@tabularium/aurora-lens";
+import { DECODER_ERROR_UNKNOWN, DecoderError, type DecoderErrorCode, type ViewerDecoder, type ViewerImportSink, type RasterPage } from "@tabularium/aurora-lens";
 
 type DecodeKind = "page" | "thumbnail";
 
@@ -16,14 +16,22 @@ type PendingRequest =
     reject: (error: Error) => void;
   };
 
-interface WorkerResponse {
+interface WorkerSuccessResponse {
   id: number;
   kind: DecodeKind | "importCount" | "importPage" | "importDone";
   importIndex?: number;
   pageCount?: number;
   page?: RasterPage;
-  error?: string;
 }
+
+interface WorkerErrorResponse {
+  id: number;
+  kind: DecodeKind | "importCount" | "importPage" | "importDone";
+  error: string;
+  errorCode: DecoderErrorCode;
+}
+
+type WorkerResponse = WorkerSuccessResponse | WorkerErrorResponse;
 
 export class AuroraTiffDecoder implements ViewerDecoder {
   private readonly worker = new Worker(new URL("./auroraTiffWorker.ts", import.meta.url), { type: "module" });
@@ -35,10 +43,10 @@ export class AuroraTiffDecoder implements ViewerDecoder {
       this.receive(event.data);
     };
     this.worker.onerror = (event) => {
-      this.rejectAll(new Error(event.message || "AuroraTiff decoder worker failed."));
+      this.rejectAll(new DecoderError(DECODER_ERROR_UNKNOWN, event.message || "AuroraTiff decoder worker failed."));
     };
     this.worker.onmessageerror = () => {
-      this.rejectAll(new Error("AuroraTiff decoder worker returned an unreadable response."));
+      this.rejectAll(new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff decoder worker returned an unreadable response."));
     };
   }
 
@@ -102,9 +110,9 @@ export class AuroraTiffDecoder implements ViewerDecoder {
       return;
     }
 
-    if (response.error) {
+    if ("error" in response) {
       this.pending.delete(response.id);
-      pending.reject(new Error(response.error));
+      pending.reject(new DecoderError(response.errorCode, response.error));
       return;
     }
 
@@ -115,12 +123,12 @@ export class AuroraTiffDecoder implements ViewerDecoder {
 
     if (pending.kind !== response.kind) {
       this.pending.delete(response.id);
-      pending.reject(new Error("AuroraTiff decoder returned an unexpected response."));
+      pending.reject(new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff decoder returned an unexpected response."));
       return;
     }
     this.pending.delete(response.id);
     if (!response.page) {
-      pending.reject(new Error("AuroraTiff decoder returned no page."));
+      pending.reject(new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff decoder returned no page."));
       return;
     }
 
@@ -130,11 +138,11 @@ export class AuroraTiffDecoder implements ViewerDecoder {
     });
   }
 
-  private async receiveImport(id: number, pending: Extract<PendingRequest, { kind: "import" }>, response: WorkerResponse) {
+  private async receiveImport(id: number, pending: Extract<PendingRequest, { kind: "import" }>, response: WorkerSuccessResponse) {
     try {
       if (response.kind === "importCount") {
         if (response.pageCount === undefined) {
-          throw new Error("AuroraTiff decoder returned no import page count.");
+          throw new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff decoder returned no import page count.");
         }
         await pending.sink.pageCount(response.pageCount);
         return;
@@ -151,10 +159,10 @@ export class AuroraTiffDecoder implements ViewerDecoder {
         pending.resolve();
         return;
       }
-      throw new Error("AuroraTiff decoder returned an unexpected import response.");
+      throw new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff decoder returned an unexpected import response.");
     } catch (error) {
       this.pending.delete(id);
-      pending.reject(error instanceof Error ? error : new Error(String(error)));
+      pending.reject(error instanceof Error ? error : new DecoderError(DECODER_ERROR_UNKNOWN, String(error)));
     }
   }
 
