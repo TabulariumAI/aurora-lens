@@ -1,6 +1,8 @@
 import { assertContainer, assertDecoder, assertFile, assertPageIndex } from "./inputs";
+import { MetadataRepository } from "./MetadataRepository";
 import { MetadataHelper } from "./MetadataHelper";
 import { PageViewer } from "./PageViewer";
+import { ACTIVE_VIEWER_SESSION_ID, reorderPageRecords } from "./viewerSessionStore";
 import { normalizeSelectionTheme } from "./selectionTheme";
 import { SelectionManager } from "./SelectionManager";
 import { ThumbnailViewer } from "./ThumbnailViewer";
@@ -15,21 +17,49 @@ import type {
   PageMetadataHits,
   PagePoint,
   RasterPage,
-  ThumbnailPage,
+  ViewerPageRecord,
+  ViewerSessionStore,
 } from "./types";
+
+const RESTORE_ERROR_MESSAGE = "Could not restore the previous viewer session.";
+const TIFF_FILE_TYPE = "image/tiff";
+
+interface RenderedPage extends DecodedPage {
+  // pageId is the system-assigned unique page GUID, not the page number.
+  pageId: string;
+  blob: Blob;
+  sourcePageIndex: number;
+}
+
+interface ThumbnailPage extends DecodedPage {
+  // pageId is the system-assigned unique page GUID, not the page number.
+  pageId: string;
+}
+
+interface ThumbnailReorderRequest {
+  fromPageIndex: number;
+  toPageIndex: number;
+}
 
 export class AuroraLens {
   private readonly metadata = new MetadataHelper();
+  private readonly metadataRepository = new MetadataRepository();
   private readonly selection: SelectionManager;
   private readonly decoder: ViewerDecoder;
+  private readonly sessionStore: ViewerSessionStore | null;
   private readonly pageViewer: PageViewer;
   private readonly thumbnailViewer: ThumbnailViewer;
   private file: File | null = null;
-  private page: DecodedPage | null = null;
+  private page: RenderedPage | null = null;
+  private metadataInput: unknown | null = null;
+  private metadataPending = false;
+  private sessionPages: ViewerPageRecord[] = [];
+  private metadataPageIds = new Set<string>();
   private thumbnails: Array<ThumbnailPage | undefined> = [];
   private thumbnailJobs = new Set<number>();
   private thumbnailKeep = new Set<number>();
   private thumbnailRun = 0;
+  private persistenceRun = 0;
   private viewMode: ViewMode = "page";
   private status: ViewerStatus = "idle";
   private coordinates: PagePoint | null = null;
@@ -41,6 +71,7 @@ export class AuroraLens {
     assertContainer(container);
     assertDecoder(options.decoder);
     this.decoder = options.decoder;
+    this.sessionStore = options.sessionStore ?? null;
     this.selection = new SelectionManager(normalizeSelectionTheme(options.selectionTheme));
     this.pageViewer = new PageViewer({
       metadata: this.metadata,
@@ -53,11 +84,13 @@ export class AuroraLens {
       },
     });
     this.thumbnailViewer = new ThumbnailViewer({
+      allowEdit: options.allowEdit,
       onRange: (pageIndexes) => {
         this.loadThumbnails(pageIndexes);
       },
+      onReorder: (request) => this.reorderPages(request),
       onSelect: (pageIndex) => {
-        this.options.onThumbnailSelect?.(pageIndex);
+        void Promise.resolve(this.goPage(pageIndex)).catch(() => undefined);
       },
     });
     this.mount();
@@ -66,11 +99,17 @@ export class AuroraLens {
   }
 
   close(): void {
-    this.clear();
+    this.clearView();
   }
 
   clear(): void {
+    this.clearView();
+    void this.deleteSession().catch(() => undefined);
+  }
+
+  private clearView(): void {
     this.runId += 1;
+    this.persistenceRun += 1;
     this.revokePage();
     this.revokeThumbnails();
     this.file = null;
@@ -79,6 +118,10 @@ export class AuroraLens {
     this.status = "idle";
     this.coordinates = null;
     this.displayCoordinates = null;
+    this.metadataInput = null;
+    this.metadataPending = false;
+    this.sessionPages = [];
+    this.metadataPageIds = new Set();
     this.metadata.clear();
     this.pageViewer.clear();
     this.thumbnailViewer.clear();
@@ -88,21 +131,87 @@ export class AuroraLens {
   }
 
   loadMetadata(pageMetadata: unknown): void {
+    this.metadataInput = pageMetadata;
+    this.metadataPending = true;
     this.metadata.load(pageMetadata);
+    if (this.sessionPages.length) {
+      void this.saveMetadataPages(pageMetadata).then(() => this.loadCurrentPageMetadata()).catch((error: unknown) => this.fail(error));
+    }
     this.emitState();
+  }
+
+  async restoreSession(): Promise<boolean> {
+    if (!this.sessionStore) {
+      return false;
+    }
+
+    const restoreRun = this.runId;
+    try {
+      const session = await this.sessionStore.read();
+      if (restoreRun !== this.runId) {
+        return false;
+      }
+      if (!session) {
+        return false;
+      }
+
+      this.clearView();
+      this.sessionPages = session.pages;
+      this.metadataPageIds = await this.sessionStore.readPageMetadataIds();
+      this.file = new File([session.document.fileBlob], session.document.fileName, { type: session.document.fileType || TIFF_FILE_TYPE });
+      await this.loadPage(this.pagePosition(session.currentPage.pageId), {
+        loadMetadata: true,
+        saveCurrentPage: true,
+        setReady: true,
+      });
+      return true;
+    } catch {
+      this.clearView();
+      await this.deleteSession().catch(() => undefined);
+      this.options.onError?.(new Error(RESTORE_ERROR_MESSAGE));
+      return false;
+    }
   }
 
   async decodeTiff(file: File, pageIndex: number): Promise<void> {
     assertFile(file);
     assertPageIndex(pageIndex);
-    if (this.file !== file) {
+    const newFile = this.file !== file;
+    if (newFile) {
+      this.persistenceRun += 1;
       this.revokePage();
       this.revokeThumbnails();
       this.file = file;
       this.pageCount = 0;
+      this.sessionPages = [];
+      this.metadataPageIds = new Set();
       this.selection.clear();
+      if (!this.metadataPending) {
+        this.metadataInput = null;
+        this.metadata.clear();
+      }
     }
-    await this.loadPage(pageIndex);
+    const page = await this.loadPage(pageIndex, {
+      loadMetadata: !newFile,
+      saveCurrentPage: !newFile,
+      setReady: !newFile,
+    });
+    if (newFile && page) {
+      if (this.sessionStore) {
+        const persistenceRun = this.persistenceRun;
+        await this.resetStoredDocument(file, page);
+        await this.loadStoredPageMetadata(page.pageId, page.pageIndex);
+        await this.saveCurrentPage(page.pageId);
+        void this.saveRemainingPageData(file, page.pageIndex, persistenceRun).catch((error: unknown) => {
+          if (persistenceRun === this.persistenceRun) {
+            this.failStoredDocumentPersistence(error);
+          }
+        });
+      }
+      this.pageViewer.render();
+      this.metadataPending = false;
+      this.setStatus("ready");
+    }
   }
 
   actualSize(): void {
@@ -112,6 +221,10 @@ export class AuroraLens {
   clearSelection(): void {
     this.pageViewer.clearSelection();
     this.emitState();
+  }
+
+  setAllowEdit(allowEdit: boolean): void {
+    this.thumbnailViewer.setAllowEdit(allowEdit);
   }
 
   async copySelection(): Promise<CopySelectionResult> {
@@ -196,9 +309,9 @@ export class AuroraLens {
     return this.goPage(this.state().pageIndex - 1);
   }
 
-  goToPage(pageIndex: number): Promise<void> | void {
-    assertPageIndex(pageIndex);
-    return this.goPage(pageIndex);
+  goToPage(pageNumber: number): Promise<void> | void {
+    assertPageIndex(pageNumber);
+    return this.goPage(pageNumber);
   }
 
   async showThumbnails(): Promise<void> {
@@ -208,7 +321,7 @@ export class AuroraLens {
     this.thumbnailRun += 1;
     this.thumbnailKeep = new Set();
     this.viewMode = "thumbnails";
-    this.thumbnailViewer.show(this.pageCount, this.page.sourceName, this.page, this.thumbnails, this.page.pageIndex, this.thumbnailMetadata());
+    this.thumbnailViewer.show(this.pageIds(), this.pageCount, this.page.sourceName, this.page, this.thumbnails, this.page.pageIndex, this.thumbnailMetadata());
     this.showView("thumbnails");
     this.setStatus("ready");
   }
@@ -232,21 +345,33 @@ export class AuroraLens {
     if (pageIndex < 0 || pageIndex >= this.pageCount) {
       return;
     }
-    await this.loadPage(pageIndex);
+    await this.loadPage(pageIndex, {
+      loadMetadata: true,
+      saveCurrentPage: true,
+      setReady: true,
+    });
   }
 
-  private async loadPage(pageIndex: number) {
+  private async loadPage(pageIndex: number, options: { loadMetadata: boolean; saveCurrentPage: boolean; setReady: boolean }): Promise<RenderedPage | null> {
     if (!this.file) {
-      return;
+      return null;
     }
     const runId = this.runId + 1;
     this.runId = runId;
     this.setStatus("loadingPage");
     try {
-      const page = await this.toPage(await this.decoder.decode(this.file, pageIndex));
+      const sourcePageIndex = this.sourcePageIndex(pageIndex);
+      const raster = await this.decoder.decode(this.file, sourcePageIndex);
+      if (!this.sessionPages.length) {
+        this.sessionPages = this.createPageRecords(raster.pageCount, Date.now());
+      }
+      const page = await this.toPage(raster, undefined, pageIndex);
       if (runId !== this.runId) {
         URL.revokeObjectURL(page.url);
-        return;
+        return null;
+      }
+      if (options.loadMetadata) {
+        await this.loadStoredPageMetadata(page.pageId, page.pageIndex);
       }
       this.revokePage();
       this.page = page;
@@ -258,7 +383,13 @@ export class AuroraLens {
       this.showView("page");
       this.pageViewer.show(page);
       this.revokeThumbnails();
-      this.setStatus("ready");
+      if (options.saveCurrentPage) {
+        await this.saveCurrentPage(page.pageId);
+      }
+      if (options.setReady) {
+        this.setStatus("ready");
+      }
+      return page;
     } catch (error) {
       this.fail(error);
       throw error;
@@ -303,15 +434,16 @@ export class AuroraLens {
       if (this.thumbnails[pageIndex] || this.thumbnailJobs.has(pageIndex)) {
         return;
       }
+      const sourcePageIndex = this.sourcePageIndex(pageIndex);
       this.thumbnailJobs.add(pageIndex);
-      this.decoder.thumbnail(file, pageIndex, size).then((page) => this.toPage(page, size)).then((thumbnail) => {
+      this.decoder.thumbnail(file, sourcePageIndex, size).then((page) => this.toPage(page, size, pageIndex)).then((thumbnail) => {
         this.thumbnailJobs.delete(pageIndex);
         if (run !== this.thumbnailRun || this.viewMode !== "thumbnails" || !this.thumbnailKeep.has(pageIndex)) {
           URL.revokeObjectURL(thumbnail.url);
           return;
         }
         this.thumbnails[pageIndex] = thumbnail;
-        this.thumbnailViewer.update(this.thumbnails, this.state().pageIndex, this.thumbnailMetadata());
+        this.thumbnailViewer.update(this.pageIds(), this.thumbnails, this.state().pageIndex, this.thumbnailMetadata());
         this.revokeSkipped(this.thumbnailKeep);
       }).catch((error: unknown) => {
         this.thumbnailJobs.delete(pageIndex);
@@ -332,13 +464,7 @@ export class AuroraLens {
   }
 
   private thumbnailMetadata() {
-    const pages = new Set<number>();
-    for (let index = 0; index < this.pageCount; index += 1) {
-      if (this.metadata.hasPage(index)) {
-        pages.add(index);
-      }
-    }
-    return pages;
+    return new Set(this.metadataPageIds);
   }
 
   private setStatus(status: ViewerStatus) {
@@ -361,6 +487,194 @@ export class AuroraLens {
 
   private emitState() {
     this.options.onStateChange?.(this.state());
+  }
+
+  private async resetStoredDocument(file: File, currentPage: RenderedPage) {
+    if (!this.sessionStore) {
+      return;
+    }
+
+    try {
+      const updatedAt = Date.now();
+      this.sessionPages = this.sessionPages.map((page) => ({
+        ...page,
+        updatedAt,
+      }));
+      this.sessionPages = await this.sessionStore.resetDocument({
+        fileName: file.name,
+        fileType: file.type,
+        fileBlob: file,
+        pages: this.sessionPages,
+        pageCount: currentPage.pageCount,
+        currentPageIndex: currentPage.pageIndex,
+        updatedAt,
+      });
+      await this.savePageBlob(currentPage.pageIndex, currentPage.blob, updatedAt);
+      await this.savePageMetadata(currentPage.pageId, updatedAt);
+    } catch {
+      await this.deleteSession().catch(() => undefined);
+      throw new Error("Could not store the viewer session.");
+    }
+  }
+
+  private async saveRemainingPageData(file: File, currentPageIndex: number, persistenceRun: number) {
+    for (const page of this.sessionPages) {
+      if (persistenceRun !== this.persistenceRun) {
+        return;
+      }
+      if (page.sequenceNumber - 1 !== currentPageIndex) {
+        const updatedAt = Date.now();
+        const raster = await this.decoder.decode(file, page.sourcePageIndex);
+        const blob = await this.toBlob(raster, raster.width, raster.height);
+        await this.savePageBlob(page.sequenceNumber - 1, blob, updatedAt);
+        await this.savePageMetadata(page.pageId, updatedAt);
+      }
+    }
+  }
+
+  private async savePageBlob(pageIndex: number, blob: Blob, updatedAt: number) {
+    const page = this.sessionPages[pageIndex];
+    if (this.sessionStore && page) {
+      await this.sessionStore.savePageBlob({
+        pageId: page.pageId,
+        blob,
+        updatedAt,
+      });
+    }
+  }
+
+  private async saveMetadataPages(pageMetadata: unknown) {
+    if (!this.sessionStore) {
+      return;
+    }
+    const updatedAt = Date.now();
+    const pages = this.metadataRepository.split(pageMetadata, this.sessionPages);
+    for (const page of pages) {
+      await this.sessionStore.savePageMetadata({
+        pageId: page.pageId,
+        metadata: page.metadata,
+        updatedAt,
+      });
+      this.metadataPageIds.add(page.pageId);
+    }
+  }
+
+  private async savePageMetadata(pageId: string, updatedAt: number) {
+    if (!this.sessionStore || this.metadataInput === null) {
+      return;
+    }
+    const record = this.metadataRepository.split(this.metadataInput, this.sessionPages)
+      .find((page) => page.pageId === pageId);
+    if (!record) {
+      return;
+    }
+    await this.sessionStore.savePageMetadata({
+      pageId: record.pageId,
+      metadata: record.metadata,
+      updatedAt,
+    });
+    this.metadataPageIds.add(record.pageId);
+  }
+
+  private async loadCurrentPageMetadata() {
+    if (this.page) {
+      await this.loadStoredPageMetadata(this.page.pageId, this.page.pageIndex);
+    }
+  }
+
+  private async loadStoredPageMetadata(pageId: string, pageIndex: number) {
+    this.metadata.clear();
+    if (!this.sessionStore) {
+      return;
+    }
+    const metadata = await this.sessionStore.readPageMetadata(pageId);
+    if (metadata !== null) {
+      this.metadata.loadPage(pageIndex, metadata);
+      this.metadataPageIds.add(pageId);
+    }
+  }
+
+  private async saveCurrentPage(pageId: string) {
+    if (this.sessionStore) {
+      await this.sessionStore.saveCurrentPage(pageId, Date.now());
+    }
+  }
+
+  private async reorderPages(request: ThumbnailReorderRequest) {
+    if (this.sessionPages.length) {
+      this.sessionPages = this.reorderedPages(request.fromPageIndex, request.toPageIndex, Date.now());
+      this.moveThumbnail(request.fromPageIndex, request.toPageIndex);
+      await this.refreshCurrentPageOrder();
+      if (this.sessionStore) {
+        this.sessionPages = await this.sessionStore.reorderPages(request.fromPageIndex, request.toPageIndex, Date.now());
+      }
+      if (this.viewMode === "thumbnails" && this.page) {
+        this.thumbnailViewer.refresh(this.pageIds(), this.thumbnails, this.page.pageIndex, this.thumbnailMetadata());
+      }
+    }
+  }
+
+  private reorderedPages(fromPageIndex: number, toPageIndex: number, updatedAt: number) {
+    return reorderPageRecords(this.sessionPages, fromPageIndex, toPageIndex, updatedAt);
+  }
+
+  private async refreshCurrentPageOrder() {
+    if (!this.page) {
+      return;
+    }
+    const pageIndex = this.sessionPages.findIndex((page) => page.pageId === this.page?.pageId);
+    if (pageIndex < 0 || pageIndex === this.page.pageIndex) {
+      return;
+    }
+    this.page = {
+      ...this.page,
+      pageIndex,
+      pageNumber: pageIndex + 1,
+    };
+    await this.loadStoredPageMetadata(this.page.pageId, pageIndex);
+    this.pageViewer.show(this.page);
+    await this.saveCurrentPage(this.page.pageId);
+  }
+
+  private moveThumbnail(fromPageIndex: number, toPageIndex: number) {
+    const [thumbnail] = this.thumbnails.splice(fromPageIndex, 1);
+    this.thumbnails.splice(toPageIndex, 0, thumbnail ? {
+      ...thumbnail,
+      pageIndex: toPageIndex,
+      pageNumber: toPageIndex + 1,
+    } : undefined);
+    this.thumbnails = this.thumbnails.map((thumbnailPage, index) => thumbnailPage ? {
+      ...thumbnailPage,
+      pageIndex: index,
+      pageNumber: index + 1,
+    } : thumbnailPage);
+  }
+
+  private sourcePageIndex(pageIndex: number) {
+    if (!this.sessionPages.length) {
+      return pageIndex;
+    }
+    return this.sessionPages[pageIndex].sourcePageIndex;
+  }
+
+  private pagePosition(pageId: string) {
+    const pageIndex = this.sessionPages.findIndex((page) => page.pageId === pageId);
+    if (pageIndex < 0) {
+      throw new Error("Stored viewer session is invalid.");
+    }
+    return pageIndex;
+  }
+
+  private async deleteSession() {
+    if (this.sessionStore) {
+      await this.sessionStore.delete();
+    }
+  }
+
+  private async failStoredDocumentPersistence(error: unknown) {
+    await this.deleteSession().catch(() => undefined);
+    this.clearView();
+    this.fail(error);
   }
 
   private state(): ViewerState {
@@ -398,17 +712,39 @@ export class AuroraLens {
     };
   }
 
-  private async toPage(page: RasterPage, maxSize?: number) {
+  private async toPage(page: RasterPage, maxSize?: number, pageIndex = page.pageIndex): Promise<RenderedPage> {
     const size = this.targetSize(page, maxSize);
+    const blob = await this.toBlob(page, size.width, size.height);
     return {
       sourceName: page.sourceName,
-      pageIndex: page.pageIndex,
-      pageNumber: page.pageNumber,
+      pageId: this.sessionPages[pageIndex].pageId,
+      pageIndex,
+      pageNumber: pageIndex + 1,
       pageCount: page.pageCount,
       width: size.width,
       height: size.height,
-      url: await this.toUrl(page, size.width, size.height),
+      blob,
+      sourcePageIndex: page.pageIndex,
+      url: URL.createObjectURL(blob),
     };
+  }
+
+  private pageIds() {
+    return this.sessionPages.map((page) => page.pageId);
+  }
+
+  private createPageRecords(pageCount: number, updatedAt: number) {
+    const pages: ViewerPageRecord[] = [];
+    for (let index = 0; index < pageCount; index += 1) {
+      pages.push({
+        pageId: crypto.randomUUID(),
+        documentId: ACTIVE_VIEWER_SESSION_ID,
+        sequenceNumber: index + 1,
+        sourcePageIndex: index,
+        updatedAt,
+      });
+    }
+    return pages;
   }
 
   private targetSize(page: RasterPage, maxSize?: number) {
@@ -425,7 +761,7 @@ export class AuroraLens {
     };
   }
 
-  private toUrl(page: RasterPage, width: number, height: number) {
+  private toBlob(page: RasterPage, width: number, height: number) {
     const canvas = document.createElement("canvas");
     canvas.width = page.width;
     canvas.height = page.height;
@@ -446,13 +782,13 @@ export class AuroraLens {
       outputContext.imageSmoothingQuality = "high";
       outputContext.drawImage(canvas, 0, 0, width, height);
     }
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<Blob>((resolve, reject) => {
       output.toBlob((blob) => {
         if (!blob) {
           reject(new Error("AuroraLens: canvas did not produce a PNG blob."));
           return;
         }
-        resolve(URL.createObjectURL(blob));
+        resolve(blob);
       }, "image/png");
     });
   }

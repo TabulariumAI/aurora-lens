@@ -1,3 +1,5 @@
+import type { ViewerSessionStore } from "./viewerSessionStore";
+
 export type ViewMode = "page" | "thumbnails";
 
 export type ViewerStatus =
@@ -96,11 +98,13 @@ export interface ViewerDecoder {
 }
 
 export interface ViewerOptions {
+  allowEdit: boolean;
   decoder: ViewerDecoder;
+  sessionStore?: ViewerSessionStore;
   selectionTheme?: PartialSelectionTheme;
+  onReady?: (viewer: { restoreSession(): Promise<boolean> }) => void;
   onStateChange?: (state: ViewerState) => void;
   onStatusChange?: (status: ViewerStatus) => void;
-  onThumbnailSelect?: (pageIndex: number) => void;
   onError?: (error: Error) => void;
 }
 
@@ -169,3 +173,5 @@ export interface RasterPage {
   height: number;
   pixels: Uint8ClampedArray<ArrayBuffer>;
 }
+
+export type { ViewerDocumentInput, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore } from "./viewerSessionStore";

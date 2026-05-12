@@ -7,7 +7,6 @@ import { LoaderPanel } from "../components/LoaderPanel";
 import { selectionTheme } from "../lens/selectionTheme";
 import { VIEWER_SAMPLES, type ViewerSample } from "../samples";
 import type { ViewerState, ViewerStatus, HostViewerStatus, ViewerDetails } from "../lens/types";
-import { useViewerSession } from "./useViewerSession";
 
 const TIFF_FILE_TYPE = "image/tiff";
 
@@ -54,9 +53,11 @@ export function App() {
   const decoder = useMemo(() => new AuroraTiffDecoder(), []);
   const [lensState, setLensState] = useState<ViewerState>(emptyLensState);
   const [lensStatus, setLensStatus] = useState<ViewerStatus>("idle");
+  const [allowEdit, setAllowEdit] = useState(true);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lensRef = useRef<AuroraLens | null>(null);
+  const operationIdRef = useRef(0);
 
   const resetViewerState = useCallback((clearInput: boolean) => {
     lensRef.current?.clear();
@@ -68,17 +69,21 @@ export function App() {
     }
   }, []);
 
-  const {
-    beginViewerOperation,
-    isViewerOperationCurrent,
-    saveViewerSession,
-    clearSession,
-  } = useViewerSession({
-    lensRef,
-    lensState,
-    onRestoreError: setError,
-    resetViewerState,
-  });
+  const beginViewerOperation = useCallback(() => {
+    operationIdRef.current += 1;
+    return operationIdRef.current;
+  }, []);
+
+  const isViewerOperationCurrent = useCallback((operationId: number) => operationIdRef.current === operationId, []);
+
+  const restoreViewerSession = useCallback((viewer: { restoreSession(): Promise<boolean> }) => {
+    void viewer.restoreSession();
+  }, []);
+
+  const acknowledgeFatalError = useCallback(() => {
+    beginViewerOperation();
+    resetViewerState(true);
+  }, [beginViewerOperation, resetViewerState]);
 
   const loadResolvedInput = useCallback(async (input: ResolvedViewerInput, operationId: number) => {
     if (!isViewerOperationCurrent(operationId)) {
@@ -88,7 +93,6 @@ export function App() {
     const lens = lensRef.current;
     if (!lens) {
       setError("Tabularium AI Lens is not ready.");
-      await clearSession(operationId);
       return;
     }
 
@@ -106,36 +110,25 @@ export function App() {
         return;
       }
 
-      await saveViewerSession({
-        fileName: input.file.name,
-        fileType: input.file.type,
-        fileBlob: input.file,
-        metadata: input.metadata,
-        pageIndex: 0,
-        operationId,
-      });
     } catch (reason: unknown) {
       if (!isViewerOperationCurrent(operationId) || (reason instanceof DOMException && reason.name === "AbortError")) {
         return;
       }
       resetViewerState(false);
       setError(reason instanceof Error ? reason.message : String(reason));
-      await clearSession(operationId);
     }
-  }, [clearSession, isViewerOperationCurrent, resetViewerState, saveViewerSession]);
+  }, [isViewerOperationCurrent, resetViewerState]);
 
   const loadFiles = useCallback((fileList: FileList | File[]) => {
     const files = Array.from(fileList || []);
     if (!files.length) {
       beginViewerOperation();
       resetViewerState(false);
-      void clearSession();
       return;
     }
     if (files.length > 1) {
       beginViewerOperation();
       resetViewerState(false);
-      void clearSession();
       setError("Choose or drop one TIFF file at a time.");
       return;
     }
@@ -144,14 +137,13 @@ export function App() {
     if (!isTiffFile(file)) {
       beginViewerOperation();
       resetViewerState(false);
-      void clearSession();
       setError("Choose a .tif or .tiff file.");
       return;
     }
 
     const operationId = beginViewerOperation();
     void loadResolvedInput({ file, metadata: null }, operationId);
-  }, [beginViewerOperation, clearSession, loadResolvedInput, resetViewerState]);
+  }, [beginViewerOperation, loadResolvedInput, resetViewerState]);
 
   const loadSample = useCallback((sample: ViewerSample) => {
     const operationId = beginViewerOperation();
@@ -182,9 +174,8 @@ export function App() {
         return;
       }
       setError(reason instanceof Error ? reason.message : String(reason));
-      await clearSession(operationId);
     });
-  }, [beginViewerOperation, clearSession, isViewerOperationCurrent, loadResolvedInput, resetViewerState]);
+  }, [beginViewerOperation, isViewerOperationCurrent, loadResolvedInput, resetViewerState]);
 
   const hostStatus = useMemo<HostViewerStatus>(() => toHostStatus(lensStatus, lensState), [lensState, lensStatus]);
   const details = useMemo(() => toDetails(lensState), [lensState]);
@@ -201,16 +192,20 @@ export function App() {
           onSample={loadSample}
         />
         <LensHost
+          allowEdit={allowEdit}
           decoder={decoder}
+          fatalError={lensStatus === "error" ? error : ""}
           lensRef={lensRef}
           progressText={progressText}
           state={lensState}
           status={lensStatus}
           onError={(reason) => setError(reason.message)}
+          onFatalErrorOk={acknowledgeFatalError}
+          onReady={restoreViewerSession}
           onStateChange={setLensState}
           onStatusChange={setLensStatus}
         />
-        <DetailsPanel details={details} error={error} pageCount={lensState.pageCount} status={hostStatus} />
+        <DetailsPanel allowEdit={allowEdit} details={details} error={error} pageCount={lensState.pageCount} status={hostStatus} onAllowEdit={setAllowEdit} />
       </section>
     </main>
   );

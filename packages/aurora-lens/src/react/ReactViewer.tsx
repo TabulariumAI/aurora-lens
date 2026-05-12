@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from "react";
 import { AuroraLens } from "../core/AuroraLens";
+import { IndexedDbViewerSessionStore } from "../core/viewerSessionStore";
 import type { ViewerOptions } from "../core/types";
 
 export const ReactViewer = forwardRef<AuroraLens, ViewerOptions>(function ReactViewer(options, ref) {
@@ -14,18 +15,24 @@ export const ReactViewer = forwardRef<AuroraLens, ViewerOptions>(function ReactV
       return;
     }
     lensRef.current = new AuroraLens(hostRef.current, {
+      allowEdit: options.allowEdit,
       decoder: options.decoder,
+      sessionStore: options.sessionStore ?? new IndexedDbViewerSessionStore(),
       selectionTheme: options.selectionTheme,
       onError: (error) => optionsRef.current.onError?.(error),
       onStateChange: (state) => optionsRef.current.onStateChange?.(state),
       onStatusChange: (status) => optionsRef.current.onStatusChange?.(status),
-      onThumbnailSelect: (pageIndex) => optionsRef.current.onThumbnailSelect?.(pageIndex),
     });
+    optionsRef.current.onReady?.(lensRef.current);
     return () => {
       lensRef.current?.close();
       lensRef.current = null;
     };
   }, []);
+
+  useLayoutEffect(() => {
+    lensRef.current?.setAllowEdit(options.allowEdit);
+  }, [options.allowEdit]);
 
   useImperativeHandle(ref, () => lensRef.current!, []);
 

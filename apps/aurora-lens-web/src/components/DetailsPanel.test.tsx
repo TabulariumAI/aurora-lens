@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { DetailsPanel } from "./DetailsPanel";
 import type { ViewerDetails } from "../lens/types";
@@ -46,7 +46,7 @@ describe("DetailsPanel", () => {
   });
 
   it("renders selected element counts", () => {
-    render(<DetailsPanel details={details} error="" pageCount={1} status="ready" />);
+    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" onAllowEdit={() => undefined} />);
 
     const panel = screen.getByLabelText("Page details");
     const selection = within(panel).getByLabelText("Selection");
@@ -60,7 +60,7 @@ describe("DetailsPanel", () => {
   });
 
   it("renders selection theme configuration", () => {
-    render(<DetailsPanel details={details} error="" pageCount={1} status="ready" />);
+    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" onAllowEdit={() => undefined} />);
 
     const panel = screen.getByLabelText("Page details");
     expect(within(panel).getByRole("heading", { name: "Style" })).toBeInTheDocument();
@@ -79,5 +79,19 @@ describe("DetailsPanel", () => {
     expect(within(table).getByLabelText("High >=95% fill rgba(0, 81, 104, 0.12)")).toBeInTheDocument();
     expect(within(table).getByLabelText("High >=95% border #005168")).toBeInTheDocument();
     expect(within(table).queryByText(/rgba/)).not.toBeInTheDocument();
+  });
+
+  it("renders the edit toggle", () => {
+    let allowEdit = true;
+    render(<DetailsPanel allowEdit={allowEdit} details={details} error="" pageCount={1} status="ready" onAllowEdit={(value) => {
+      allowEdit = value;
+    }} />);
+
+    const toggle = screen.getByLabelText("Edit pages");
+    expect(toggle).toBeChecked();
+
+    fireEvent.click(toggle);
+
+    expect(allowEdit).toBe(false);
   });
 });

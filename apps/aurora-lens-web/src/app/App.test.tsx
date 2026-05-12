@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { selectionTheme } from "../lens/selectionTheme";
 import type { ViewerState, ViewerStatus } from "../lens/types";
-import type { ViewerSession } from "./viewerSessionDb";
 
 const lensMock = vi.hoisted(() => ({
+  allowEdit: true,
   decoder: undefined as unknown,
   selectionTheme: undefined as unknown,
   status: "idle" as ViewerStatus,
@@ -40,6 +40,7 @@ const lensMock = vi.hoisted(() => ({
   } as ViewerState,
   onStateChange: undefined as ((state: ViewerState) => void) | undefined,
   onStatusChange: undefined as ((status: string) => void) | undefined,
+  onError: undefined as ((error: Error) => void) | undefined,
   instance: {
     actualSize: vi.fn(),
     clear: vi.fn(),
@@ -55,6 +56,7 @@ const lensMock = vi.hoisted(() => ({
     loadMetadata: vi.fn(),
     nextPage: vi.fn(),
     previousPage: vi.fn(),
+    restoreSession: vi.fn(),
     search: vi.fn(),
     setDrawMode: vi.fn(),
     showThumbnails: vi.fn(),
@@ -62,23 +64,6 @@ const lensMock = vi.hoisted(() => ({
     zoomOut: vi.fn(),
   },
 }));
-
-const sessionDbMock = vi.hoisted(() => {
-  let activeSession: ViewerSession | null = null;
-  return {
-    saveActiveViewerSession: vi.fn(async (session: ViewerSession) => {
-      activeSession = session;
-    }),
-    readActiveViewerSession: vi.fn(async () => activeSession),
-    deleteActiveViewerSession: vi.fn(async () => {
-      activeSession = null;
-    }),
-    activeSession: () => activeSession,
-    setActiveSession: (session: ViewerSession | null) => {
-      activeSession = session;
-    },
-  };
-});
 
 vi.mock("../aurora/AuroraTiffDecoder", () => ({
   AuroraTiffDecoder: class AuroraTiffDecoder {
@@ -88,39 +73,37 @@ vi.mock("../aurora/AuroraTiffDecoder", () => ({
   },
 }));
 
-vi.mock("./viewerSessionDb", () => ({
-  ACTIVE_VIEWER_SESSION_ID: "active",
-  saveActiveViewerSession: sessionDbMock.saveActiveViewerSession,
-  readActiveViewerSession: sessionDbMock.readActiveViewerSession,
-  deleteActiveViewerSession: sessionDbMock.deleteActiveViewerSession,
-}));
-
 vi.mock("@tabularium/aurora-lens/react", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
     ReactViewer: React.forwardRef(function MockReactViewer(props: {
+      allowEdit: boolean;
       decoder?: unknown;
       selectionTheme?: unknown;
       onStateChange?: (state: ViewerState) => void;
       onStatusChange?: (status: string) => void;
-      onThumbnailSelect?: (pageIndex: number) => void;
+      onError?: (error: Error) => void;
+      onReady?: (lens: typeof lensMock.instance) => void;
     }, ref) {
+      lensMock.allowEdit = props.allowEdit;
       lensMock.decoder = props.decoder;
       lensMock.selectionTheme = props.selectionTheme;
       React.useImperativeHandle(ref, () => lensMock.instance);
       React.useEffect(() => {
         lensMock.onStateChange = props.onStateChange;
         lensMock.onStatusChange = props.onStatusChange;
+        lensMock.onError = props.onError;
         props.onStateChange?.(lensMock.state);
         props.onStatusChange?.(lensMock.status);
+        props.onReady?.(lensMock.instance);
         return () => {
           lensMock.onStateChange = undefined;
           lensMock.onStatusChange = undefined;
+          lensMock.onError = undefined;
         };
-      }, [props]);
+      }, []);
       return React.createElement("button", {
         "data-testid": "aurora-lens",
-        onClick: () => props.onThumbnailSelect?.(1),
         type: "button",
       });
     }),
@@ -135,11 +118,12 @@ describe("App", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();
-    sessionDbMock.setActiveSession(null);
     lensMock.decoder = undefined;
+    lensMock.allowEdit = true;
     lensMock.selectionTheme = undefined;
     lensMock.onStateChange = undefined;
     lensMock.onStatusChange = undefined;
+    lensMock.onError = undefined;
     lensMock.status = "idle";
     lensMock.state = {
       ...lensMock.state,
@@ -156,6 +140,7 @@ describe("App", () => {
     };
     lensMock.instance.loadMetadata.mockResolvedValue(undefined);
     lensMock.instance.decodeTiff.mockResolvedValue(undefined);
+    lensMock.instance.restoreSession.mockResolvedValue(false);
   });
 
   it("loads one valid TIFF through Tabularium AI Lens", async () => {
@@ -175,21 +160,42 @@ describe("App", () => {
     expect(lensMock.instance.loadMetadata).not.toHaveBeenCalled();
     expect(lensMock.instance.decodeTiff).toHaveBeenCalledWith(file, 0);
     expect(lensMock.instance.clear.mock.invocationCallOrder[0]).toBeLessThan(lensMock.instance.decodeTiff.mock.invocationCallOrder[0]);
-    await waitFor(() => expect(sessionDbMock.saveActiveViewerSession).toHaveBeenCalledTimes(1));
-    expect(sessionDbMock.activeSession()).toMatchObject({
-      fileName: "sample.tiff",
-      fileType: "image/tiff",
-      metadata: null,
-      pageIndex: 0,
-    });
   });
 
-  it("opens selected thumbnails through the host-owned page API", () => {
+  it("requests package-owned session restore when Tabularium AI Lens is ready", async () => {
     render(<App />);
 
-    fireEvent.click(screen.getByTestId("aurora-lens"));
+    await waitFor(() => expect(lensMock.instance.restoreSession).toHaveBeenCalledTimes(1));
+  });
 
-    expect(lensMock.instance.goToPage).toHaveBeenCalledWith(1);
+  it("passes right sidebar edit toggle state to Tabularium AI Lens", () => {
+    render(<App />);
+
+    const toggle = screen.getByLabelText("Edit pages");
+    expect(toggle).toBeChecked();
+    expect(lensMock.allowEdit).toBe(true);
+
+    fireEvent.click(toggle);
+
+    expect(toggle).not.toBeChecked();
+    expect(lensMock.allowEdit).toBe(false);
+  });
+
+  it("blocks the viewer after a fatal lens error until OK resets it", async () => {
+    render(<App />);
+
+    act(() => {
+      lensMock.onError?.(new Error("Remaining page storage failed."));
+      lensMock.onStatusChange?.("error");
+    });
+
+    const dialog = screen.getByRole("alertdialog", { name: "Viewer Error" });
+    expect(within(dialog).getByText("Remaining page storage failed.")).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "OK" }));
+
+    expect(lensMock.instance.clear).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alertdialog", { name: "Viewer Error" })).not.toBeInTheDocument();
   });
 
   it("loads selected samples through Tabularium AI Lens", async () => {
@@ -223,66 +229,9 @@ describe("App", () => {
     expect(file.name).toBe("sample.tiff");
     expect(file.type).toBe("image/tiff");
     expect(lensMock.instance.decodeTiff).toHaveBeenCalledWith(file, 0);
-    await waitFor(() => expect(sessionDbMock.saveActiveViewerSession).toHaveBeenCalledTimes(1));
-    expect(sessionDbMock.activeSession()).toMatchObject({
-      fileName: "sample.tiff",
-      fileType: "image/tiff",
-      metadata,
-      pageIndex: 0,
-    });
   });
 
-  it("restores a metadata-backed viewer session from IndexedDB", async () => {
-    const metadata = { pages: [] };
-    const fileBlob = new Blob(["tiff"], { type: "image/tiff" });
-    sessionDbMock.setActiveSession({
-      id: "active",
-      fileName: "restored.tiff",
-      fileType: "image/tiff",
-      fileBlob,
-      metadata,
-      pageIndex: 1,
-      updatedAt: Date.now(),
-    });
-
-    render(<App />);
-
-    await waitFor(() => expect(lensMock.instance.decodeTiff).toHaveBeenCalledTimes(1));
-    expect(lensMock.instance.clear).toHaveBeenCalledTimes(1);
-    expect(lensMock.instance.loadMetadata).toHaveBeenCalledWith(metadata);
-    const file = lensMock.instance.decodeTiff.mock.calls[0][0] as File;
-    expect(file.name).toBe("restored.tiff");
-    expect(file.type).toBe("image/tiff");
-    expect(lensMock.instance.decodeTiff).toHaveBeenCalledWith(file, 1);
-    expect(lensMock.instance.clear.mock.invocationCallOrder[0]).toBeLessThan(lensMock.instance.loadMetadata.mock.invocationCallOrder[0]);
-    expect(lensMock.instance.loadMetadata.mock.invocationCallOrder[0]).toBeLessThan(lensMock.instance.decodeTiff.mock.invocationCallOrder[0]);
-  });
-
-  it("restores a no-intelligence viewer session without loading metadata", async () => {
-    const fileBlob = new Blob(["tiff"], { type: "image/tiff" });
-    sessionDbMock.setActiveSession({
-      id: "active",
-      fileName: "plain.tiff",
-      fileType: "",
-      fileBlob,
-      metadata: null,
-      pageIndex: 0,
-      updatedAt: Date.now(),
-    });
-
-    render(<App />);
-
-    await waitFor(() => expect(lensMock.instance.decodeTiff).toHaveBeenCalledTimes(1));
-    expect(lensMock.instance.clear).toHaveBeenCalledTimes(1);
-    expect(lensMock.instance.loadMetadata).not.toHaveBeenCalled();
-    const file = lensMock.instance.decodeTiff.mock.calls[0][0] as File;
-    expect(file.name).toBe("plain.tiff");
-    expect(file.type).toBe("image/tiff");
-    expect(lensMock.instance.decodeTiff).toHaveBeenCalledWith(file, 0);
-    expect(lensMock.instance.clear.mock.invocationCallOrder[0]).toBeLessThan(lensMock.instance.decodeTiff.mock.invocationCallOrder[0]);
-  });
-
-  it("saves a sample shortcut only after metadata and TIFF load successfully", async () => {
+  it("starts sample decode after metadata and TIFF load successfully", async () => {
     const metadata = { pages: [] };
     const tiff = new Blob(["tiff"], { type: "image/tiff" });
     let finishDecode: () => void = () => undefined;
@@ -309,19 +258,12 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "sample-1" }));
 
     await waitFor(() => expect(lensMock.instance.loadMetadata).toHaveBeenCalledWith(metadata));
-    expect(sessionDbMock.saveActiveViewerSession).not.toHaveBeenCalled();
+    expect(lensMock.instance.decodeTiff).toHaveBeenCalledTimes(1);
     finishDecode();
-
-    await waitFor(() => expect(sessionDbMock.saveActiveViewerSession).toHaveBeenCalledTimes(1));
-    expect(sessionDbMock.activeSession()).toMatchObject({
-      fileName: "sample.tiff",
-      fileType: "image/tiff",
-      metadata,
-      pageIndex: 0,
-    });
+    expect(lensMock.instance.decodeTiff).toHaveBeenCalledTimes(1);
   });
 
-  it("saves a selected TIFF only after decode succeeds", async () => {
+  it("starts selected TIFF decode through Tabularium AI Lens", async () => {
     let finishDecode: () => void = () => undefined;
     lensMock.instance.decodeTiff.mockReturnValue(new Promise<void>((resolve) => {
       finishDecode = resolve;
@@ -336,45 +278,8 @@ describe("App", () => {
     });
 
     await waitFor(() => expect(lensMock.instance.decodeTiff).toHaveBeenCalledWith(file, 0));
-    expect(sessionDbMock.saveActiveViewerSession).not.toHaveBeenCalled();
     finishDecode();
-
-    await waitFor(() => expect(sessionDbMock.saveActiveViewerSession).toHaveBeenCalledTimes(1));
-    expect(sessionDbMock.activeSession()).toMatchObject({
-      fileName: "delayed.tiff",
-      fileType: "image/tiff",
-      metadata: null,
-      pageIndex: 0,
-    });
-  });
-
-  it("updates the persisted page index when the lens page changes", async () => {
-    render(<App />);
-
-    const file = new File(["tiff"], "paged.tiff", { type: "image/tiff" });
-    fireEvent.change(screen.getByLabelText("Load TIFF"), {
-      target: {
-        files: [file],
-      },
-    });
-    await waitFor(() => expect(sessionDbMock.saveActiveViewerSession).toHaveBeenCalledTimes(1));
-
-    act(() => {
-      lensMock.onStateChange?.({
-        ...lensMock.state,
-        sourceName: "paged.tiff",
-        pageIndex: 1,
-        pageCount: 2,
-        pageWidth: 100,
-        pageHeight: 200,
-      });
-    });
-
-    await waitFor(() => expect(sessionDbMock.saveActiveViewerSession).toHaveBeenCalledTimes(2));
-    expect(sessionDbMock.activeSession()).toMatchObject({
-      fileName: "paged.tiff",
-      pageIndex: 1,
-    });
+    expect(lensMock.instance.decodeTiff).toHaveBeenCalledTimes(1);
   });
 
   it("clears existing lens data before loading a new user-selected TIFF", async () => {
@@ -423,7 +328,7 @@ describe("App", () => {
 
     expect(screen.getByText("Choose or drop one TIFF file at a time.")).toBeInTheDocument();
     expect(lensMock.instance.decodeTiff).not.toHaveBeenCalled();
-    await waitFor(() => expect(sessionDbMock.deleteActiveViewerSession).toHaveBeenCalledTimes(1));
+    expect(lensMock.instance.clear).toHaveBeenCalledTimes(1);
   });
 
   it("maps lens state into the details panel", () => {

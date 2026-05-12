@@ -2,13 +2,15 @@ import type { HostViewerStatus, ViewerDetails } from "../lens/types";
 import type { SelectionColor } from "../lens/types";
 
 interface DetailsPanelProps {
+  allowEdit: boolean;
   details: ViewerDetails;
   error: string;
   pageCount: number;
   status: HostViewerStatus;
+  onAllowEdit: (allowEdit: boolean) => void;
 }
 
-export function DetailsPanel({ details, error, pageCount, status }: DetailsPanelProps) {
+export function DetailsPanel({ allowEdit, details, error, pageCount, status, onAllowEdit }: DetailsPanelProps) {
   return (
     <aside className="details-panel" aria-label="Page details">
       <div className="details-heading">
@@ -54,6 +56,14 @@ export function DetailsPanel({ details, error, pageCount, status }: DetailsPanel
           <StyleRow label={`Medium ${details.theme.confidence.medium}`} colors={details.theme.tokenMedium} />
           <StyleRow label={`Low ${details.theme.confidence.low}`} colors={details.theme.tokenLow} />
         </div>
+      </section>
+
+      <section className="details-section" aria-labelledby="edit-details-heading">
+        <h2 id="edit-details-heading">Edit</h2>
+        <label className="edit-toggle">
+          <input type="checkbox" checked={allowEdit} onChange={(event) => onAllowEdit(event.currentTarget.checked)} />
+          <span>Edit pages</span>
+        </label>
       </section>
 
       {error ? <p className="error-box">{error}</p> : null}

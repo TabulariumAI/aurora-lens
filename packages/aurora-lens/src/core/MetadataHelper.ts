@@ -1,4 +1,5 @@
 import Fuse from "fuse.js";
+import { MetadataRepository } from "./MetadataRepository";
 import type { PageContext, PageFigure, PageMetadataHits, PageToken, SelectedGroup } from "./types";
 
 const rectTolerance = 5;
@@ -38,6 +39,7 @@ interface SearchToken extends TokenItem {
 
 export class MetadataHelper {
   private metadata: MetadataRoot | null = null;
+  private readonly repository = new MetadataRepository();
 
   load(pageMetadata: unknown) {
     const metadata = pageMetadata as MetadataRoot;
@@ -45,6 +47,10 @@ export class MetadataHelper {
       throw new Error("AuroraLens.loadMetadata: metadata must include pages.");
     }
     this.metadata = metadata;
+  }
+
+  loadPage(pageIndex: number, pageMetadata: unknown) {
+    this.load(this.repository.pageRoot(pageIndex, pageMetadata));
   }
 
   clear() {

@@ -1,4 +1,15 @@
 export { AuroraLens } from "./core/AuroraLens";
+export {
+  ACTIVE_VIEWER_SESSION_ID,
+  IndexedDbViewerSessionStore,
+  VIEWER_DOCUMENT_STORE_NAME,
+  VIEWER_PAGE_BLOB_STORE_NAME,
+  VIEWER_PAGE_METADATA_STORE_NAME,
+  VIEWER_PAGE_STORE_NAME,
+  VIEWER_SESSION_DB_NAME,
+  VIEWER_SESSION_DB_VERSION,
+  validateViewerSession,
+} from "./core/viewerSessionStore";
 export type {
   ViewerDecoder,
   ViewerOptions,
@@ -18,4 +29,6 @@ export type {
   SelectionCounts,
   SelectionTheme,
   RasterPage,
+  ViewerSession,
+  ViewerSessionStore,
 } from "./core/types";

@@ -24,6 +24,7 @@ export function Viewer({ decoder }: { decoder: ViewerDecoder }) {
   return (
     <ReactViewer
       ref={lensRef}
+      allowEdit={true}
       decoder={stableDecoder}
       onError={(error) => console.error(error)}
     />

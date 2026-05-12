@@ -8,17 +8,21 @@ import { ViewerFooter } from "./ViewerFooter";
 import { ViewerToolbar } from "./ViewerToolbar";
 
 interface LensHostProps {
+  allowEdit: boolean;
   decoder: ViewerDecoder;
+  fatalError: string;
   lensRef: RefObject<AuroraLens | null>;
   progressText: string;
   state: ViewerState;
   status: ViewerStatus;
   onError: (error: Error) => void;
+  onFatalErrorOk: () => void;
+  onReady: (viewer: { restoreSession(): Promise<boolean> }) => void;
   onStateChange: (state: ViewerState) => void;
   onStatusChange: (status: ViewerStatus) => void;
 }
 
-export function LensHost({ decoder, lensRef, progressText, state, status, onError, onStateChange, onStatusChange }: LensHostProps) {
+export function LensHost({ allowEdit, decoder, fatalError, lensRef, progressText, state, status, onError, onFatalErrorOk, onReady, onStateChange, onStatusChange }: LensHostProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [copyConfirmed, setCopyConfirmed] = useState(false);
@@ -86,17 +90,27 @@ export function LensHost({ decoder, lensRef, progressText, state, status, onErro
         <div className="viewer-body">
           <ReactViewer
             ref={lensRef}
+            allowEdit={allowEdit}
             decoder={decoder}
             selectionTheme={selectionTheme}
             onError={onError}
+            onReady={onReady}
             onStateChange={onStateChange}
             onStatusChange={onStatusChange}
-            onThumbnailSelect={(pageIndex) => run(() => lensRef.current?.goToPage(pageIndex))}
           />
           {status === "idle" ? <div className="viewer-message viewer-overlay">Choose, drop, or select a sample TIFF file.</div> : null}
           {isBusy ? (
             <div className="viewer-message viewer-overlay">
               <ProgressBar text={progressText} />
+            </div>
+          ) : null}
+          {fatalError ? (
+            <div className="viewer-message viewer-overlay viewer-error-overlay" role="alertdialog" aria-modal="true" aria-labelledby="viewer-fatal-error-heading">
+              <div className="viewer-error-dialog">
+                <h2 id="viewer-fatal-error-heading">Viewer Error</h2>
+                <p>{fatalError}</p>
+                <button type="button" onClick={onFatalErrorOk}>OK</button>
+              </div>
             </div>
           ) : null}
         </div>

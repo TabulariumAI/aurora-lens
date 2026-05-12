@@ -3,10 +3,11 @@ import type { Page } from "@playwright/test";
 import path from "node:path";
 import {
   ACTIVE_VIEWER_SESSION_ID,
+  VIEWER_DOCUMENT_STORE_NAME,
+  VIEWER_PAGE_STORE_NAME,
   VIEWER_SESSION_DB_NAME,
   VIEWER_SESSION_DB_VERSION,
-  VIEWER_SESSION_STORE_NAME,
-} from "../../src/app/viewerSessionDb";
+} from "../../../../packages/aurora-lens/src/core/viewerSessionStore";
 import { VIEWER_SAMPLES } from "../../src/samples";
 
 test("loads a TIFF through Tabularium AI Lens and exercises host controls", async ({ page }) => {
@@ -78,12 +79,17 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await expect(page.getByRole("button", { name: /page 1/i })).toBeVisible();
   await expect(page.getByLabel("Intelligence ready for page 1")).toHaveCount(0);
   await expect(page.getByLabel("Intelligence ready for page 2")).toHaveCount(0);
+  const firstCard = page.locator("[data-aurora-thumbnail-card]").first();
+  await expect(firstCard).toBeVisible();
   await expect
-    .poll(() => page.getByRole("button", { name: /page 1/i }).evaluate((element) => getComputedStyle(element.parentElement!).backgroundColor))
-    .toBe("rgba(0, 0, 0, 0)");
+    .poll(() => firstCard.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe("rgb(255, 255, 255)");
   await expect
-    .poll(() => page.getByRole("button", { name: /page 1/i }).evaluate((element) => getComputedStyle(element.parentElement!).borderTopWidth))
+    .poll(() => firstCard.evaluate((element) => getComputedStyle(element).borderTopWidth))
     .toBe("0px");
+  await expect
+    .poll(() => page.locator("[aria-current='page']").evaluate((element) => getComputedStyle(element.closest("[data-aurora-thumbnail-card]")!).borderTopWidth))
+    .toBe("1px");
   await expect
     .poll(() => page.locator(".viewer-body > div").first().evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe("rgba(0, 0, 0, 0)");
@@ -91,11 +97,11 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await expect.poll(() => thumbnailGrid.evaluate((element) => getComputedStyle(element).overflow)).toBe("auto");
   await expect.poll(() => thumbnailGrid.evaluate((element) => getComputedStyle(element).height)).not.toBe("520px");
   await expect
-    .poll(() => page.getByRole("button", { name: /page 1/i }).evaluate((element) => getComputedStyle(element.parentElement!).boxShadow))
+    .poll(() => firstCard.evaluate((element) => getComputedStyle(element).boxShadow))
     .toBe("none");
   const thumbnailBox = await page.getByRole("button", { name: /page 1/i }).boundingBox();
   expect(thumbnailBox).not.toBeNull();
-  const thumbnailImage = page.locator('button img[alt="sample-multipage.tiff page 1"]').first();
+  const thumbnailImage = page.locator('img[alt="sample-multipage.tiff page 1"]').first();
   await expect
     .poll(() =>
       thumbnailImage.evaluate((image) => {
@@ -106,8 +112,9 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
     )
     .toBe(true);
   expect(thumbnailBox!.width).toBeLessThanOrEqual(355);
-  expect(thumbnailBox!.height).toBeGreaterThanOrEqual(460);
-  expect(thumbnailBox!.height).toBeLessThanOrEqual(505);
+  await expect.poll(async () => (await page.locator("[data-aurora-thumbnail-card]").first().boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(460);
+  await expect.poll(async () => (await page.locator("[data-aurora-thumbnail-card]").first().boundingBox())?.height ?? 0).toBeLessThanOrEqual(505);
+  await expect.poll(() => thumbnailOverlapCount(page)).toBe(0);
   await page.getByRole("button", { name: /page 1/i }).click();
   await expect(details.getByText("1 of 2")).toBeVisible();
   const reopenedImage = page.locator('.viewer-body img[alt="sample-multipage.tiff page 1"]').first();
@@ -171,6 +178,49 @@ test("loads every bundled sample TIFF", async ({ page }) => {
     await expect(details.getByText(expectation.pages)).toBeVisible();
     await expect(details.getByText(expectation.size)).toBeVisible();
   }
+});
+
+test("navigates by reordered thumbnail sequence", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "sample-2" }).click();
+  const details = page.getByLabel("Page details");
+  await expect(details.getByText("1 of 5")).toBeVisible();
+  await page.getByRole("button", { name: "All thumbnails" }).click();
+  await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
+  await expect(page.locator("[data-thumbnail-media] img")).toHaveCount(5);
+  const thumbnailGrid = page.locator("[data-aurora-thumbnail-card]").first().locator("..");
+  await thumbnailGrid.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  const scrollTop = await thumbnailGrid.evaluate((element) => element.scrollTop);
+  await page.locator("[data-thumbnail-media] img").evaluateAll((images) => {
+    images.forEach((image, index) => image.setAttribute("data-probe-id", `image-${index}`));
+  });
+  await dragThumbnail(page, 1, 0);
+  await expect.poll(() => thumbnailGrid.evaluate((element) => element.scrollTop)).toBe(scrollTop);
+  await expect.poll(() => page.locator("[data-thumbnail-media] img").evaluateAll((images) => images.map((image) => image.getAttribute("data-probe-id")))).toEqual([
+    "image-1",
+    "image-0",
+    "image-2",
+    "image-3",
+    "image-4",
+  ]);
+  await expect.poll(() => storedPages(page)).toEqual([
+    { sequenceNumber: 1, sourcePageIndex: 1 },
+    { sequenceNumber: 2, sourcePageIndex: 0 },
+    { sequenceNumber: 3, sourcePageIndex: 2 },
+    { sequenceNumber: 4, sourcePageIndex: 3 },
+    { sequenceNumber: 5, sourcePageIndex: 4 },
+  ]);
+  await page.locator("[data-page-select='true']").first().click();
+  await expect(details.getByText("1 of 5")).toBeVisible();
+  await expect.poll(() => storedPageIndex(page)).toBe(1);
+
+  await page.getByRole("button", { name: "Next page" }).click();
+
+  await expect(details.getByText("2 of 5")).toBeVisible();
+  await expect.poll(() => storedPageIndex(page)).toBe(0);
 });
 
 test("clears sample metadata when a user-selected TIFF is loaded", async ({ page }) => {
@@ -308,72 +358,119 @@ async function maxAlpha(page: Page, point: { x: number; y: number }) {
 }
 
 async function storedPageIndex(page: Page) {
-  return page.evaluate(async ({ databaseName, databaseVersion, storeName, sessionId }) => {
+  return page.evaluate(async ({ databaseName, databaseVersion, documentStoreName, pageStoreName, sessionId }) => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(databaseName, databaseVersion);
-      request.onupgradeneeded = () => {
-        const database = request.result;
-        if (!database.objectStoreNames.contains(storeName)) {
-          database.createObjectStore(storeName, { keyPath: "id" });
-        }
-      };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     try {
       return await new Promise<number | null>((resolve, reject) => {
-        const transaction = database.transaction(storeName, "readonly");
-        const request = transaction.objectStore(storeName).get(sessionId);
-        request.onsuccess = () => {
-          const session = request.result as { pageIndex?: unknown } | undefined;
-          resolve(typeof session?.pageIndex === "number" ? session.pageIndex : null);
+        const transaction = database.transaction([documentStoreName, pageStoreName], "readonly");
+        const documentRequest = transaction.objectStore(documentStoreName).get(sessionId);
+        const pagesRequest = transaction.objectStore(pageStoreName).getAll();
+        transaction.oncomplete = () => {
+          const document = documentRequest.result as { currentPageId?: unknown } | undefined;
+          const pages = pagesRequest.result as Array<{ pageId?: unknown; sourcePageIndex?: unknown }>;
+          const currentPage = pages.find((record) => record.pageId === document?.currentPageId);
+          resolve(typeof currentPage?.sourcePageIndex === "number" ? currentPage.sourcePageIndex : null);
         };
-        request.onerror = () => reject(request.error);
+        transaction.onerror = () => reject(transaction.error);
       });
     } finally {
       database.close();
     }
-  }, viewerSessionDbContext());
+  }, viewerSessionContext());
+}
+
+async function storedPages(page: Page) {
+  return page.evaluate(async ({ databaseName, databaseVersion, pageStoreName }) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(databaseName, databaseVersion);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<Array<{ sequenceNumber: number; sourcePageIndex: number }>>((resolve, reject) => {
+        const transaction = database.transaction(pageStoreName, "readonly");
+        const pagesRequest = transaction.objectStore(pageStoreName).getAll();
+        transaction.oncomplete = () => {
+          const pages = pagesRequest.result as Array<{ sequenceNumber?: unknown; sourcePageIndex?: unknown }>;
+          resolve(pages.map((record) => ({
+            sequenceNumber: Number(record.sequenceNumber),
+            sourcePageIndex: Number(record.sourcePageIndex),
+          })).sort((left, right) => left.sequenceNumber - right.sequenceNumber));
+        };
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } finally {
+      database.close();
+    }
+  }, viewerSessionContext());
+}
+
+async function dragThumbnail(page: Page, sourcePageIndex: number, targetPageIndex: number) {
+  await page.evaluate(({ sourcePageIndex, targetPageIndex }) => {
+    const source = document.querySelector(`[data-page-index="${sourcePageIndex}"] [data-thumbnail-drag-handle="true"]`);
+    const target = document.querySelector(`[data-page-index="${targetPageIndex}"]`);
+    if (!(source instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+      throw new Error("Missing thumbnail drag source or target.");
+    }
+    const dataTransfer = new DataTransfer();
+    source.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer }));
+    target.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer }));
+  }, { sourcePageIndex, targetPageIndex });
+}
+
+async function thumbnailOverlapCount(page: Page) {
+  return page.locator("[data-aurora-thumbnail-card]").evaluateAll((cards) => {
+    const rects = cards.map((card) => card.getBoundingClientRect());
+    let count = 0;
+    for (let index = 0; index < rects.length; index += 1) {
+      for (let next = index + 1; next < rects.length; next += 1) {
+        const currentRect = rects[index];
+        const nextRect = rects[next];
+        if (currentRect.left < nextRect.right && nextRect.left < currentRect.right && currentRect.top < nextRect.bottom && nextRect.top < currentRect.bottom) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  });
 }
 
 async function seedCorruptSession(page: Page) {
-  await page.evaluate(async ({ databaseName, databaseVersion, storeName, sessionId }) => {
+  await page.evaluate(async ({ databaseName, databaseVersion, documentStoreName, sessionId }) => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open(databaseName, databaseVersion);
-      request.onupgradeneeded = () => {
-        const database = request.result;
-        if (!database.objectStoreNames.contains(storeName)) {
-          database.createObjectStore(storeName, { keyPath: "id" });
-        }
-      };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     try {
       await new Promise<void>((resolve, reject) => {
-        const transaction = database.transaction(storeName, "readwrite");
+        const transaction = database.transaction(documentStoreName, "readwrite");
         transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
-        transaction.objectStore(storeName).put({
+        transaction.objectStore(documentStoreName).put({
           id: sessionId,
           fileName: "corrupt.tiff",
           fileType: "image/tiff",
-          metadata: null,
-          pageIndex: 0,
+          currentPageId: "missing-page",
           updatedAt: Date.now(),
         });
       });
     } finally {
       database.close();
     }
-  }, viewerSessionDbContext());
+  }, viewerSessionContext());
 }
 
-function viewerSessionDbContext() {
+function viewerSessionContext() {
   return {
     databaseName: VIEWER_SESSION_DB_NAME,
     databaseVersion: VIEWER_SESSION_DB_VERSION,
-    storeName: VIEWER_SESSION_STORE_NAME,
+    documentStoreName: VIEWER_DOCUMENT_STORE_NAME,
+    pageStoreName: VIEWER_PAGE_STORE_NAME,
     sessionId: ACTIVE_VIEWER_SESSION_ID,
   };
 }
