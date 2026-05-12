@@ -1,4 +1,5 @@
-import type { HostViewerStatus, ViewerDetails } from "../lens/types";
+import { useEffect, useMemo, useState } from "react";
+import type { HostViewerStatus, PageSizeConfig, ViewerDetails } from "../lens/types";
 import type { SelectionColor } from "../lens/types";
 
 interface DetailsPanelProps {
@@ -7,10 +8,20 @@ interface DetailsPanelProps {
   error: string;
   pageCount: number;
   status: HostViewerStatus;
+  validationConfig: PageSizeConfig | null;
   onAllowEdit: (allowEdit: boolean) => void;
+  onValidationConfig: (config: PageSizeConfig) => void;
 }
 
-export function DetailsPanel({ allowEdit, details, error, pageCount, status, onAllowEdit }: DetailsPanelProps) {
+export function DetailsPanel({ allowEdit, details, error, pageCount, status, validationConfig, onAllowEdit, onValidationConfig }: DetailsPanelProps) {
+  const [draft, setDraft] = useState<PageSizeConfig | null>(null);
+
+  useEffect(() => {
+    setDraft(validationConfig ? copyConfig(validationConfig) : null);
+  }, [validationConfig]);
+
+  const dirty = useMemo(() => Boolean(validationConfig && draft && !sameConfig(validationConfig, draft)), [draft, validationConfig]);
+
   return (
     <aside className="details-panel" aria-label="Page details">
       <div className="details-heading">
@@ -66,8 +77,104 @@ export function DetailsPanel({ allowEdit, details, error, pageCount, status, onA
         </label>
       </section>
 
+      {draft ? (
+        <section className="details-section" aria-labelledby="validation-details-heading">
+          <h2 id="validation-details-heading">Validation</h2>
+          <label className="validation-field">
+            <span>Tolerance</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={draft.tolerance}
+              onChange={(event) => {
+                if (Number.isFinite(event.currentTarget.valueAsNumber) && event.currentTarget.valueAsNumber >= 0) {
+                  setDraft({
+                    ...draft,
+                    tolerance: event.currentTarget.valueAsNumber,
+                  });
+                }
+              }}
+            />
+          </label>
+          <div className="validation-grid" role="table" aria-label="Page validation formats">
+            <div className="validation-head" role="columnheader">Format</div>
+            <div className="validation-head" role="columnheader">Width</div>
+            <div className="validation-head" role="columnheader">Height</div>
+            {draft.formats.map((format, index) => (
+              <ValidationRow
+                format={format}
+                key={format.name}
+                onHeight={(height) => setDraft({
+                  ...draft,
+                  formats: draft.formats.map((value, valueIndex) => valueIndex === index ? { ...value, height } : value),
+                })}
+                onWidth={(width) => setDraft({
+                  ...draft,
+                  formats: draft.formats.map((value, valueIndex) => valueIndex === index ? { ...value, width } : value),
+                })}
+              />
+            ))}
+          </div>
+          <div className="validation-actions">
+            <button type="button" disabled={!dirty} onClick={() => onValidationConfig(draft)}>Save</button>
+            <button type="button" disabled={!dirty} onClick={() => setDraft(validationConfig ? copyConfig(validationConfig) : null)}>Cancel</button>
+          </div>
+        </section>
+      ) : null}
+
       {error ? <p className="error-box">{error}</p> : null}
     </aside>
+  );
+}
+
+function copyConfig(config: PageSizeConfig): PageSizeConfig {
+  return {
+    formats: config.formats.map((format) => ({ ...format })),
+    tolerance: config.tolerance,
+  };
+}
+
+function sameConfig(left: PageSizeConfig, right: PageSizeConfig) {
+  return left.tolerance === right.tolerance &&
+    left.formats.length === right.formats.length &&
+    left.formats.every((format, index) => {
+      const value = right.formats[index];
+      return value.name === format.name && value.width === format.width && value.height === format.height;
+    });
+}
+
+function ValidationRow({ format, onHeight, onWidth }: { format: PageSizeConfig["formats"][number]; onHeight: (height: number) => void; onWidth: (width: number) => void }) {
+  return (
+    <>
+      <div className="validation-label" role="rowheader">{format.name}</div>
+      <input
+        aria-label={`${format.name} width`}
+        className="validation-input"
+        type="number"
+        min="0.01"
+        step="0.01"
+        value={format.width}
+        onChange={(event) => {
+          if (Number.isFinite(event.currentTarget.valueAsNumber) && event.currentTarget.valueAsNumber > 0) {
+            onWidth(event.currentTarget.valueAsNumber);
+          }
+        }}
+      />
+      <input
+        aria-label={`${format.name} height`}
+        className="validation-input"
+        type="number"
+        min="0.01"
+        step="0.01"
+        value={format.height}
+        onChange={(event) => {
+          if (Number.isFinite(event.currentTarget.valueAsNumber) && event.currentTarget.valueAsNumber > 0) {
+            onHeight(event.currentTarget.valueAsNumber);
+          }
+        }}
+      />
+    </>
   );
 }
 

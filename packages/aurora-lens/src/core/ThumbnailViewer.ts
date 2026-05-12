@@ -1,5 +1,6 @@
 interface ThumbnailViewerOptions {
   allowEdit: boolean;
+  onAdd: (files: File[], insertIndex: number) => Promise<void> | void;
   onRange: (pageIndexes: number[]) => void;
   onReorder: (request: ThumbnailReorderRequest) => Promise<void> | void;
   onSelect: (pageIndex: number) => void;
@@ -10,10 +11,12 @@ interface PageSize {
   height: number;
 }
 
-type ThumbnailItem =
-  // pageId is the system-assigned unique page GUID, not the page number.
-  | { kind: "page"; pageId: string; pageIndex: number }
-  | { kind: "placeholder"; id: string };
+// pageId is the system-assigned unique page GUID, not the page number.
+interface ThumbnailItem {
+  kind: "page";
+  pageId: string;
+  pageIndex: number;
+}
 
 interface PendingAdd {
   // pageId is the system-assigned unique page GUID, not the page number.
@@ -254,8 +257,17 @@ const styles = {
     transition: "opacity 120ms ease-out",
   },
   armedAction: {
+    zIndex: "4",
+    width: "auto",
+    minWidth: "7rem",
+    height: "2rem",
+    padding: "0 0.75rem",
     color: "#ffffff",
     background: colors.removeText,
+    fontSize: "0.75rem",
+    fontWeight: "800",
+    lineHeight: "1",
+    whiteSpace: "nowrap",
   },
   badge: {
     position: "absolute",
@@ -342,7 +354,6 @@ export class ThumbnailViewer {
   private pageSize: PageSize = { width: 1, height: 1 };
   private sourceName = "";
   private frame = 0;
-  private placeholderId = 0;
   private pendingAdd: PendingAdd | null = null;
   private dragItemId = "";
   private dropTargetId = "";
@@ -356,6 +367,7 @@ export class ThumbnailViewer {
     this.allowEdit = options.allowEdit;
     this.ensureStyle();
     this.fileInput.type = "file";
+    this.fileInput.multiple = true;
     this.fileInput.addEventListener("change", () => this.handleFilePick());
     Object.assign(this.fileInput.style, { display: "none" });
     this.live.setAttribute("aria-live", "polite");
@@ -414,6 +426,7 @@ export class ThumbnailViewer {
 
   update(pageIds: string[], pages: Array<ThumbnailPage | undefined>, activeIndex: number, metadataPages: Set<string>) {
     this.pageIds = pageIds;
+    this.pageCount = pageIds.length;
     this.pages = pages;
     this.metadataPages = metadataPages;
     this.activeIndex = activeIndex;
@@ -436,7 +449,6 @@ export class ThumbnailViewer {
     this.pageCount = 0;
     this.sourceName = "";
     this.pageSize = { width: 1, height: 1 };
-    this.placeholderId = 0;
     this.pendingAdd = null;
     this.dragItemId = "";
     this.dropTargetId = "";
@@ -482,38 +494,32 @@ export class ThumbnailViewer {
   }
 
   private card(item: ThumbnailItem) {
-    const pageIndex = item.kind === "page" ? item.pageIndex : -1;
     const card = document.createElement("div");
     card.dataset[data.card] = "true";
     Object.assign(card.style, styles.card, {
-      border: pageIndex === this.activeIndex ? `1px solid ${colors.activeBorder}` : "0",
+      border: item.pageIndex === this.activeIndex ? `1px solid ${colors.activeBorder}` : "0",
     });
-    if (item.kind === "page") {
-      card.dataset[data.itemId] = item.pageId;
-      card.dataset[data.pageIndex] = String(item.pageIndex);
-      card.addEventListener("dragend", () => {
-        this.clearDrag();
-      });
-      card.addEventListener("dragover", (event) => {
-        if (this.allowEdit && this.dragItemId) {
-          event.preventDefault();
-          this.setDropTarget(card.dataset[data.itemId] ?? "");
-          this.updateAutoScroll(event);
-        }
-      });
-      card.addEventListener("dragleave", () => {
-        if (this.dropTargetId === card.dataset[data.itemId]) {
-          this.setDropTarget("");
-        }
-      });
-      card.addEventListener("drop", (event) => this.handleReorder(event, card));
-      card.append(this.media(item.pageIndex), this.title(labels.page(item.pageIndex + 1), this.sizeText(item.pageIndex)), this.select(item.pageIndex));
-      if (this.allowEdit) {
-        this.addEditControls(card);
+    card.dataset[data.itemId] = item.pageId;
+    card.dataset[data.pageIndex] = String(item.pageIndex);
+    card.addEventListener("dragend", () => {
+      this.clearDrag();
+    });
+    card.addEventListener("dragover", (event) => {
+      if (this.allowEdit && this.dragItemId) {
+        event.preventDefault();
+        this.setDropTarget(card.dataset[data.itemId] ?? "");
+        this.updateAutoScroll(event);
       }
-    } else {
-      card.dataset[data.itemId] = item.id;
-      card.append(this.placeholderCard());
+    });
+    card.addEventListener("dragleave", () => {
+      if (this.dropTargetId === card.dataset[data.itemId]) {
+        this.setDropTarget("");
+      }
+    });
+    card.addEventListener("drop", (event) => this.handleReorder(event, card));
+    card.append(this.media(item.pageIndex), this.title(labels.page(item.pageIndex + 1), this.sizeText(item.pageIndex)), this.select(item.pageIndex));
+    if (this.allowEdit) {
+      this.addEditControls(card);
     }
     return card;
   }
@@ -570,24 +576,6 @@ export class ThumbnailViewer {
       Object.assign(media.style, styles.placeholder);
     }
     return media;
-  }
-
-  private placeholderCard() {
-    const card = document.createElement("div");
-    const media = this.mediaFrame(undefined, 0);
-    media.setAttribute("aria-label", labels.addedLoading);
-    media.append(this.sheen());
-    card.append(media, this.title(labels.addedPage, labels.loading));
-    Object.assign(card.style, {
-      display: "grid",
-      position: "relative",
-      gap: "0.5rem",
-      alignContent: "start",
-      width: "100%",
-      minWidth: "0",
-      boxSizing: "border-box",
-    });
-    return card;
   }
 
   private sheen() {
@@ -710,8 +698,15 @@ export class ThumbnailViewer {
       this.armedButton.textContent = glyphs.remove;
       this.armedButton.setAttribute("aria-label", labels.remove);
       this.armedButton.title = labels.remove;
+      Object.assign(this.armedButton.style, styles.action, {
+        left: "50%",
+        minWidth: "",
+        top: "0.375rem",
+        transform: "translateX(-50%)",
+        whiteSpace: "",
+      });
       this.armedButton.style.color = colors.removeText;
-      this.armedButton.style.background = colors.tealOverlay;
+      this.armedButton.style.backgroundColor = colors.tealOverlay;
       this.armedButton = null;
     }
   }
@@ -742,20 +737,21 @@ export class ThumbnailViewer {
   }
 
   private handleFilePick() {
-    const files = this.fileInput.files;
+    const files = Array.from(this.fileInput.files ?? []);
     const pendingAdd = this.pendingAdd;
     this.fileInput.value = "";
     this.pendingAdd = null;
-    if (!this.allowEdit || !files?.length || !pendingAdd) {
+    if (!this.allowEdit || !files.length || !pendingAdd) {
       return;
     }
-    const index = this.items.findIndex((item) => item.kind === "page" && item.pageId === pendingAdd.pageId);
+    const index = this.items.findIndex((item) => item.pageId === pendingAdd.pageId);
     if (index < 0) {
       return;
     }
-    this.items.splice(pendingAdd.side === "left" ? index : index + 1, 0, this.placeholderItem());
-    this.render(false, false);
-    this.report(messages.add);
+    const insertIndex = pendingAdd.side === "left" ? pendingAdd.pageIndex : pendingAdd.pageIndex + 1;
+    void Promise.resolve(this.options.onAdd(files, insertIndex))
+      .then(() => this.report(messages.add))
+      .catch(() => undefined);
   }
 
   private removePage(event: Event, card: HTMLDivElement) {
@@ -767,7 +763,7 @@ export class ThumbnailViewer {
     if (!item) {
       return;
     }
-    const index = this.items.findIndex((value) => value.kind === "page" && value.pageId === item.pageId);
+    const index = this.items.findIndex((value) => value.pageId === item.pageId);
     if (index < 0) {
       return;
     }
@@ -787,21 +783,21 @@ export class ThumbnailViewer {
       this.clearDrag();
       return;
     }
-    const from = this.items.findIndex((item) => item.kind === "page" && item.pageId === this.dragItemId);
-    const to = this.items.findIndex((item) => item.kind === "page" && item.pageId === target.pageId);
+    const from = this.items.findIndex((item) => item.pageId === this.dragItemId);
+    const to = this.items.findIndex((item) => item.pageId === target.pageId);
     if (from < 0 || to < 0 || from === to) {
       this.clearDrag();
       return;
     }
     const scrollTop = this.root.scrollTop;
     const [item] = this.items.splice(from, 1);
-    const fromPageIndex = item.kind === "page" ? item.pageIndex : -1;
+    const fromPageIndex = item.pageIndex;
     const toPageIndex = target.pageIndex;
     this.items.splice(to, 0, item);
-    this.items = this.items.map((value, index) => value.kind === "page" ? {
+    this.items = this.items.map((value, index) => ({
       ...value,
       pageIndex: index,
-    } : value);
+    }));
     const sourceCard = this.root.querySelector(`[data-item-id="${this.dragItemId}"]`);
     if (sourceCard instanceof HTMLElement) {
       const reference = from < to ? targetCard.nextSibling : targetCard;
@@ -810,17 +806,16 @@ export class ThumbnailViewer {
     this.refreshCards();
     this.root.scrollTop = scrollTop;
     this.clearDrag();
-    if (fromPageIndex >= 0) {
-      void Promise.resolve(this.options.onReorder({
-        fromPageIndex,
-        toPageIndex,
-      })).then(() => this.report(messages.reorder));
-    }
+    void Promise.resolve(this.options.onReorder({
+      fromPageIndex,
+      toPageIndex,
+    })).then(() => this.report(messages.reorder));
   }
 
   refresh(pageIds: string[], pages: Array<ThumbnailPage | undefined>, activeIndex: number, metadataPages: Set<string>) {
     const scrollTop = this.root.scrollTop;
     this.pageIds = pageIds;
+    this.pageCount = pageIds.length;
     this.pages = pages;
     this.metadataPages = metadataPages;
     this.activeIndex = activeIndex;
@@ -835,7 +830,7 @@ export class ThumbnailViewer {
         return;
       }
       const item = this.items[index];
-      if (!item || item.kind !== "page") {
+      if (!item) {
         return;
       }
       const pageIndex = item.pageIndex;
@@ -879,8 +874,7 @@ export class ThumbnailViewer {
 
   private itemFromCard(card: HTMLElement) {
     const itemId = card.dataset[data.itemId];
-    const item = this.items.find((value) => value.kind === "page" && value.pageId === itemId);
-    return item?.kind === "page" ? item : null;
+    return this.items.find((value) => value.pageId === itemId) ?? null;
   }
 
   private syncItems() {
@@ -897,17 +891,9 @@ export class ThumbnailViewer {
       return;
     }
     event.preventDefault();
-    this.items.push(this.placeholderItem());
-    this.render(false, false);
-    this.report(messages.drop);
-  }
-
-  private placeholderItem(): ThumbnailItem {
-    this.placeholderId += 1;
-    return {
-      kind: "placeholder",
-      id: `placeholder-${this.placeholderId}`,
-    };
+    void Promise.resolve(this.options.onAdd(Array.from(files), this.pageCount))
+      .then(() => this.report(messages.drop))
+      .catch(() => undefined);
   }
 
   private report(message: string) {
@@ -927,7 +913,7 @@ export class ThumbnailViewer {
     const bottom = top + this.root.clientHeight;
     Array.from(this.root.children).forEach((child, index) => {
       const item = this.items[index];
-      if (!(child instanceof HTMLElement) || item?.kind !== "page") {
+      if (!(child instanceof HTMLElement) || !item) {
         return;
       }
       const childTop = child.offsetTop;

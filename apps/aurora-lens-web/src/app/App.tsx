@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { AuroraLens } from "@tabularium/aurora-lens";
+import type { AuroraLens, PageSizeConfig, ViewerReady } from "@tabularium/aurora-lens";
 import { AuroraTiffDecoder } from "../aurora/AuroraTiffDecoder";
 import { DetailsPanel } from "../components/DetailsPanel";
 import { LensHost } from "../components/LensHost";
@@ -54,6 +54,7 @@ export function App() {
   const [lensState, setLensState] = useState<ViewerState>(emptyLensState);
   const [lensStatus, setLensStatus] = useState<ViewerStatus>("idle");
   const [allowEdit, setAllowEdit] = useState(true);
+  const [validationConfig, setValidationConfig] = useState<PageSizeConfig | null>(null);
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lensRef = useRef<AuroraLens | null>(null);
@@ -76,8 +77,17 @@ export function App() {
 
   const isViewerOperationCurrent = useCallback((operationId: number) => operationIdRef.current === operationId, []);
 
-  const restoreViewerSession = useCallback((viewer: { restoreSession(): Promise<boolean> }) => {
+  const restoreViewerSession = useCallback((viewer: ViewerReady) => {
+    void viewer.readPageValidationConfig()
+      .then(setValidationConfig)
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
     void viewer.restoreSession();
+  }, []);
+
+  const saveValidationConfig = useCallback((config: PageSizeConfig) => {
+    void lensRef.current?.savePageValidationConfig(config)
+      .then(setValidationConfig)
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
 
   const acknowledgeFatalError = useCallback(() => {
@@ -205,7 +215,16 @@ export function App() {
           onStateChange={setLensState}
           onStatusChange={setLensStatus}
         />
-        <DetailsPanel allowEdit={allowEdit} details={details} error={error} pageCount={lensState.pageCount} status={hostStatus} onAllowEdit={setAllowEdit} />
+        <DetailsPanel
+          allowEdit={allowEdit}
+          details={details}
+          error={error}
+          pageCount={lensState.pageCount}
+          status={hostStatus}
+          validationConfig={validationConfig}
+          onAllowEdit={setAllowEdit}
+          onValidationConfig={saveValidationConfig}
+        />
       </section>
     </main>
   );

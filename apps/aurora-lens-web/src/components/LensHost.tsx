@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { ReactViewer } from "@tabularium/aurora-lens/react";
-import type { AuroraLens, ViewerDecoder } from "@tabularium/aurora-lens";
+import type { AuroraLens, ViewerDecoder, ViewerReady } from "@tabularium/aurora-lens";
 import { selectionTheme } from "../lens/selectionTheme";
 import type { ViewerState, ViewerStatus } from "../lens/types";
 import { ProgressBar } from "./ProgressBar";
@@ -17,7 +17,7 @@ interface LensHostProps {
   status: ViewerStatus;
   onError: (error: Error) => void;
   onFatalErrorOk: () => void;
-  onReady: (viewer: { restoreSession(): Promise<boolean> }) => void;
+  onReady: (viewer: ViewerReady) => void;
   onStateChange: (state: ViewerState) => void;
   onStatusChange: (status: ViewerStatus) => void;
 }

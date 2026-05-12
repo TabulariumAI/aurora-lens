@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuroraLens } from "./AuroraLens";
-import { ACTIVE_VIEWER_SESSION_ID } from "./viewerSessionStore";
-import type { ViewerDecoder, ViewerDocumentInput, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore, ViewerState, ViewerStatus, RasterPage } from "./types";
+import { ACTIVE_VIEWER_SESSION_ID, insertPageRecords } from "./viewerSessionStore";
+import type { ViewerDecoder, ViewerDocumentInput, ViewerImportSink, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore, ViewerState, ViewerStatus, RasterPage } from "./types";
+import type { PageSizeConfig } from "./pageSizeValidation";
 
 let mockPageCount = 2;
 let decoderMessages: Array<{ kind: "page" | "thumbnail"; pageIndex: number }> = [];
@@ -11,7 +12,21 @@ let frames = new Map<number, FrameRequestCallback>();
 class DecoderMock implements ViewerDecoder {
   async decode(file: File, pageIndex: number) {
     decoderMessages.push({ kind: "page", pageIndex });
-    return rasterPage(file.name, pageIndex, 100 + pageIndex, 200 + pageIndex);
+    const pageCount = file.name.startsWith("insert") ? 1 : mockPageCount;
+    const width = file.name.startsWith("insert") ? 85 : 100 + pageIndex;
+    const height = file.name.startsWith("insert") ? 110 : 200 + pageIndex;
+    return rasterPage(file.name, pageIndex, width, height, pageCount);
+  }
+
+  async importPages(files: File[], sink: ViewerImportSink) {
+    const pages = files.flatMap((file) => [
+      rasterPage(file.name, 0, 85, 110, 2),
+      rasterPage(file.name, 1, 85, 110, 2),
+    ]);
+    await sink.pageCount(pages.length);
+    for (let index = 0; index < pages.length; index += 1) {
+      await sink.pageReady(pages[index], index);
+    }
   }
 
   async thumbnail(file: File, pageIndex: number) {
@@ -43,8 +58,34 @@ class GateDecoder implements ViewerDecoder {
     return rasterPage(file.name, pageIndex, 32, 48);
   }
 
+  async importPages(files: File[], sink: ViewerImportSink) {
+    await new DecoderMock().importPages(files, sink);
+  }
+
   finish(fileName: string) {
     this.resolvePage(rasterPage(fileName, 1, 101, 201));
+  }
+}
+
+class ImportGateDecoder extends DecoderMock {
+  private sink: ViewerImportSink | null = null;
+  private resolveImport: () => void = () => undefined;
+
+  async importPages(_files: File[], sink: ViewerImportSink) {
+    this.sink = sink;
+    await sink.pageCount(2);
+    return new Promise<void>((resolve) => {
+      this.resolveImport = resolve;
+    });
+  }
+
+  async finish() {
+    if (!this.sink) {
+      throw new Error("Import did not start.");
+    }
+    await this.sink.pageReady(rasterPage("insert.tiff", 0, 85, 110, 2), 0);
+    await this.sink.pageReady(rasterPage("insert.tiff", 1, 85, 110, 2), 1);
+    this.resolveImport();
   }
 }
 
@@ -91,6 +132,9 @@ describe("AuroraLens", () => {
         drawImage: vi.fn(),
         fill: vi.fn(),
         fillRect: vi.fn(),
+        getImageData: vi.fn((x: number, y: number, width: number, height: number) => ({
+          data: new Uint8ClampedArray(width * height * 4),
+        })),
         lineTo: vi.fn(),
         moveTo: vi.fn(),
         putImageData: vi.fn(),
@@ -236,6 +280,48 @@ describe("AuroraLens", () => {
     expect(store.session?.document.currentPageId).toBe("page-2");
   });
 
+  it("reads default validation config without package-owned storage", async () => {
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      decoder: new DecoderMock(),
+    });
+
+    await expect(lens.readPageValidationConfig()).resolves.toEqual({
+      formats: [
+        { name: "letter", width: 8.5, height: 11 },
+        { name: "legal", width: 8.5, height: 14 },
+        { name: "a4", width: 8.27, height: 11.69 },
+      ],
+      tolerance: 0.02,
+    });
+  });
+
+  it("updates package-owned validation config storage", async () => {
+    const store = new MemorySessionStore();
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      decoder: new DecoderMock(),
+      sessionStore: store,
+    });
+    const config = {
+      formats: [
+        { name: "letter", width: 8.5, height: 11 },
+      ],
+      tolerance: 0.01,
+    };
+
+    await expect(lens.readPageValidationConfig()).resolves.toEqual({
+      formats: [
+        { name: "letter", width: 8.5, height: 11 },
+        { name: "legal", width: 8.5, height: 14 },
+        { name: "a4", width: 8.27, height: 11.69 },
+      ],
+      tolerance: 0.02,
+    });
+    await expect(lens.savePageValidationConfig(config)).resolves.toEqual(config);
+    await expect(lens.readPageValidationConfig()).resolves.toEqual(config);
+  });
+
   it("updates package-owned page sequence when thumbnails are reordered", async () => {
     const store = new MemorySessionStore();
     const container = document.createElement("div");
@@ -258,6 +344,32 @@ describe("AuroraLens", () => {
       { pageId: "page-2", sequenceNumber: 1, sourcePageIndex: 1 },
       { pageId: "page-1", sequenceNumber: 2, sourcePageIndex: 0 },
     ]);
+  });
+
+  it("stores inserted TIFF pages in package-owned page order", async () => {
+    const store = new MemorySessionStore();
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      decoder: new DecoderMock(),
+      sessionStore: store,
+    });
+
+    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await flush();
+    await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1);
+
+    expect(store.session?.pages.map((page) => ({
+      pageId: page.pageId,
+      sequenceNumber: page.sequenceNumber,
+      sourcePageIndex: page.sourcePageIndex,
+    }))).toEqual([
+      { pageId: "page-1", sequenceNumber: 1, sourcePageIndex: 0 },
+      { pageId: "page-3", sequenceNumber: 2, sourcePageIndex: 0 },
+      { pageId: "page-4", sequenceNumber: 3, sourcePageIndex: 1 },
+      { pageId: "page-2", sequenceNumber: 4, sourcePageIndex: 1 },
+    ]);
+    expect(store.blobs.map((blob) => blob.pageId)).toEqual(["page-1", "page-2", "page-3", "page-4"]);
+    expect(store.session?.document.currentPageId).toBe("page-1");
   });
 
   it("keeps intelligence labels tied to page identity after thumbnail reorder", async () => {
@@ -503,10 +615,11 @@ describe("AuroraLens", () => {
     lens.close();
   });
 
-  it("adds a visual loading thumbnail to the left of the selected card", async () => {
+  it("adds a decoded TIFF page to the left of the selected card", async () => {
+    const store = new MemorySessionStore();
     const container = document.createElement("div");
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock(), sessionStore: store });
     lens.loadMetadata(metadata());
     await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
@@ -515,9 +628,32 @@ describe("AuroraLens", () => {
     chooseFile(container, file);
     await flush();
 
-    expect(cardLabels(container)).toEqual(["Page 1", "Added page", "Page 2"]);
-    expect(container.querySelector("[aria-label='Added page thumbnail loading'] span[aria-hidden='true']")).toBeInstanceOf(HTMLElement);
+    expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4"]);
+    expect(decoderMessages.filter((message) => message.kind === "page").map((message) => message.pageIndex)).toEqual([0, 1]);
     expect(liveText(container)).toBe("Add page complete");
+  });
+
+  it("shows empty thumbnail cards before imported pages are ready", async () => {
+    const store = new MemorySessionStore();
+    const decoder = new ImportGateDecoder();
+    const container = document.createElement("div");
+    const lens = new AuroraLens(container, { allowEdit: true, decoder, sessionStore: store });
+    lens.loadMetadata(metadata());
+    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.showThumbnails();
+
+    action(container, 0, "Add after").click();
+    chooseFile(container, new File(["insert"], "insert.tiff", { type: "image/tiff" }));
+    await flush();
+
+    expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4"]);
+    expect(container.querySelectorAll("[aria-label$='thumbnail loading']")).toHaveLength(4);
+
+    await decoder.finish();
+    await flush();
+
+    expect(Array.from(container.querySelectorAll("[data-thumbnail-media] img")).map((image) => image.getAttribute("alt"))).toContain("insert.tiff page 2");
+    expect(Array.from(container.querySelectorAll("[data-thumbnail-media] img")).map((image) => image.getAttribute("alt"))).toContain("insert.tiff page 3");
   });
 
   it("scopes thumbnail control visibility to card hover and focus", async () => {
@@ -641,10 +777,11 @@ describe("AuroraLens", () => {
     expect(Array.from(container.querySelectorAll("[data-thumbnail-media] img"))).toEqual(images);
   });
 
-  it("adds a visual loading thumbnail to the right of the selected card", async () => {
+  it("adds a decoded TIFF page to the right of the selected card", async () => {
+    const store = new MemorySessionStore();
     const container = document.createElement("div");
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock(), sessionStore: store });
     lens.loadMetadata(metadata());
     await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
@@ -653,7 +790,7 @@ describe("AuroraLens", () => {
     chooseFile(container, file);
     await flush();
 
-    expect(cardLabels(container)).toEqual(["Page 1", "Added page", "Page 2"]);
+    expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4"]);
   });
 
   it("removes a thumbnail visually", async () => {
@@ -667,9 +804,17 @@ describe("AuroraLens", () => {
     await flush();
 
     expect(cardLabels(container)).toEqual(["Page 1", "Page 2"]);
-    expect(action(container, 0, "Confirm remove").style.backgroundColor).toBe("rgb(180, 35, 24)");
+    const confirm = action(container, 0, "Confirm remove");
+    expect(confirm.style.backgroundColor).toBe("rgb(180, 35, 24)");
+    expect(confirm.style.width).toBe("auto");
+    expect(confirm.style.minWidth).toBe("7rem");
+    expect(confirm.style.height).toBe("2rem");
+    expect(confirm.style.padding).toBe("0px 0.75rem");
+    expect(confirm.style.fontSize).toBe("0.75rem");
+    expect(confirm.style.fontWeight).toBe("800");
+    expect(confirm.style.whiteSpace).toBe("nowrap");
 
-    action(container, 0, "Confirm remove").click();
+    confirm.click();
     await flush();
 
     expect(cardLabels(container)).toEqual(["Page 2"]);
@@ -802,10 +947,11 @@ describe("AuroraLens", () => {
     expect(root.scrollTop).toBeGreaterThan(0);
   });
 
-  it("adds a visual loading thumbnail at the end for dropped files", async () => {
+  it("adds decoded TIFF pages at the end for dropped files", async () => {
+    const store = new MemorySessionStore();
     const container = document.createElement("div");
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock(), sessionStore: store });
     lens.loadMetadata(metadata());
     await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
@@ -813,7 +959,7 @@ describe("AuroraLens", () => {
     dropFile(container, file);
     await flush();
 
-    expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Added page"]);
+    expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4"]);
     expect(liveText(container)).toBe("Add pages complete");
   });
 
@@ -838,12 +984,12 @@ describe("AuroraLens", () => {
   });
 });
 
-function rasterPage(sourceName: string, pageIndex: number, width: number, height: number): RasterPage {
+function rasterPage(sourceName: string, pageIndex: number, width: number, height: number, pageCount = mockPageCount): RasterPage {
   return {
     sourceName,
     pageIndex,
     pageNumber: pageIndex + 1,
-    pageCount: mockPageCount,
+    pageCount,
     width,
     height,
     pixels: new Uint8ClampedArray(width * height * 4),
@@ -1038,6 +1184,7 @@ function flush() {
 class MemorySessionStore implements ViewerSessionStore {
   blobs: ViewerPageBlobRecord[] = [];
   metadata: ViewerPageMetadataRecord[] = [];
+  validationConfig: PageSizeConfig | null = null;
 
   constructor(public session: ViewerSession | null = null) {}
 
@@ -1064,6 +1211,36 @@ class MemorySessionStore implements ViewerSessionStore {
     return pages;
   }
 
+  async insertPages(insertIndex: number, pages: ViewerPageRecord[], blobs: ViewerPageBlobRecord[], updatedAt: number) {
+    if (!this.session) {
+      return [];
+    }
+    const orderedPages = insertPageRecords(this.session.pages, insertIndex, pages, updatedAt);
+    const currentPage = orderedPages.find((page) => page.pageId === this.session?.document.currentPageId)!;
+    this.session = {
+      ...this.session,
+      document: {
+        ...this.session.document,
+        updatedAt,
+      },
+      pages: orderedPages,
+      currentPage,
+    };
+    this.blobs.push(...blobs);
+    return orderedPages;
+  }
+
+  async readPageValidationConfig() {
+    return this.validationConfig ?? {
+      formats: [
+        { name: "letter", width: 8.5, height: 11 },
+        { name: "legal", width: 8.5, height: 14 },
+        { name: "a4", width: 8.27, height: 11.69 },
+      ],
+      tolerance: 0.02,
+    };
+  }
+
   async saveCurrentPage(pageId: string, updatedAt: number) {
     if (this.session) {
       const currentPage = this.session.pages.find((page) => page.pageId === pageId)!;
@@ -1083,8 +1260,17 @@ class MemorySessionStore implements ViewerSessionStore {
     this.blobs.push(record);
   }
 
+  async readPageBlob(pageId: string) {
+    return this.blobs.find((record) => record.pageId === pageId)?.blob ?? null;
+  }
+
   async savePageMetadata(record: ViewerPageMetadataRecord) {
     this.metadata.push(record);
+  }
+
+  async savePageValidationConfig(config: PageSizeConfig) {
+    this.validationConfig = config;
+    return config;
   }
 
   async reorderPages(fromPageIndex: number, toPageIndex: number, updatedAt: number) {
@@ -1146,11 +1332,34 @@ class FailingReadSessionStore implements ViewerSessionStore {
     return [];
   }
 
+  async insertPages(_insertIndex: number, _pages: ViewerPageRecord[], _blobs: ViewerPageBlobRecord[], _updatedAt: number) {
+    return [];
+  }
+
   async saveCurrentPage(_pageId: string, _updatedAt: number) {}
 
   async savePageBlob(_record: ViewerPageBlobRecord) {}
 
+  async readPageBlob(_pageId: string) {
+    return null;
+  }
+
   async savePageMetadata(_record: ViewerPageMetadataRecord) {}
+
+  async readPageValidationConfig() {
+    return {
+      formats: [
+        { name: "letter", width: 8.5, height: 11 },
+        { name: "legal", width: 8.5, height: 14 },
+        { name: "a4", width: 8.27, height: 11.69 },
+      ],
+      tolerance: 0.02,
+    };
+  }
+
+  async savePageValidationConfig(config: PageSizeConfig) {
+    return config;
+  }
 
   async reorderPages(_fromPageIndex: number, _toPageIndex: number, _updatedAt: number) {
     return [];

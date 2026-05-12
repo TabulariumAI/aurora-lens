@@ -669,6 +669,48 @@ button:disabled {
   accent-color: var(--teal);
 }
 
+.validation-field {
+  display: grid;
+  gap: 6px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.validation-field input,
+.validation-input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 8px;
+  color: var(--text);
+  background: var(--surface);
+}
+
+.validation-grid {
+  display: grid;
+  grid-template-columns: minmax(70px, 1fr) 64px 64px;
+  gap: 7px 8px;
+  align-items: center;
+}
+
+.validation-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.validation-actions button {
+  height: 32px;
+}
+
+.validation-head,
+.validation-label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .error-box {
   margin: 0;
   padding: 12px;

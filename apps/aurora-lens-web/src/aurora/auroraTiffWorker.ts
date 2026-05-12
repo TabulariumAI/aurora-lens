@@ -6,7 +6,14 @@ const rgbaChannelCount = 4;
 
 type DecodeKind = "page" | "thumbnail";
 
-interface DecodeRequest {
+interface DecodeFile {
+  buffer: ArrayBuffer;
+  sourceName: string;
+}
+
+type DecodeRequest = PageRequest | ImportRequest;
+
+interface PageRequest {
   id: number;
   kind: DecodeKind;
   buffer: ArrayBuffer;
@@ -14,9 +21,17 @@ interface DecodeRequest {
   sourceName: string;
 }
 
+interface ImportRequest {
+  id: number;
+  kind: "import";
+  files: DecodeFile[];
+}
+
 interface DecodeResponse {
   id: number;
-  kind: DecodeKind;
+  kind: DecodeKind | "importCount" | "importPage" | "importDone";
+  importIndex?: number;
+  pageCount?: number;
   page?: RasterPage;
   error?: string;
 }
@@ -32,26 +47,31 @@ const workerScope = self as unknown as WorkerScope;
 workerScope.onmessage = (event: MessageEvent<DecodeRequest>) => {
   const request = event.data;
 
+  if (request.kind === "import") {
+    void importPages(request).catch((reason: unknown) => {
+      workerScope.postMessage({
+        id: request.id,
+        kind: "importDone",
+        error: reason instanceof Error ? reason.message : String(reason),
+      });
+    });
+    return;
+  }
+
   void decode(request)
     .then((page) => {
-      const response: DecodeResponse = {
-        id: request.id,
-        kind: request.kind,
-        page,
-      };
-      workerScope.postMessage(response, [page.pixels.buffer]);
+      postPage(request.id, request.kind, page);
     })
     .catch((reason: unknown) => {
-      const response: DecodeResponse = {
+      workerScope.postMessage({
         id: request.id,
         kind: request.kind,
         error: reason instanceof Error ? reason.message : String(reason),
-      };
-      workerScope.postMessage(response);
+      });
     });
 };
 
-async function decode(request: DecodeRequest): Promise<RasterPage> {
+async function decode(request: PageRequest): Promise<RasterPage> {
   const module = await getModule();
   const bytes = new Uint8Array(request.buffer);
   const handle = createTiff(module, bytes);
@@ -79,6 +99,71 @@ async function decode(request: DecodeRequest): Promise<RasterPage> {
   } finally {
     module._TiffDestroy(handle);
   }
+}
+
+async function importPages(request: ImportRequest): Promise<void> {
+  const module = await getModule();
+  const pageCounts = request.files.map((file) => countTiffPages(module, file));
+  const pageCount = pageCounts.reduce((sum, count) => sum + count, 0);
+  workerScope.postMessage({
+    id: request.id,
+    kind: "importCount",
+    pageCount,
+  });
+
+  let importIndex = 0;
+  for (let fileIndex = 0; fileIndex < request.files.length; fileIndex += 1) {
+    const file = request.files[fileIndex];
+    const bytes = new Uint8Array(file.buffer);
+    const handle = createTiff(module, bytes);
+
+    try {
+      for (let pageIndex = 0; pageIndex < pageCounts[fileIndex]; pageIndex += 1) {
+        setDirectory(module, handle, pageIndex);
+        const image = readImage(module, handle);
+        postPage(request.id, "importPage", {
+          sourceName: file.sourceName,
+          pageIndex,
+          pageNumber: pageIndex + 1,
+          pageCount: pageCounts[fileIndex],
+          width: image.width,
+          height: image.height,
+          pixels: image.pixels,
+        }, importIndex);
+        importIndex += 1;
+      }
+    } finally {
+      module._TiffDestroy(handle);
+    }
+  }
+
+  workerScope.postMessage({
+    id: request.id,
+    kind: "importDone",
+  });
+}
+
+function countTiffPages(module: AuroraTiffModule, file: DecodeFile) {
+  const handle = createTiff(module, new Uint8Array(file.buffer));
+  try {
+    const pageCount = module._TiffCountDirectories(handle);
+    if (pageCount <= 0) {
+      throw new Error("The selected file does not contain readable pages.");
+    }
+    return pageCount;
+  } finally {
+    module._TiffDestroy(handle);
+  }
+}
+
+function postPage(id: number, kind: DecodeResponse["kind"], page: RasterPage, importIndex?: number) {
+  const response: DecodeResponse = {
+    id,
+    kind,
+    importIndex,
+    page,
+  };
+  workerScope.postMessage(response, [page.pixels.buffer]);
 }
 
 function getModule(): Promise<AuroraTiffModule> {

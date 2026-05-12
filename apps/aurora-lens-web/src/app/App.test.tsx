@@ -43,6 +43,7 @@ const lensMock = vi.hoisted(() => ({
   onError: undefined as ((error: Error) => void) | undefined,
   instance: {
     actualSize: vi.fn(),
+    addPages: vi.fn(),
     clear: vi.fn(),
     clearSelection: vi.fn(),
     copySelection: vi.fn(),
@@ -56,7 +57,9 @@ const lensMock = vi.hoisted(() => ({
     loadMetadata: vi.fn(),
     nextPage: vi.fn(),
     previousPage: vi.fn(),
+    readPageValidationConfig: vi.fn(),
     restoreSession: vi.fn(),
+    savePageValidationConfig: vi.fn(),
     search: vi.fn(),
     setDrawMode: vi.fn(),
     showThumbnails: vi.fn(),
@@ -69,6 +72,7 @@ vi.mock("../aurora/AuroraTiffDecoder", () => ({
   AuroraTiffDecoder: class AuroraTiffDecoder {
     close = vi.fn();
     decode = vi.fn();
+    importPages = vi.fn();
     thumbnail = vi.fn();
   },
 }));
@@ -140,7 +144,16 @@ describe("App", () => {
     };
     lensMock.instance.loadMetadata.mockResolvedValue(undefined);
     lensMock.instance.decodeTiff.mockResolvedValue(undefined);
+    lensMock.instance.readPageValidationConfig.mockResolvedValue({
+      formats: [
+        { name: "letter", width: 8.5, height: 11 },
+        { name: "legal", width: 8.5, height: 14 },
+        { name: "a4", width: 8.27, height: 11.69 },
+      ],
+      tolerance: 0.02,
+    });
     lensMock.instance.restoreSession.mockResolvedValue(false);
+    lensMock.instance.savePageValidationConfig.mockImplementation((config) => Promise.resolve(config));
   });
 
   it("loads one valid TIFF through Tabularium AI Lens", async () => {
@@ -166,6 +179,44 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(lensMock.instance.restoreSession).toHaveBeenCalledTimes(1));
+  });
+
+  it("loads page validation config when Tabularium AI Lens is ready", async () => {
+    lensMock.instance.readPageValidationConfig.mockResolvedValue({
+      formats: [
+        { name: "letter", width: 8.25, height: 10.75 },
+      ],
+      tolerance: 0.01,
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByLabelText("Tolerance")).toHaveValue(0.01));
+    expect(screen.getByLabelText("letter width")).toHaveValue(8.25);
+    expect(screen.getByLabelText("letter height")).toHaveValue(10.75);
+  });
+
+  it("saves drafted page validation config through Tabularium AI Lens", async () => {
+    render(<App />);
+
+    await waitFor(() => expect(lensMock.instance.readPageValidationConfig).toHaveBeenCalledTimes(1));
+    fireEvent.change(await screen.findByLabelText("letter width"), {
+      target: {
+        value: "8.25",
+      },
+    });
+    expect(lensMock.instance.savePageValidationConfig).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(lensMock.instance.savePageValidationConfig).toHaveBeenCalledWith({
+      formats: [
+        { name: "letter", width: 8.25, height: 11 },
+        { name: "legal", width: 8.5, height: 14 },
+        { name: "a4", width: 8.27, height: 11.69 },
+      ],
+      tolerance: 0.02,
+    }));
   });
 
   it("passes right sidebar edit toggle state to Tabularium AI Lens", () => {

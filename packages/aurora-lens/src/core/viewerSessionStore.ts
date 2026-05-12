@@ -1,10 +1,14 @@
 export const VIEWER_SESSION_DB_NAME = "aurora-lens-web";
-export const VIEWER_SESSION_DB_VERSION = 2;
+import { DEFAULT_PAGE_FORMATS, DEFAULT_PAGE_TOLERANCE, type PageSizeConfig } from "./pageSizeValidation";
+
+export const VIEWER_SESSION_DB_VERSION = 3;
 export const VIEWER_DOCUMENT_STORE_NAME = "viewer-documents";
 export const VIEWER_PAGE_STORE_NAME = "viewer-pages";
 export const VIEWER_PAGE_BLOB_STORE_NAME = "viewer-page-blobs";
 export const VIEWER_PAGE_METADATA_STORE_NAME = "viewer-page-metadata";
+export const VIEWER_VALIDATION_STORE_NAME = "viewer-validation";
 export const ACTIVE_VIEWER_SESSION_ID = "active";
+const PAGE_VALIDATION_CONFIG_ID = "page-size";
 
 export interface ViewerDocumentRecord {
   id: typeof ACTIVE_VIEWER_SESSION_ID;
@@ -57,11 +61,15 @@ export interface ViewerSession {
 
 export interface ViewerSessionStore {
   resetDocument(input: ViewerDocumentInput): Promise<ViewerPageRecord[]>;
+  insertPages(insertIndex: number, pages: ViewerPageRecord[], blobs: ViewerPageBlobRecord[], updatedAt: number): Promise<ViewerPageRecord[]>;
+  readPageValidationConfig(): Promise<PageSizeConfig>;
   saveCurrentPage(pageId: string, updatedAt: number): Promise<void>;
   savePageBlob(record: ViewerPageBlobRecord): Promise<void>;
   savePageMetadata(record: ViewerPageMetadataRecord): Promise<void>;
+  savePageValidationConfig(config: PageSizeConfig): Promise<PageSizeConfig>;
   reorderPages(fromPageIndex: number, toPageIndex: number, updatedAt: number): Promise<ViewerPageRecord[]>;
   read(): Promise<ViewerSession | null>;
+  readPageBlob(pageId: string): Promise<Blob | null>;
   readPageMetadata(pageId: string): Promise<unknown | null>;
   readPageMetadataIds(): Promise<Set<string>>;
   delete(): Promise<void>;
@@ -95,6 +103,36 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
     }
   }
 
+  async insertPages(insertIndex: number, inputPages: ViewerPageRecord[], blobs: ViewerPageBlobRecord[], updatedAt: number): Promise<ViewerPageRecord[]> {
+    const newPages = validatePages(inputPages);
+    const newBlobs = blobs.map(validatePageBlob);
+    const database = await this.open();
+    try {
+      const transaction = database.transaction([VIEWER_DOCUMENT_STORE_NAME, VIEWER_PAGE_STORE_NAME, VIEWER_PAGE_BLOB_STORE_NAME], "readwrite");
+      const document = validateDocument(await requestToPromise(transaction.objectStore(VIEWER_DOCUMENT_STORE_NAME).get(ACTIVE_VIEWER_SESSION_ID)));
+      const pageStore = transaction.objectStore(VIEWER_PAGE_STORE_NAME);
+      const pages = validatePages(await requestToPromise(pageStore.getAll()));
+      if (insertIndex < 0 || insertIndex > pages.length || newPages.some((page) => page.documentId !== document.id)) {
+        throw invalidSessionError();
+      }
+      const orderedPages = insertPageRecords(pages, insertIndex, newPages, updatedAt);
+      orderedPages.forEach((page) => {
+        pageStore.put(page);
+      });
+      newBlobs.forEach((blob) => {
+        transaction.objectStore(VIEWER_PAGE_BLOB_STORE_NAME).put(blob);
+      });
+      await requestToPromise(transaction.objectStore(VIEWER_DOCUMENT_STORE_NAME).put({
+        ...document,
+        updatedAt,
+      }));
+      await transactionDone(transaction);
+      return orderedPages;
+    } finally {
+      database.close();
+    }
+  }
+
   async saveCurrentPage(pageId: string, updatedAt: number): Promise<void> {
     const database = await this.open();
     try {
@@ -106,6 +144,18 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
         updatedAt,
       }));
       await transactionDone(transaction);
+    } finally {
+      database.close();
+    }
+  }
+
+  async readPageValidationConfig(): Promise<PageSizeConfig> {
+    const database = await this.open();
+    try {
+      const transaction = database.transaction(VIEWER_VALIDATION_STORE_NAME, "readonly");
+      const value = await requestToPromise(transaction.objectStore(VIEWER_VALIDATION_STORE_NAME).get(PAGE_VALIDATION_CONFIG_ID));
+      await transactionDone(transaction);
+      return value === undefined ? defaultPageValidationConfig() : validatePageValidationConfig(value);
     } finally {
       database.close();
     }
@@ -128,6 +178,26 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
       const transaction = database.transaction(VIEWER_PAGE_METADATA_STORE_NAME, "readwrite");
       await requestToPromise(transaction.objectStore(VIEWER_PAGE_METADATA_STORE_NAME).put(record));
       await transactionDone(transaction);
+    } finally {
+      database.close();
+    }
+  }
+
+  async savePageValidationConfig(config: PageSizeConfig): Promise<PageSizeConfig> {
+    const value = validatePageValidationConfig({
+      id: PAGE_VALIDATION_CONFIG_ID,
+      formats: config.formats,
+      tolerance: config.tolerance,
+    });
+    const database = await this.open();
+    try {
+      const transaction = database.transaction(VIEWER_VALIDATION_STORE_NAME, "readwrite");
+      await requestToPromise(transaction.objectStore(VIEWER_VALIDATION_STORE_NAME).put({
+        id: PAGE_VALIDATION_CONFIG_ID,
+        ...value,
+      }));
+      await transactionDone(transaction);
+      return value;
     } finally {
       database.close();
     }
@@ -184,6 +254,18 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
     }
   }
 
+  async readPageBlob(pageId: string): Promise<Blob | null> {
+    const database = await this.open();
+    try {
+      const transaction = database.transaction(VIEWER_PAGE_BLOB_STORE_NAME, "readonly");
+      const value = await requestToPromise(transaction.objectStore(VIEWER_PAGE_BLOB_STORE_NAME).get(pageId));
+      await transactionDone(transaction);
+      return value === undefined ? null : validatePageBlob(value).blob;
+    } finally {
+      database.close();
+    }
+  }
+
   async readPageMetadata(pageId: string): Promise<unknown | null> {
     const database = await this.open();
     try {
@@ -227,18 +309,22 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
 
       request.onupgradeneeded = () => {
         const database = request.result;
-        Array.from(database.objectStoreNames).forEach((storeName) => {
-          database.deleteObjectStore(storeName);
-        });
-        database.createObjectStore(VIEWER_DOCUMENT_STORE_NAME, { keyPath: "id" });
-        database.createObjectStore(VIEWER_PAGE_STORE_NAME, { keyPath: "pageId" });
-        database.createObjectStore(VIEWER_PAGE_BLOB_STORE_NAME, { keyPath: "pageId" });
-        database.createObjectStore(VIEWER_PAGE_METADATA_STORE_NAME, { keyPath: "pageId" });
+        createStore(database, VIEWER_DOCUMENT_STORE_NAME, "id");
+        createStore(database, VIEWER_PAGE_STORE_NAME, "pageId");
+        createStore(database, VIEWER_PAGE_BLOB_STORE_NAME, "pageId");
+        createStore(database, VIEWER_PAGE_METADATA_STORE_NAME, "pageId");
+        createStore(database, VIEWER_VALIDATION_STORE_NAME, "id");
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error("Could not open viewer session database."));
       request.onblocked = () => reject(new Error("Viewer session database upgrade was blocked."));
     });
+  }
+}
+
+function createStore(database: IDBDatabase, name: string, keyPath: string) {
+  if (!database.objectStoreNames.contains(name)) {
+    database.createObjectStore(name, { keyPath });
   }
 }
 
@@ -263,6 +349,16 @@ export function reorderPageRecords(pages: ViewerPageRecord[], fromPageIndex: num
   const orderedPages = [...pages];
   const [page] = orderedPages.splice(fromPageIndex, 1);
   orderedPages.splice(toPageIndex, 0, page);
+  return orderedPages.map((value, index) => ({
+    ...value,
+    sequenceNumber: index + 1,
+    updatedAt,
+  }));
+}
+
+export function insertPageRecords(pages: ViewerPageRecord[], insertIndex: number, newPages: ViewerPageRecord[], updatedAt: number): ViewerPageRecord[] {
+  const orderedPages = [...pages];
+  orderedPages.splice(insertIndex, 0, ...newPages);
   return orderedPages.map((value, index) => ({
     ...value,
     sequenceNumber: index + 1,
@@ -343,6 +439,26 @@ function validatePage(value: unknown): ViewerPageRecord {
   };
 }
 
+function validatePageBlob(value: unknown): ViewerPageBlobRecord {
+  const updatedAt = isRecord(value) ? value.updatedAt : null;
+  if (
+    !isRecord(value) ||
+    typeof value.pageId !== "string" ||
+    value.pageId.trim() === "" ||
+    !(value.blob instanceof Blob) ||
+    typeof updatedAt !== "number" ||
+    !Number.isFinite(updatedAt) ||
+    updatedAt <= 0
+  ) {
+    throw invalidSessionError();
+  }
+  return {
+    pageId: value.pageId,
+    blob: value.blob,
+    updatedAt,
+  };
+}
+
 function validatePageMetadata(value: unknown): ViewerPageMetadataRecord {
   const updatedAt = isRecord(value) ? value.updatedAt : null;
   if (
@@ -360,6 +476,61 @@ function validatePageMetadata(value: unknown): ViewerPageMetadataRecord {
     pageId: value.pageId,
     metadata: value.metadata,
     updatedAt,
+  };
+}
+
+function validatePageValidationConfig(value: unknown): PageSizeConfig {
+  if (!isRecord(value)) {
+    throw invalidSessionError();
+  }
+  const formats = value.formats;
+  const tolerance = value.tolerance;
+  if (
+    value.id !== PAGE_VALIDATION_CONFIG_ID ||
+    !Array.isArray(formats) ||
+    !formats.length ||
+    typeof tolerance !== "number" ||
+    !Number.isFinite(tolerance) ||
+    tolerance < 0
+  ) {
+    throw invalidSessionError();
+  }
+  return {
+    formats: formats.map(validatePageFormat),
+    tolerance,
+  };
+}
+
+function validatePageFormat(value: unknown) {
+  if (!isRecord(value)) {
+    throw invalidSessionError();
+  }
+  const name = value.name;
+  const width = value.width;
+  const height = value.height;
+  if (
+    typeof name !== "string" ||
+    name.trim() === "" ||
+    typeof width !== "number" ||
+    !Number.isFinite(width) ||
+    width <= 0 ||
+    typeof height !== "number" ||
+    !Number.isFinite(height) ||
+    height <= 0
+  ) {
+    throw invalidSessionError();
+  }
+  return {
+    name,
+    width,
+    height,
+  };
+}
+
+function defaultPageValidationConfig(): PageSizeConfig {
+  return {
+    formats: DEFAULT_PAGE_FORMATS.map((format) => ({ ...format })),
+    tolerance: DEFAULT_PAGE_TOLERANCE,
   };
 }
 

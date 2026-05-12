@@ -47,7 +47,8 @@
   "homepage": "https://github.com/tabulariumai/aurora-lens/tree/main/packages/aurora-lens#readme",
   "sideEffects": false,
   "dependencies": {
-    "fuse.js": "6.6.2"
+    "fuse.js": "6.6.2",
+    "pdfjs-dist": "^5.7.284"
   },
   "peerDependencies": {
     "react": "^19.0.0",

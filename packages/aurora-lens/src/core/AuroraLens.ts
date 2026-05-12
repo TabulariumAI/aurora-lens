@@ -6,6 +6,7 @@ import { ACTIVE_VIEWER_SESSION_ID, reorderPageRecords } from "./viewerSessionSto
 import { normalizeSelectionTheme } from "./selectionTheme";
 import { SelectionManager } from "./SelectionManager";
 import { ThumbnailViewer } from "./ThumbnailViewer";
+import { DEFAULT_PAGE_FORMATS, DEFAULT_PAGE_TOLERANCE, validateRasterPageSize, type PageSizeConfig } from "./pageSizeValidation";
 import type {
   ViewerDecoder,
   ViewerOptions,
@@ -17,6 +18,7 @@ import type {
   PageMetadataHits,
   PagePoint,
   RasterPage,
+  ViewerPageBlobRecord,
   ViewerPageRecord,
   ViewerSessionStore,
 } from "./types";
@@ -41,6 +43,11 @@ interface ThumbnailReorderRequest {
   toPageIndex: number;
 }
 
+interface ImportedPage extends RasterPage {
+  xResolution: number;
+  yResolution: number;
+}
+
 export class AuroraLens {
   private readonly metadata = new MetadataHelper();
   private readonly metadataRepository = new MetadataRepository();
@@ -58,6 +65,7 @@ export class AuroraLens {
   private thumbnails: Array<ThumbnailPage | undefined> = [];
   private thumbnailJobs = new Set<number>();
   private thumbnailKeep = new Set<number>();
+  private storedPageIds = new Set<string>();
   private thumbnailRun = 0;
   private persistenceRun = 0;
   private viewMode: ViewMode = "page";
@@ -85,6 +93,7 @@ export class AuroraLens {
     });
     this.thumbnailViewer = new ThumbnailViewer({
       allowEdit: options.allowEdit,
+      onAdd: (files, insertIndex) => this.addPages(files, insertIndex),
       onRange: (pageIndexes) => {
         this.loadThumbnails(pageIndexes);
       },
@@ -122,6 +131,7 @@ export class AuroraLens {
     this.metadataPending = false;
     this.sessionPages = [];
     this.metadataPageIds = new Set();
+    this.storedPageIds = new Set();
     this.metadata.clear();
     this.pageViewer.clear();
     this.thumbnailViewer.clear();
@@ -158,6 +168,7 @@ export class AuroraLens {
       this.clearView();
       this.sessionPages = session.pages;
       this.metadataPageIds = await this.sessionStore.readPageMetadataIds();
+      this.storedPageIds = new Set(session.pages.map((page) => page.pageId));
       this.file = new File([session.document.fileBlob], session.document.fileName, { type: session.document.fileType || TIFF_FILE_TYPE });
       await this.loadPage(this.pagePosition(session.currentPage.pageId), {
         loadMetadata: true,
@@ -185,6 +196,7 @@ export class AuroraLens {
       this.pageCount = 0;
       this.sessionPages = [];
       this.metadataPageIds = new Set();
+      this.storedPageIds = new Set();
       this.selection.clear();
       if (!this.metadataPending) {
         this.metadataInput = null;
@@ -214,6 +226,63 @@ export class AuroraLens {
     }
   }
 
+  async addPages(files: File[] | FileList, insertIndex: number): Promise<void> {
+    const inputFiles = Array.from(files);
+    inputFiles.forEach(assertFile);
+    if (!this.file || !this.page || !this.sessionPages.length) {
+      throw new Error("AuroraLens.addPages: open a TIFF before adding pages.");
+    }
+    if (!this.sessionStore) {
+      throw new Error("AuroraLens.addPages: package-owned storage is required.");
+    }
+    if (!Number.isInteger(insertIndex) || insertIndex < 0 || insertIndex > this.sessionPages.length) {
+      throw new Error("AuroraLens.addPages: insertIndex must be between 0 and the current page count.");
+    }
+    if (!inputFiles.length) {
+      return;
+    }
+
+    this.persistenceRun += 1;
+    this.setStatus("loadingPage");
+    try {
+      const config = await this.readPageValidationConfig();
+      let records: ViewerPageRecord[] = [];
+      await this.decoder.importPages(inputFiles, {
+        pageCount: async (count) => {
+          const updatedAt = Date.now();
+          records = this.createPageRecords(count, updatedAt);
+          this.sessionPages = await this.sessionStore!.insertPages(insertIndex, records, [], updatedAt);
+          this.pageCount = this.sessionPages.length;
+          this.insertEmptyThumbnails(insertIndex, count);
+          await this.refreshCurrentPageOrder();
+          if (this.viewMode === "thumbnails") {
+            this.thumbnailViewer.update(this.pageIds(), this.thumbnails, this.state().pageIndex, this.thumbnailMetadata());
+          }
+        },
+        pageReady: async (page, importIndex) => {
+          const record = records[importIndex];
+          if (!record) {
+            throw new Error("AuroraLens.addPages: decoder emitted a page before the page count.");
+          }
+          const updatedAt = Date.now();
+          const importedPage = this.validateImportPage(page, importIndex, config);
+          const pageIndex = this.pagePosition(record.pageId);
+          const blob = await this.toBlob(importedPage, importedPage.width, importedPage.height);
+          await this.savePageBlob(pageIndex, blob, updatedAt);
+          this.storedPageIds.add(record.pageId);
+          this.thumbnails[pageIndex] = this.toThumbnailPage(importedPage, pageIndex, blob);
+          if (this.viewMode === "thumbnails") {
+            this.thumbnailViewer.update(this.pageIds(), this.thumbnails, this.state().pageIndex, this.thumbnailMetadata());
+          }
+        },
+      });
+      this.setStatus("ready");
+    } catch (error) {
+      this.fail(error);
+      throw error;
+    }
+  }
+
   actualSize(): void {
     this.pageViewer.actualSize();
   }
@@ -225,6 +294,26 @@ export class AuroraLens {
 
   setAllowEdit(allowEdit: boolean): void {
     this.thumbnailViewer.setAllowEdit(allowEdit);
+  }
+
+  async readPageValidationConfig(): Promise<PageSizeConfig> {
+    if (!this.sessionStore) {
+      return {
+        formats: DEFAULT_PAGE_FORMATS.map((format) => ({ ...format })),
+        tolerance: DEFAULT_PAGE_TOLERANCE,
+      };
+    }
+    return this.sessionStore.readPageValidationConfig();
+  }
+
+  async savePageValidationConfig(config: PageSizeConfig): Promise<PageSizeConfig> {
+    if (!this.sessionStore) {
+      return {
+        formats: config.formats.map((format) => ({ ...format })),
+        tolerance: config.tolerance,
+      };
+    }
+    return this.sessionStore.savePageValidationConfig(config);
   }
 
   async copySelection(): Promise<CopySelectionResult> {
@@ -360,8 +449,9 @@ export class AuroraLens {
     this.runId = runId;
     this.setStatus("loadingPage");
     try {
+      const storedPage = await this.loadStoredRaster(pageIndex);
       const sourcePageIndex = this.sourcePageIndex(pageIndex);
-      const raster = await this.decoder.decode(this.file, sourcePageIndex);
+      const raster = storedPage ?? await this.decoder.decode(this.file, sourcePageIndex);
       if (!this.sessionPages.length) {
         this.sessionPages = this.createPageRecords(raster.pageCount, Date.now());
       }
@@ -436,7 +526,10 @@ export class AuroraLens {
       }
       const sourcePageIndex = this.sourcePageIndex(pageIndex);
       this.thumbnailJobs.add(pageIndex);
-      this.decoder.thumbnail(file, sourcePageIndex, size).then((page) => this.toPage(page, size, pageIndex)).then((thumbnail) => {
+      const pagePromise = this.storedPageIds.has(this.sessionPages[pageIndex]?.pageId ?? "")
+        ? this.loadStoredRaster(pageIndex).then((page) => page ?? this.decoder.thumbnail(file, sourcePageIndex, size))
+        : this.decoder.thumbnail(file, sourcePageIndex, size);
+      pagePromise.then((page) => this.toPage(page, size, pageIndex)).then((thumbnail) => {
         this.thumbnailJobs.delete(pageIndex);
         if (run !== this.thumbnailRun || this.viewMode !== "thumbnails" || !this.thumbnailKeep.has(pageIndex)) {
           URL.revokeObjectURL(thumbnail.url);
@@ -600,6 +693,16 @@ export class AuroraLens {
     }
   }
 
+  private insertEmptyThumbnails(insertIndex: number, count: number) {
+    this.thumbnails.splice(insertIndex, 0, ...Array<undefined>(count).fill(undefined));
+    this.thumbnails = this.thumbnails.map((page, index) => page ? {
+      ...page,
+      pageIndex: index,
+      pageNumber: index + 1,
+      pageCount: this.sessionPages.length,
+    } : page);
+  }
+
   private async reorderPages(request: ThumbnailReorderRequest) {
     if (this.sessionPages.length) {
       this.sessionPages = this.reorderedPages(request.fromPageIndex, request.toPageIndex, Date.now());
@@ -623,13 +726,14 @@ export class AuroraLens {
       return;
     }
     const pageIndex = this.sessionPages.findIndex((page) => page.pageId === this.page?.pageId);
-    if (pageIndex < 0 || pageIndex === this.page.pageIndex) {
+    if (pageIndex < 0) {
       return;
     }
     this.page = {
       ...this.page,
       pageIndex,
       pageNumber: pageIndex + 1,
+      pageCount: this.sessionPages.length,
     };
     await this.loadStoredPageMetadata(this.page.pageId, pageIndex);
     this.pageViewer.show(this.page);
@@ -655,6 +759,36 @@ export class AuroraLens {
       return pageIndex;
     }
     return this.sessionPages[pageIndex].sourcePageIndex;
+  }
+
+  private async loadStoredRaster(pageIndex: number): Promise<RasterPage | null> {
+    const pageId = this.sessionPages[pageIndex]?.pageId;
+    if (!this.sessionStore || !pageId || !this.storedPageIds.has(pageId)) {
+      return null;
+    }
+    const blob = await this.sessionStore.readPageBlob(pageId);
+    if (!blob) {
+      return null;
+    }
+    const bitmap = await createImageBitmap(blob);
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("AuroraLens: canvas 2D context is not available.");
+    }
+    context.drawImage(bitmap, 0, 0);
+    const imageData = context.getImageData(0, 0, bitmap.width, bitmap.height);
+    return {
+      sourceName: this.file?.name ?? "",
+      pageIndex,
+      pageNumber: pageIndex + 1,
+      pageCount: this.sessionPages.length,
+      width: bitmap.width,
+      height: bitmap.height,
+      pixels: new Uint8ClampedArray(imageData.data),
+    };
   }
 
   private pagePosition(pageId: string) {
@@ -720,7 +854,7 @@ export class AuroraLens {
       pageId: this.sessionPages[pageIndex].pageId,
       pageIndex,
       pageNumber: pageIndex + 1,
-      pageCount: page.pageCount,
+      pageCount: this.sessionPages.length || page.pageCount,
       width: size.width,
       height: size.height,
       blob,
@@ -736,15 +870,49 @@ export class AuroraLens {
   private createPageRecords(pageCount: number, updatedAt: number) {
     const pages: ViewerPageRecord[] = [];
     for (let index = 0; index < pageCount; index += 1) {
-      pages.push({
-        pageId: crypto.randomUUID(),
-        documentId: ACTIVE_VIEWER_SESSION_ID,
-        sequenceNumber: index + 1,
-        sourcePageIndex: index,
-        updatedAt,
-      });
+      pages.push(this.createPageRecord(index, index + 1, updatedAt));
     }
     return pages;
+  }
+
+  private createPageRecord(sourcePageIndex: number, sequenceNumber: number, updatedAt: number): ViewerPageRecord {
+    return {
+      pageId: crypto.randomUUID(),
+      documentId: ACTIVE_VIEWER_SESSION_ID,
+      sequenceNumber,
+      sourcePageIndex,
+      updatedAt,
+    };
+  }
+
+  private validateImportPage(page: RasterPage, importIndex: number, config: PageSizeConfig): ImportedPage {
+    const validation = validateRasterPageSize({
+      width: page.width,
+      height: page.height,
+      xResolution: 0,
+      yResolution: 0,
+    }, config);
+    if (!validation.valid) {
+      throw new Error(`${page.sourceName}: page ${importIndex + 1} rejected. ${validation.reason}`);
+    }
+    return {
+      ...page,
+      xResolution: validation.xResolution,
+      yResolution: validation.yResolution,
+    };
+  }
+
+  private toThumbnailPage(page: ImportedPage, pageIndex: number, blob: Blob): ThumbnailPage {
+    return {
+      sourceName: page.sourceName,
+      pageId: this.sessionPages[pageIndex].pageId,
+      pageIndex,
+      pageNumber: pageIndex + 1,
+      pageCount: this.sessionPages.length,
+      width: page.width,
+      height: page.height,
+      url: URL.createObjectURL(blob),
+    };
   }
 
   private targetSize(page: RasterPage, maxSize?: number) {

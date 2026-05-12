@@ -1,4 +1,5 @@
 import type { ViewerSessionStore } from "./viewerSessionStore";
+import type { PageSizeConfig } from "./pageSizeValidation";
 
 export type ViewMode = "page" | "thumbnails";
 
@@ -93,8 +94,14 @@ export interface ViewerState {
 
 export interface ViewerDecoder {
   decode(file: File, pageIndex: number): Promise<RasterPage>;
+  importPages(files: File[], sink: ViewerImportSink): Promise<void>;
   thumbnail(file: File, pageIndex: number, maxSize: number): Promise<RasterPage>;
   close?(): void;
+}
+
+export interface ViewerImportSink {
+  pageCount(count: number): Promise<void> | void;
+  pageReady(page: RasterPage, importIndex: number): Promise<void> | void;
 }
 
 export interface ViewerOptions {
@@ -102,10 +109,17 @@ export interface ViewerOptions {
   decoder: ViewerDecoder;
   sessionStore?: ViewerSessionStore;
   selectionTheme?: PartialSelectionTheme;
-  onReady?: (viewer: { restoreSession(): Promise<boolean> }) => void;
+  onReady?: (viewer: ViewerReady) => void;
   onStateChange?: (state: ViewerState) => void;
   onStatusChange?: (status: ViewerStatus) => void;
   onError?: (error: Error) => void;
+}
+
+export interface ViewerReady {
+  addPages(files: File[] | FileList, insertIndex: number): Promise<void>;
+  readPageValidationConfig(): Promise<PageSizeConfig>;
+  restoreSession(): Promise<boolean>;
+  savePageValidationConfig(config: PageSizeConfig): Promise<PageSizeConfig>;
 }
 
 export interface SelectedGroup {

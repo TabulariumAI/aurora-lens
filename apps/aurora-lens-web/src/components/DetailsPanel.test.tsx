@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { DetailsPanel } from "./DetailsPanel";
-import type { ViewerDetails } from "../lens/types";
+import type { PageSizeConfig, ViewerDetails } from "../lens/types";
 
 const details: ViewerDetails = {
   source: "sample.tiff",
@@ -40,13 +40,22 @@ const details: ViewerDetails = {
   },
 };
 
+const validationConfig: PageSizeConfig = {
+  formats: [
+    { name: "letter", width: 8.5, height: 11 },
+    { name: "legal", width: 8.5, height: 14 },
+    { name: "a4", width: 8.27, height: 11.69 },
+  ],
+  tolerance: 0.02,
+};
+
 describe("DetailsPanel", () => {
   afterEach(() => {
     cleanup();
   });
 
   it("renders selected element counts", () => {
-    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" onAllowEdit={() => undefined} />);
+    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={validationConfig} onAllowEdit={() => undefined} onValidationConfig={() => undefined} />);
 
     const panel = screen.getByLabelText("Page details");
     const selection = within(panel).getByLabelText("Selection");
@@ -60,7 +69,7 @@ describe("DetailsPanel", () => {
   });
 
   it("renders selection theme configuration", () => {
-    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" onAllowEdit={() => undefined} />);
+    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={validationConfig} onAllowEdit={() => undefined} onValidationConfig={() => undefined} />);
 
     const panel = screen.getByLabelText("Page details");
     expect(within(panel).getByRole("heading", { name: "Style" })).toBeInTheDocument();
@@ -83,9 +92,9 @@ describe("DetailsPanel", () => {
 
   it("renders the edit toggle", () => {
     let allowEdit = true;
-    render(<DetailsPanel allowEdit={allowEdit} details={details} error="" pageCount={1} status="ready" onAllowEdit={(value) => {
+    render(<DetailsPanel allowEdit={allowEdit} details={details} error="" pageCount={1} status="ready" validationConfig={validationConfig} onAllowEdit={(value) => {
       allowEdit = value;
-    }} />);
+    }} onValidationConfig={() => undefined} />);
 
     const toggle = screen.getByLabelText("Edit pages");
     expect(toggle).toBeChecked();
@@ -93,5 +102,62 @@ describe("DetailsPanel", () => {
     fireEvent.click(toggle);
 
     expect(allowEdit).toBe(false);
+  });
+
+  it("drafts page validation controls before save", () => {
+    let config: PageSizeConfig = validationConfig;
+    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={config} onAllowEdit={() => undefined} onValidationConfig={(value) => {
+      config = value;
+    }} />);
+
+    const panel = screen.getByLabelText("Page details");
+    const validation = within(panel).getByLabelText("Page validation formats");
+    expect(within(panel).getByRole("heading", { name: "Validation" })).toBeInTheDocument();
+    expect(within(panel).getByLabelText("Tolerance")).toHaveValue(0.02);
+    expect(within(validation).getByText("letter")).toBeInTheDocument();
+    expect(within(validation).getByLabelText("letter width")).toHaveValue(8.5);
+    expect(within(validation).getByLabelText("letter height")).toHaveValue(11);
+    expect(within(panel).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(within(panel).getByRole("button", { name: "Cancel" })).toBeDisabled();
+
+    fireEvent.change(within(validation).getByLabelText("letter width"), {
+      target: {
+        value: "8.25",
+      },
+    });
+
+    expect(config).toBe(validationConfig);
+    expect(within(panel).getByRole("button", { name: "Save" })).toBeEnabled();
+    expect(within(panel).getByRole("button", { name: "Cancel" })).toBeEnabled();
+
+    fireEvent.click(within(panel).getByRole("button", { name: "Save" }));
+
+    expect(config).toEqual({
+      formats: [
+        { name: "letter", width: 8.25, height: 11 },
+        { name: "legal", width: 8.5, height: 14 },
+        { name: "a4", width: 8.27, height: 11.69 },
+      ],
+      tolerance: 0.02,
+    });
+  });
+
+  it("cancels drafted page validation changes", () => {
+    let config: PageSizeConfig = validationConfig;
+    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={config} onAllowEdit={() => undefined} onValidationConfig={(value) => {
+      config = value;
+    }} />);
+
+    fireEvent.change(screen.getByLabelText("letter width"), {
+      target: {
+        value: "8.25",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(config).toBe(validationConfig);
+    expect(screen.getByLabelText("letter width")).toHaveValue(8.5);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
   });
 });

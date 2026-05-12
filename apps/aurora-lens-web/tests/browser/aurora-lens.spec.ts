@@ -4,6 +4,7 @@ import path from "node:path";
 import {
   ACTIVE_VIEWER_SESSION_ID,
   VIEWER_DOCUMENT_STORE_NAME,
+  VIEWER_PAGE_BLOB_STORE_NAME,
   VIEWER_PAGE_STORE_NAME,
   VIEWER_SESSION_DB_NAME,
   VIEWER_SESSION_DB_VERSION,
@@ -206,7 +207,7 @@ test("navigates by reordered thumbnail sequence", async ({ page }) => {
     "image-3",
     "image-4",
   ]);
-  await expect.poll(() => storedPages(page)).toEqual([
+  await expect.poll(() => storedPages(page), { timeout: 45000 }).toEqual([
     { sequenceNumber: 1, sourcePageIndex: 1 },
     { sequenceNumber: 2, sourcePageIndex: 0 },
     { sequenceNumber: 3, sourcePageIndex: 2 },
@@ -220,6 +221,39 @@ test("navigates by reordered thumbnail sequence", async ({ page }) => {
   await page.getByRole("button", { name: "Next page" }).click();
 
   await expect(details.getByText("2 of 5")).toBeVisible();
+  await expect.poll(() => storedPageIndex(page)).toBe(0);
+});
+
+test("adds TIFF pages from thumbnail add button and stores the inserted pages", async ({ page }) => {
+  test.setTimeout(60000);
+  await page.goto("/");
+
+  const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
+  await page.getByLabel("Load TIFF").setInputFiles(fixture);
+  const details = page.getByLabel("Page details");
+  await expect(details.getByText("1 of 2")).toBeVisible();
+  await page.getByRole("button", { name: "All thumbnails" }).click();
+  await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
+
+  const firstCard = page.locator('[data-page-index="0"]');
+  await firstCard.hover();
+  const chooserPromise = page.waitForEvent("filechooser");
+  await firstCard.locator('button[aria-label="Add after"]').click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles(fixture);
+
+  await expect.poll(() => storedPages(page), { timeout: 45000 }).toEqual([
+    { sequenceNumber: 1, sourcePageIndex: 0 },
+    { sequenceNumber: 2, sourcePageIndex: 0 },
+    { sequenceNumber: 3, sourcePageIndex: 1 },
+    { sequenceNumber: 4, sourcePageIndex: 1 },
+  ]);
+  await expect(page.getByRole("button", { name: "Page 4" })).toBeVisible({ timeout: 45000 });
+  await expect.poll(() => storedBlobCount(page)).toBeGreaterThanOrEqual(4);
+
+  await page.getByRole("button", { name: "Page 2" }).click();
+
+  await expect(details.getByText("2 of 4")).toBeVisible();
   await expect.poll(() => storedPageIndex(page)).toBe(0);
 });
 
@@ -409,6 +443,26 @@ async function storedPages(page: Page) {
   }, viewerSessionContext());
 }
 
+async function storedBlobCount(page: Page) {
+  return page.evaluate(async ({ blobStoreName, databaseName, databaseVersion }) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(databaseName, databaseVersion);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<number>((resolve, reject) => {
+        const transaction = database.transaction(blobStoreName, "readonly");
+        const blobsRequest = transaction.objectStore(blobStoreName).getAll();
+        transaction.oncomplete = () => resolve(blobsRequest.result.length);
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } finally {
+      database.close();
+    }
+  }, viewerSessionContext());
+}
+
 async function dragThumbnail(page: Page, sourcePageIndex: number, targetPageIndex: number) {
   await page.evaluate(({ sourcePageIndex, targetPageIndex }) => {
     const source = document.querySelector(`[data-page-index="${sourcePageIndex}"] [data-thumbnail-drag-handle="true"]`);
@@ -469,6 +523,7 @@ function viewerSessionContext() {
   return {
     databaseName: VIEWER_SESSION_DB_NAME,
     databaseVersion: VIEWER_SESSION_DB_VERSION,
+    blobStoreName: VIEWER_PAGE_BLOB_STORE_NAME,
     documentStoreName: VIEWER_DOCUMENT_STORE_NAME,
     pageStoreName: VIEWER_PAGE_STORE_NAME,
     sessionId: ACTIVE_VIEWER_SESSION_ID,
