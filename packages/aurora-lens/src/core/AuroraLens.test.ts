@@ -127,8 +127,62 @@ const decoderMock = vi.hoisted(() => {
   };
 });
 
+const tiffMock = vi.hoisted(() => {
+  const state = {
+    addCalls: [] as Array<{
+      compression: number;
+      height: number;
+      pixelFormat: number;
+      width: number;
+      xResolution: number;
+      yResolution: number;
+    }>,
+    nextPointer: 8,
+    reset() {
+      this.addCalls = [];
+      this.nextPointer = 8;
+    },
+  };
+  const module = {
+    HEAPU8: new Uint8Array(1_000_000),
+    _malloc(size: number) {
+      const pointer = state.nextPointer;
+      state.nextPointer += size + 8;
+      return pointer;
+    },
+    _free: vi.fn(),
+    _TiffWriterAddRGBA(_writer: number, _pointer: number, width: number, height: number, compression: number, pixelFormat: number, _resolutionUnit: number, xResolution: number, yResolution: number) {
+      state.addCalls.push({
+        compression,
+        height,
+        pixelFormat,
+        width,
+        xResolution,
+        yResolution,
+      });
+      return 1;
+    },
+    _TiffWriterCreate: vi.fn(() => 64),
+    _TiffWriterDestroy: vi.fn(),
+    _TiffWriterFinish(_writer: number, sizePointer: number) {
+      module.HEAPU8[sizePointer] = 3;
+      module.HEAPU8[sizePointer + 1] = 0;
+      module.HEAPU8[sizePointer + 2] = 0;
+      module.HEAPU8[sizePointer + 3] = 0;
+      module.HEAPU8.set([1, 2, 3], 128);
+      return 128;
+    },
+    _TiffFreeMemory: vi.fn(),
+  };
+  return { module, state };
+});
+
 vi.mock("./documentDecoder/DocumentDecoder", () => ({
   DocumentDecoder: decoderMock.DocumentDecoder,
+}));
+
+vi.mock("./documentDecoder/vendor/auroraTiff.js", () => ({
+  default: vi.fn(() => Promise.resolve(tiffMock.module)),
 }));
 
 let frameId = 0;
@@ -137,6 +191,7 @@ let frames = new Map<number, FrameRequestCallback>();
 describe("AuroraLens", () => {
   beforeEach(() => {
     decoderMock.state.reset();
+    tiffMock.state.reset();
     frameId = 0;
     frames = new Map();
     let pageId = 0;
@@ -381,6 +436,10 @@ describe("AuroraLens", () => {
         maxRasterPixels: 160_000_000,
         maxRasterWidth: 20_000,
         maxRasterHeight: 20_000,
+        tiff: {
+          compression: 5,
+          pixelFormat: "rgb24",
+        },
       },
     };
 
@@ -407,6 +466,10 @@ describe("AuroraLens", () => {
         maxRasterPixels: 160_000_000,
         maxRasterWidth: 20_000,
         maxRasterHeight: 20_000,
+        tiff: {
+          compression: 5,
+          pixelFormat: "rgb24",
+        },
       },
     };
     const lens = new AuroraLens(document.createElement("div"), {
@@ -441,6 +504,10 @@ describe("AuroraLens", () => {
         maxRasterPixels: 160_000_000,
         maxRasterWidth: 20_000,
         maxRasterHeight: 20_000,
+        tiff: {
+          compression: 5,
+          pixelFormat: "rgb24",
+        },
       },
     };
 
@@ -455,6 +522,52 @@ describe("AuroraLens", () => {
     expect(decoderMock.state.decodeCount).toBe(2);
     expect(decoderMock.state.lastRaster).toEqual(config.view);
     expect(store.session?.currentPage.sourcePageIndex).toBe(1);
+  });
+
+  it("exports stored pages as TIFF using package export config", async () => {
+    decoderMock.state.pageCount = 1;
+    const store = new MemorySessionStore();
+    store.viewerConfig = {
+      ...defaultViewerConfig(),
+      export: {
+        ...defaultViewerConfig().export,
+        pdfRasterDpi: 10,
+        tiff: {
+          compression: 5,
+          pixelFormat: "rgb24",
+        },
+      },
+    };
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: store,
+    });
+
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await flush();
+    const blob = await lens.exportTiff();
+
+    expect(blob.type).toBe("image/tiff");
+    await expect(blob.arrayBuffer()).resolves.toEqual(new Uint8Array([1, 2, 3]).buffer);
+    expect(tiffMock.state.addCalls).toEqual([
+      {
+        compression: 5,
+        height: 110,
+        pixelFormat: 24,
+        width: 85,
+        xResolution: 10,
+        yResolution: 10,
+      },
+    ]);
+  });
+
+  it("rejects TIFF export before a document is open", async () => {
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: new MemorySessionStore(),
+    });
+
+    await expect(lens.exportTiff()).rejects.toThrow("AuroraLens.exportTiff: open a document before exporting.");
   });
 
   it("updates package-owned page sequence when thumbnails are reordered", async () => {
@@ -1452,8 +1565,8 @@ class MemorySessionStore implements ViewerSessionStore {
     this.blobs.push(record);
   }
 
-  async readPageBlob(pageId: string) {
-    return this.blobs.find((record) => record.pageId === pageId)?.blob ?? null;
+  async readPageBlobRecord(pageId: string) {
+    return this.blobs.find((record) => record.pageId === pageId) ?? null;
   }
 
   async savePageMetadata(record: ViewerPageMetadataRecord) {
@@ -1536,7 +1649,7 @@ class FailingReadSessionStore implements ViewerSessionStore {
 
   async savePageBlob(_record: ViewerPageBlobRecord) {}
 
-  async readPageBlob(_pageId: string) {
+  async readPageBlobRecord(_pageId: string) {
     return null;
   }
 

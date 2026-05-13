@@ -112,6 +112,7 @@ export interface ViewerOptions {
 export interface ViewerReady {
   addPages(files: File[] | FileList, insertIndex: number): Promise<void>;
   decodeDoc(file: File, pageIndex: number): Promise<void>;
+  exportTiff(): Promise<Blob>;
   readViewerConfig(): Promise<ViewerConfig>;
   restoreSession(): Promise<boolean>;
   saveViewerConfig(config: ViewerConfig): Promise<ViewerConfig>;

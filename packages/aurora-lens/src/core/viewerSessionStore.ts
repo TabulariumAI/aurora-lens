@@ -1,6 +1,15 @@
 export const VIEWER_SESSION_DB_NAME = "aurora-lens-web";
 import type { DocType } from "./documentDecoder/types";
-import { defaultViewerConfig, type RasterConfig, type ViewerConfig } from "./viewerConfig";
+import {
+  TIFF_PIXEL_FORMAT_BW1,
+  TIFF_PIXEL_FORMAT_GRAY8,
+  TIFF_PIXEL_FORMAT_RGB24,
+  defaultViewerConfig,
+  type ExportConfig,
+  type RasterConfig,
+  type TiffPixelFormat,
+  type ViewerConfig,
+} from "./viewerConfig";
 
 export const VIEWER_SESSION_DB_VERSION = 4;
 export const VIEWER_DOCUMENT_STORE_NAME = "viewer-documents";
@@ -79,7 +88,7 @@ export interface ViewerSessionStore {
   saveViewerConfig(config: ViewerConfig): Promise<ViewerConfig>;
   reorderPages(fromPageIndex: number, toPageIndex: number, updatedAt: number): Promise<ViewerPageRecord[]>;
   read(): Promise<ViewerSession | null>;
-  readPageBlob(pageId: string): Promise<Blob | null>;
+  readPageBlobRecord(pageId: string): Promise<ViewerPageBlobRecord | null>;
   readPageMetadata(pageId: string): Promise<unknown | null>;
   readPageMetadataIds(): Promise<Set<string>>;
   delete(): Promise<void>;
@@ -297,13 +306,13 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
     }
   }
 
-  async readPageBlob(pageId: string): Promise<Blob | null> {
+  async readPageBlobRecord(pageId: string): Promise<ViewerPageBlobRecord | null> {
     const database = await this.open();
     try {
       const transaction = database.transaction(VIEWER_PAGE_BLOB_STORE_NAME, "readonly");
       const value = await requestToPromise(transaction.objectStore(VIEWER_PAGE_BLOB_STORE_NAME).get(pageId));
       await transactionDone(transaction);
-      return value === undefined ? null : validatePageBlob(value).blob;
+      return value === undefined ? null : validatePageBlob(value);
     } finally {
       database.close();
     }
@@ -595,7 +604,7 @@ function validateViewerConfig(value: unknown): ViewerConfig {
     formats: formats.map(validatePageFormat),
     tolerance,
     view: validateRasterConfig(view),
-    export: validateRasterConfig(exportConfig),
+    export: validateExportConfig(exportConfig),
   };
 }
 
@@ -655,6 +664,40 @@ function validateRasterConfig(value: unknown): RasterConfig {
     maxRasterWidth,
     maxRasterHeight,
   };
+}
+
+function validateExportConfig(value: unknown): ExportConfig {
+  const raster = validateRasterConfig(value);
+  if (!isRecord(value)) {
+    throw invalidSessionError();
+  }
+  const tiff = value.tiff;
+  if (!isRecord(tiff)) {
+    throw invalidSessionError();
+  }
+  const compression = tiff.compression;
+  const pixelFormat = tiff.pixelFormat;
+  if (
+    typeof compression !== "number" ||
+    !Number.isInteger(compression) ||
+    compression < 0 ||
+    !isTiffPixelFormat(pixelFormat)
+  ) {
+    throw invalidSessionError();
+  }
+  return {
+    ...raster,
+    tiff: {
+      compression,
+      pixelFormat,
+    },
+  };
+}
+
+function isTiffPixelFormat(value: unknown): value is TiffPixelFormat {
+  return value === TIFF_PIXEL_FORMAT_BW1 ||
+    value === TIFF_PIXEL_FORMAT_GRAY8 ||
+    value === TIFF_PIXEL_FORMAT_RGB24;
 }
 
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {

@@ -42,8 +42,12 @@ export {
   validateViewerSession,
 } from "./core/viewerSessionStore";
 export {
-  DEFAULT_EXPORT_RASTER,
+  DEFAULT_EXPORT_CONFIG,
+  DEFAULT_TIFF_EXPORT,
   DEFAULT_VIEW_RASTER,
+  TIFF_PIXEL_FORMAT_BW1,
+  TIFF_PIXEL_FORMAT_GRAY8,
+  TIFF_PIXEL_FORMAT_RGB24,
   defaultViewerConfig,
 } from "./core/viewerConfig";
 export type {
@@ -87,6 +91,9 @@ export type {
   PageSizeResult,
 } from "./core/pageSizeValidation";
 export type {
+  ExportConfig,
   RasterConfig,
+  TiffExportConfig,
+  TiffPixelFormat,
   ViewerConfig,
 } from "./core/viewerConfig";

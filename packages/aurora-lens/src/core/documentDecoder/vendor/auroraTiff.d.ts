@@ -12,6 +12,11 @@ export interface AuroraTiffModule {
   _TiffGetYResolution(handle: number): number;
   _TiffReadRGBA(handle: number, pointer: number, size: number): number;
   _TiffSetDirectory(handle: number, index: number): number;
+  _TiffWriterAddRGBA(writer: number, pointer: number, width: number, height: number, compression: number, pixelFormat: number, resolutionUnit: number, xResolution: number, yResolution: number): number;
+  _TiffWriterCreate(compression: number): number;
+  _TiffWriterDestroy(writer: number): void;
+  _TiffWriterFinish(writer: number, sizePointer: number): number;
+  _TiffFreeMemory(pointer: number): void;
 }
 
 export default function createAuroraTiffModule(moduleArg?: object): Promise<AuroraTiffModule>;

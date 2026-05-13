@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import fs from "node:fs";
 import path from "node:path";
 import {
   ACTIVE_VIEWER_SESSION_ID,
@@ -316,6 +317,22 @@ test("loads a JPG through the package document decoder with parsed DPI", async (
     const [record] = await storedPageBlobs(page);
     return record ? closeTo(record.xResolution, 10) && closeTo(record.yResolution, 10) : false;
   }).toBe(true);
+});
+
+test("downloads TIFF export from the right panel", async ({ page }) => {
+  await page.goto("/");
+
+  const fixture = path.resolve("tests/fixtures/letter-10dpi.png");
+  await page.getByLabel("Load document").setInputFiles(fixture);
+  await expect(page.getByLabel("Page details").getByText("letter-10dpi.png")).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download TIFF" }).click();
+  const download = await downloadPromise;
+  const file = await download.path();
+
+  expect(download.suggestedFilename()).toBe("letter-10dpi.tif");
+  expect(file ? fs.statSync(file).size : 0).toBeGreaterThan(0);
 });
 
 test("caps an oversized PDF to configured view raster limits", async ({ page }) => {

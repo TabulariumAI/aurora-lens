@@ -8,6 +8,7 @@ import { DocumentDecoder } from "./documentDecoder/DocumentDecoder";
 import { normalizeSelectionTheme } from "./selectionTheme";
 import { SelectionManager } from "./SelectionManager";
 import { ThumbnailViewer } from "./ThumbnailViewer";
+import { exportTiffPages } from "./TiffExporter";
 import { validateRasterPageSize, type PageSizeConfig } from "./pageSizeValidation";
 import { defaultViewerConfig, type ViewerConfig } from "./viewerConfig";
 import type { DecodedPage as DecodedDocPage } from "./documentDecoder/types";
@@ -387,7 +388,10 @@ export class AuroraLens {
         formats: config.formats.map((format) => ({ ...format })),
         tolerance: config.tolerance,
         view: { ...config.view },
-        export: { ...config.export },
+        export: {
+          ...config.export,
+          tiff: { ...config.export.tiff },
+        },
       };
     }
     const saved = await this.sessionStore.saveViewerConfig(config);
@@ -400,6 +404,22 @@ export class AuroraLens {
       await this.decodeDoc(file, pageIndex);
     }
     return saved;
+  }
+
+  async exportTiff(): Promise<Blob> {
+    if (!this.sessionStore || !this.sessionPages.length) {
+      throw new Error("AuroraLens.exportTiff: open a document before exporting.");
+    }
+    const config = await this.readViewerConfig();
+    const pages: ViewerPageBlobRecord[] = [];
+    for (const page of this.sessionPages) {
+      const record = await this.sessionStore.readPageBlobRecord(page.pageId);
+      if (!record) {
+        throw new Error("AuroraLens.exportTiff: document pages are not ready.");
+      }
+      pages.push(record);
+    }
+    return exportTiffPages(pages, config.export);
   }
 
   async copySelection(): Promise<CopySelectionResult> {
@@ -838,7 +858,8 @@ export class AuroraLens {
     if (!pageId || !this.storedPageIds.has(pageId)) {
       return null;
     }
-    const blob = this.memoryBlobs.get(pageId) ?? await this.sessionStore?.readPageBlob(pageId) ?? null;
+    const record = await this.sessionStore?.readPageBlobRecord(pageId) ?? null;
+    const blob = this.memoryBlobs.get(pageId) ?? record?.blob ?? null;
     if (!blob) {
       return null;
     }
@@ -860,6 +881,8 @@ export class AuroraLens {
       width: bitmap.width,
       height: bitmap.height,
       pixels: new Uint8ClampedArray(imageData.data),
+      xResolution: record?.xResolution,
+      yResolution: record?.yResolution,
     };
   }
 

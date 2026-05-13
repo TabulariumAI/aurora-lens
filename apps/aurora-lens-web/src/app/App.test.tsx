@@ -48,6 +48,7 @@ const lensMock = vi.hoisted(() => ({
     clearSelection: vi.fn(),
     copySelection: vi.fn(),
     decodeDoc: vi.fn(),
+    exportTiff: vi.fn(),
     firstPage: vi.fn(),
     fitHeight: vi.fn(),
     fitPage: vi.fn(),
@@ -76,6 +77,9 @@ vi.mock("@tabularium/aurora-lens", () => {
   const DECODER_ERROR_UNSUPPORTED_FORMAT = "unsupported_format";
   const DECODER_ERROR_UNKNOWN = "unknown";
   const DECODER_ERROR_UNREADABLE_DOCUMENT = "unreadable_document";
+  const TIFF_PIXEL_FORMAT_BW1 = "bw1";
+  const TIFF_PIXEL_FORMAT_GRAY8 = "gray8";
+  const TIFF_PIXEL_FORMAT_RGB24 = "rgb24";
   const defaultViewerConfig = () => ({
     formats: [
       { name: "letter", width: 8.5, height: 11 },
@@ -94,6 +98,10 @@ vi.mock("@tabularium/aurora-lens", () => {
       maxRasterPixels: 160_000_000,
       maxRasterWidth: 20_000,
       maxRasterHeight: 20_000,
+      tiff: {
+        compression: 5,
+        pixelFormat: TIFF_PIXEL_FORMAT_RGB24,
+      },
     },
   });
   class DecoderError extends Error {
@@ -111,6 +119,9 @@ vi.mock("@tabularium/aurora-lens", () => {
     DECODER_ERROR_UNKNOWN,
     DECODER_ERROR_UNREADABLE_DOCUMENT,
     DecoderError,
+    TIFF_PIXEL_FORMAT_BW1,
+    TIFF_PIXEL_FORMAT_GRAY8,
+    TIFF_PIXEL_FORMAT_RGB24,
     defaultViewerConfig,
     isDecoderError: (error: unknown) => error instanceof DecoderError,
   };
@@ -157,6 +168,7 @@ vi.mock("@tabularium/aurora-lens/react", async () => {
 describe("App", () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
@@ -202,8 +214,13 @@ describe("App", () => {
         maxRasterPixels: 160_000_000,
         maxRasterWidth: 20_000,
         maxRasterHeight: 20_000,
+        tiff: {
+          compression: 5,
+          pixelFormat: "rgb24",
+        },
       },
     });
+    lensMock.instance.exportTiff.mockResolvedValue(new Blob(["tiff"], { type: "image/tiff" }));
     lensMock.instance.restoreSession.mockResolvedValue(false);
     lensMock.instance.saveViewerConfig.mockImplementation((config) => Promise.resolve(config));
   });
@@ -250,6 +267,10 @@ describe("App", () => {
         maxRasterPixels: 160_000_000,
         maxRasterWidth: 20_000,
         maxRasterHeight: 20_000,
+        tiff: {
+          compression: 5,
+          pixelFormat: "rgb24",
+        },
       },
     });
 
@@ -297,6 +318,10 @@ describe("App", () => {
         maxRasterPixels: 160_000_000,
         maxRasterWidth: 20_000,
         maxRasterHeight: 20_000,
+        tiff: {
+          compression: 5,
+          pixelFormat: "rgb24",
+        },
       },
     }));
   });
@@ -312,6 +337,28 @@ describe("App", () => {
 
     expect(toggle).not.toBeChecked();
     expect(lensMock.allowEdit).toBe(false);
+  });
+
+  it("downloads TIFF export from the right sidebar", async () => {
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+    const createObjectURL = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:export");
+    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    render(<App />);
+
+    act(() => {
+      lensMock.onStateChange?.({
+        ...lensMock.state,
+        sourceName: "sample.pdf",
+        pageIndex: 0,
+        pageCount: 1,
+      });
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Download TIFF" }));
+
+    await waitFor(() => expect(lensMock.instance.exportTiff).toHaveBeenCalledTimes(1));
+    expect(createObjectURL).toHaveBeenCalledWith(expect.objectContaining({ type: "image/tiff" }));
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:export");
   });
 
   it("blocks the viewer after a fatal lens error until OK resets it", async () => {

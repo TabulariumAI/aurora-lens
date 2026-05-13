@@ -728,6 +728,7 @@ button:disabled {
 }
 
 .validation-field input,
+.validation-field select,
 .validation-input {
   width: 100%;
   min-width: 0;

@@ -1,20 +1,24 @@
 import { useEffect, useId, useMemo, useState } from "react";
+import { TIFF_PIXEL_FORMAT_BW1, TIFF_PIXEL_FORMAT_GRAY8, TIFF_PIXEL_FORMAT_RGB24 } from "@tabularium/aurora-lens";
 import type { HostViewerStatus, ViewerConfig, ViewerDetails } from "../lens/types";
 import type { SelectionColor } from "../lens/types";
 
 interface DetailsPanelProps {
   allowEdit: boolean;
+  canExport: boolean;
   details: ViewerDetails;
   error: string;
+  exporting: boolean;
   defaultConfig: ViewerConfig;
   pageCount: number;
   status: HostViewerStatus;
   viewerConfig: ViewerConfig | null;
   onAllowEdit: (allowEdit: boolean) => void;
+  onExport: () => void;
   onViewerConfig: (config: ViewerConfig) => void;
 }
 
-export function DetailsPanel({ allowEdit, defaultConfig, details, error, pageCount, status, viewerConfig, onAllowEdit, onViewerConfig }: DetailsPanelProps) {
+export function DetailsPanel({ allowEdit, canExport, defaultConfig, details, error, exporting, pageCount, status, viewerConfig, onAllowEdit, onExport, onViewerConfig }: DetailsPanelProps) {
   const [draft, setDraft] = useState<ViewerConfig | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -77,6 +81,13 @@ export function DetailsPanel({ allowEdit, defaultConfig, details, error, pageCou
           <input type="checkbox" checked={allowEdit} onChange={(event) => onAllowEdit(event.currentTarget.checked)} />
           <span>Edit pages</span>
         </label>
+      </section>
+
+      <section className="details-section" aria-labelledby="export-details-heading">
+        <h2 id="export-details-heading">Export</h2>
+        <button type="button" className="settings-button" disabled={!canExport || exporting} onClick={onExport}>
+          {exporting ? "Exporting TIFF" : "Download TIFF"}
+        </button>
       </section>
 
       {draft ? (
@@ -191,7 +202,10 @@ function copyConfig(config: ViewerConfig): ViewerConfig {
     formats: config.formats.map((format) => ({ ...format })),
     tolerance: config.tolerance,
     view: { ...config.view },
-    export: { ...config.export },
+    export: {
+      ...config.export,
+      tiff: { ...config.export.tiff },
+    },
   };
 }
 
@@ -206,11 +220,15 @@ function sameConfig(left: ViewerConfig, right: ViewerConfig) {
     });
 }
 
-function sameRaster(left: ViewerConfig["view"], right: ViewerConfig["view"]) {
+function sameRaster(left: ViewerConfig["view"] | ViewerConfig["export"], right: ViewerConfig["view"] | ViewerConfig["export"]) {
+  const leftTiff = "tiff" in left ? left.tiff : null;
+  const rightTiff = "tiff" in right ? right.tiff : null;
   return left.pdfRasterDpi === right.pdfRasterDpi &&
     left.maxRasterPixels === right.maxRasterPixels &&
     left.maxRasterWidth === right.maxRasterWidth &&
-    left.maxRasterHeight === right.maxRasterHeight;
+    left.maxRasterHeight === right.maxRasterHeight &&
+    leftTiff?.compression === rightTiff?.compression &&
+    leftTiff?.pixelFormat === rightTiff?.pixelFormat;
 }
 
 function ValidationRow({ format, onHeight, onWidth }: { format: ViewerConfig["formats"][number]; onHeight: (height: number) => void; onWidth: (width: number) => void }) {
@@ -247,7 +265,7 @@ function ValidationRow({ format, onHeight, onWidth }: { format: ViewerConfig["fo
   );
 }
 
-function RasterFields({ label, raster, onRaster }: { label: string; raster: ViewerConfig["view"]; onRaster: (raster: ViewerConfig["view"]) => void }) {
+function RasterFields<T extends ViewerConfig["view"] | ViewerConfig["export"]>({ label, raster, onRaster }: { label: string; raster: T; onRaster: (raster: T) => void }) {
   return (
     <section className="raster-grid" aria-label={`${label} raster settings`}>
       <h3>{label}</h3>
@@ -255,6 +273,19 @@ function RasterFields({ label, raster, onRaster }: { label: string; raster: View
       <RasterInput label={`${label} max pixels`} value={raster.maxRasterPixels} onValue={(maxRasterPixels) => onRaster({ ...raster, maxRasterPixels })} />
       <RasterInput label={`${label} max width`} value={raster.maxRasterWidth} onValue={(maxRasterWidth) => onRaster({ ...raster, maxRasterWidth })} />
       <RasterInput label={`${label} max height`} value={raster.maxRasterHeight} onValue={(maxRasterHeight) => onRaster({ ...raster, maxRasterHeight })} />
+      {"tiff" in raster ? (
+        <>
+          <RasterInput label={`${label} TIFF compression`} value={raster.tiff.compression} onValue={(compression) => onRaster({ ...raster, tiff: { ...raster.tiff, compression } })} />
+          <label className="validation-field">
+            <span>{label} TIFF pixel format</span>
+            <select value={raster.tiff.pixelFormat} onChange={(event) => onRaster({ ...raster, tiff: { ...raster.tiff, pixelFormat: event.currentTarget.value as ViewerConfig["export"]["tiff"]["pixelFormat"] } })}>
+              <option value={TIFF_PIXEL_FORMAT_RGB24}>{TIFF_PIXEL_FORMAT_RGB24}</option>
+              <option value={TIFF_PIXEL_FORMAT_GRAY8}>{TIFF_PIXEL_FORMAT_GRAY8}</option>
+              <option value={TIFF_PIXEL_FORMAT_BW1}>{TIFF_PIXEL_FORMAT_BW1}</option>
+            </select>
+          </label>
+        </>
+      ) : null}
     </section>
   );
 }

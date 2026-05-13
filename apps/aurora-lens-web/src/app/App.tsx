@@ -22,6 +22,7 @@ import { VIEWER_SAMPLES, type ViewerSample } from "../samples";
 import type { ViewerState, ViewerStatus, HostViewerStatus, ViewerDetails } from "../lens/types";
 
 const TIFF_FILE_TYPE = "image/tiff";
+const TIFF_EXTENSION = ".tif";
 const mainDocumentErrorMessages: Record<Exclude<DecoderErrorCode, typeof DECODER_ERROR_PAGE_SIZE>, string> = {
   [DECODER_ERROR_EMPTY_DOCUMENT]: "This document does not contain readable pages.",
   [DECODER_ERROR_PAGE_OUT_OF_RANGE]: "The requested page is outside the document.",
@@ -77,6 +78,7 @@ export function App() {
   const [viewerConfig, setViewerConfig] = useState<ViewerConfig | null>(null);
   const [error, setError] = useState("");
   const [addError, setAddError] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [viewerError, setViewerError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lensRef = useRef<AuroraLens | null>(null);
@@ -88,6 +90,7 @@ export function App() {
     setLensStatus("idle");
     setError("");
     setAddError("");
+    setExporting(false);
     setViewerError("");
     if (clearInput && fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -113,6 +116,29 @@ export function App() {
       .then(setViewerConfig)
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
+
+  const exportTiff = useCallback(() => {
+    const lens = lensRef.current;
+    const sourceName = lensState.sourceName;
+    if (!lens || !sourceName) {
+      setError("Open a document before exporting.");
+      return;
+    }
+    setExporting(true);
+    void lens.exportTiff()
+      .then((blob) => {
+        const dot = sourceName.lastIndexOf(".");
+        const fileName = `${dot > 0 ? sourceName.slice(0, dot) : sourceName}${TIFF_EXTENSION}`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileName;
+        link.click();
+        URL.revokeObjectURL(url);
+      })
+      .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)))
+      .finally(() => setExporting(false));
+  }, [lensState.sourceName]);
 
   const acknowledgeFatalError = useCallback(() => {
     beginViewerOperation();
@@ -236,13 +262,16 @@ export function App() {
         />
         <DetailsPanel
           allowEdit={allowEdit}
+          canExport={lensState.pageCount > 0 && hostStatus === "ready"}
           defaultConfig={defaultViewerConfig()}
           details={details}
           error={error}
+          exporting={exporting}
           pageCount={lensState.pageCount}
           status={hostStatus}
           viewerConfig={viewerConfig}
           onAllowEdit={setAllowEdit}
+          onExport={exportTiff}
           onViewerConfig={saveViewerConfig}
         />
       </section>

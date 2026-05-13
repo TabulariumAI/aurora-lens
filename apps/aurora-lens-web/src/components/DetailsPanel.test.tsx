@@ -1,7 +1,13 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DetailsPanel } from "./DetailsPanel";
 import type { ViewerConfig, ViewerDetails } from "../lens/types";
+
+vi.mock("@tabularium/aurora-lens", () => ({
+  TIFF_PIXEL_FORMAT_BW1: "bw1",
+  TIFF_PIXEL_FORMAT_GRAY8: "gray8",
+  TIFF_PIXEL_FORMAT_RGB24: "rgb24",
+}));
 
 const details: ViewerDetails = {
   source: "sample.tiff",
@@ -58,6 +64,10 @@ const viewerConfig: ViewerConfig = {
     maxRasterPixels: 160_000_000,
     maxRasterWidth: 20_000,
     maxRasterHeight: 20_000,
+    tiff: {
+      compression: 5,
+      pixelFormat: "rgb24",
+    },
   },
 };
 
@@ -66,12 +76,15 @@ function defaultViewerConfig(): ViewerConfig {
     formats: viewerConfig.formats.map((format) => ({ ...format })),
     tolerance: viewerConfig.tolerance,
     view: { ...viewerConfig.view },
-    export: { ...viewerConfig.export },
+    export: {
+      ...viewerConfig.export,
+      tiff: { ...viewerConfig.export.tiff },
+    },
   };
 }
 
 function renderDetails(config = viewerConfig, onViewerConfig: (value: ViewerConfig) => void = () => undefined) {
-  return render(<DetailsPanel allowEdit={true} defaultConfig={defaultViewerConfig()} details={details} error="" pageCount={1} status="ready" viewerConfig={config} onAllowEdit={() => undefined} onViewerConfig={onViewerConfig} />);
+  return render(<DetailsPanel allowEdit={true} canExport={true} defaultConfig={defaultViewerConfig()} details={details} error="" exporting={false} pageCount={1} status="ready" viewerConfig={config} onAllowEdit={() => undefined} onExport={() => undefined} onViewerConfig={onViewerConfig} />);
 }
 
 describe("DetailsPanel", () => {
@@ -117,9 +130,9 @@ describe("DetailsPanel", () => {
 
   it("renders the edit toggle", () => {
     let allowEdit = true;
-    render(<DetailsPanel allowEdit={allowEdit} defaultConfig={defaultViewerConfig()} details={details} error="" pageCount={1} status="ready" viewerConfig={viewerConfig} onAllowEdit={(value) => {
+    render(<DetailsPanel allowEdit={allowEdit} canExport={true} defaultConfig={defaultViewerConfig()} details={details} error="" exporting={false} pageCount={1} status="ready" viewerConfig={viewerConfig} onAllowEdit={(value) => {
       allowEdit = value;
-    }} onViewerConfig={() => undefined} />);
+    }} onExport={() => undefined} onViewerConfig={() => undefined} />);
 
     const toggle = screen.getByLabelText("Edit pages");
     expect(toggle).toBeChecked();
@@ -191,6 +204,8 @@ describe("DetailsPanel", () => {
     expect(within(dialog).getByLabelText("Export max pixels")).toHaveValue(160_000_000);
     expect(within(dialog).getByLabelText("Export max width")).toHaveValue(20_000);
     expect(within(dialog).getByLabelText("Export max height")).toHaveValue(20_000);
+    expect(within(dialog).getByLabelText("Export TIFF compression")).toHaveValue(5);
+    expect(within(dialog).getByLabelText("Export TIFF pixel format")).toHaveValue("rgb24");
 
     fireEvent.change(within(dialog).getByLabelText("View PDF DPI"), {
       target: {
@@ -225,6 +240,10 @@ describe("DetailsPanel", () => {
         maxRasterPixels: 80_000_000,
         maxRasterWidth: 12_000,
         maxRasterHeight: 12_000,
+        tiff: {
+          compression: 4,
+          pixelFormat: "gray8",
+        },
       },
     };
     renderDetails(config, (value) => {
@@ -242,6 +261,8 @@ describe("DetailsPanel", () => {
     expect(within(dialog).getByLabelText("Tolerance")).toHaveValue(0.02);
     expect(within(dialog).getByLabelText("letter width")).toHaveValue(8.5);
     expect(within(dialog).getByLabelText("View PDF DPI")).toHaveValue(150);
+    expect(within(dialog).getByLabelText("Export TIFF compression")).toHaveValue(5);
+    expect(within(dialog).getByLabelText("Export TIFF pixel format")).toHaveValue("rgb24");
     expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -268,5 +289,22 @@ describe("DetailsPanel", () => {
     expect(within(dialog).getByLabelText("letter width")).toHaveValue(8.5);
     expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
     expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
+  });
+
+  it("calls export from the right panel", () => {
+    let exported = false;
+    render(<DetailsPanel allowEdit={true} canExport={true} defaultConfig={defaultViewerConfig()} details={details} error="" exporting={false} pageCount={1} status="ready" viewerConfig={viewerConfig} onAllowEdit={() => undefined} onExport={() => {
+      exported = true;
+    }} onViewerConfig={() => undefined} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Download TIFF" }));
+
+    expect(exported).toBe(true);
+  });
+
+  it("disables TIFF export while exporting", () => {
+    render(<DetailsPanel allowEdit={true} canExport={true} defaultConfig={defaultViewerConfig()} details={details} error="" exporting={true} pageCount={1} status="ready" viewerConfig={viewerConfig} onAllowEdit={() => undefined} onExport={() => undefined} onViewerConfig={() => undefined} />);
+
+    expect(screen.getByRole("button", { name: "Exporting TIFF" })).toBeDisabled();
   });
 });
