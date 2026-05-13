@@ -3,15 +3,17 @@ import {
   DECODER_ERROR_EMPTY_DOCUMENT,
   DECODER_ERROR_PAGE_OUT_OF_RANGE,
   DECODER_ERROR_PAGE_SIZE,
+  DECODER_ERROR_RASTER_LIMIT,
+  DECODER_ERROR_UNSUPPORTED_FORMAT,
   DECODER_ERROR_UNKNOWN,
   DECODER_ERROR_UNREADABLE_DOCUMENT,
+  defaultViewerConfig,
   isDecoderError,
   type AuroraLens,
   type DecoderErrorCode,
-  type PageSizeConfig,
+  type ViewerConfig,
   type ViewerReady,
 } from "@tabularium/aurora-lens";
-import { AuroraTiffDecoder } from "../aurora/AuroraTiffDecoder";
 import { DetailsPanel } from "../components/DetailsPanel";
 import { LensHost } from "../components/LensHost";
 import { LoaderPanel } from "../components/LoaderPanel";
@@ -20,10 +22,11 @@ import { VIEWER_SAMPLES, type ViewerSample } from "../samples";
 import type { ViewerState, ViewerStatus, HostViewerStatus, ViewerDetails } from "../lens/types";
 
 const TIFF_FILE_TYPE = "image/tiff";
-const mainDocumentErrorMessages: Record<DecoderErrorCode, string> = {
+const mainDocumentErrorMessages: Record<Exclude<DecoderErrorCode, typeof DECODER_ERROR_PAGE_SIZE>, string> = {
   [DECODER_ERROR_EMPTY_DOCUMENT]: "This document does not contain readable pages.",
   [DECODER_ERROR_PAGE_OUT_OF_RANGE]: "The requested page is outside the document.",
-  [DECODER_ERROR_PAGE_SIZE]: "We could not open this document.",
+  [DECODER_ERROR_RASTER_LIMIT]: "This PDF page exceeds configured view raster limits.",
+  [DECODER_ERROR_UNSUPPORTED_FORMAT]: "Choose a TIFF, PDF, PNG, or JPG file.",
   [DECODER_ERROR_UNKNOWN]: "We could not open this document.",
   [DECODER_ERROR_UNREADABLE_DOCUMENT]: "This document could not be read.",
 };
@@ -68,11 +71,10 @@ interface ResolvedViewerInput {
 }
 
 export function App() {
-  const decoder = useMemo(() => new AuroraTiffDecoder(), []);
   const [lensState, setLensState] = useState<ViewerState>(emptyLensState);
   const [lensStatus, setLensStatus] = useState<ViewerStatus>("idle");
   const [allowEdit, setAllowEdit] = useState(true);
-  const [validationConfig, setValidationConfig] = useState<PageSizeConfig | null>(null);
+  const [viewerConfig, setViewerConfig] = useState<ViewerConfig | null>(null);
   const [error, setError] = useState("");
   const [addError, setAddError] = useState("");
   const [viewerError, setViewerError] = useState("");
@@ -100,15 +102,15 @@ export function App() {
   const isViewerOperationCurrent = useCallback((operationId: number) => operationIdRef.current === operationId, []);
 
   const restoreViewerSession = useCallback((viewer: ViewerReady) => {
-    void viewer.readPageValidationConfig()
-      .then(setValidationConfig)
+    void viewer.readViewerConfig()
+      .then(setViewerConfig)
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
     void viewer.restoreSession();
   }, []);
 
-  const saveValidationConfig = useCallback((config: PageSizeConfig) => {
-    void lensRef.current?.savePageValidationConfig(config)
-      .then(setValidationConfig)
+  const saveViewerConfig = useCallback((config: ViewerConfig) => {
+    void lensRef.current?.saveViewerConfig(config)
+      .then(setViewerConfig)
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, []);
 
@@ -137,7 +139,7 @@ export function App() {
         }
       }
 
-      await lens.decodeTiff(input.file, 0);
+      await lens.decodeDoc(input.file, 0);
       if (!isViewerOperationCurrent(operationId)) {
         return;
       }
@@ -160,19 +162,12 @@ export function App() {
     }
     if (files.length > 1) {
       beginViewerOperation();
-      setViewerError("Choose or drop one TIFF file at a time.");
-      return;
-    }
-
-    const file = files[0];
-    if (!isTiffFile(file)) {
-      beginViewerOperation();
-      setViewerError("Choose a .tif or .tiff file.");
+      setViewerError("Choose or drop one document at a time.");
       return;
     }
 
     const operationId = beginViewerOperation();
-    void loadResolvedInput({ file, metadata: null }, operationId);
+    void loadResolvedInput({ file: files[0], metadata: null }, operationId);
   }, [beginViewerOperation, loadResolvedInput, resetViewerState]);
 
   const loadSample = useCallback((sample: ViewerSample) => {
@@ -224,7 +219,6 @@ export function App() {
         <LensHost
           addError={addError}
           allowEdit={allowEdit}
-          decoder={decoder}
           fatalError={lensStatus === "error" ? error : ""}
           lensRef={lensRef}
           progressText={progressText}
@@ -242,21 +236,18 @@ export function App() {
         />
         <DetailsPanel
           allowEdit={allowEdit}
+          defaultConfig={defaultViewerConfig()}
           details={details}
           error={error}
           pageCount={lensState.pageCount}
           status={hostStatus}
-          validationConfig={validationConfig}
+          viewerConfig={viewerConfig}
           onAllowEdit={setAllowEdit}
-          onValidationConfig={saveValidationConfig}
+          onViewerConfig={saveViewerConfig}
         />
       </section>
     </main>
   );
-}
-
-function isTiffFile(file: File) {
-  return file.type === TIFF_FILE_TYPE || /\.tiff?$/i.test(file.name);
 }
 
 function toHostStatus(status: ViewerStatus, state: ViewerState): HostViewerStatus {
@@ -295,7 +286,7 @@ function toDetails(state: ViewerState): ViewerDetails {
 
 function toProgressText(status: ViewerStatus, state: ViewerState) {
   if (status === "loadingPage") {
-    return state.pageCount > 0 ? "Loading page..." : "Decoding TIFF page...";
+    return state.pageCount > 0 ? "Loading page..." : "Decoding document page...";
   }
   if (status === "copyingSelection") {
     return "Copying selection...";
@@ -307,6 +298,9 @@ function mainDocumentErrorMessage(error: unknown) {
   if (!isDecoderError(error)) {
     return error instanceof Error ? error.message : String(error);
   }
+  if (error.code === DECODER_ERROR_PAGE_SIZE) {
+    return error.message;
+  }
   return mainDocumentErrorMessages[error.code];
 }
 
@@ -316,6 +310,9 @@ function addPagesErrorMessage(error: unknown) {
   }
   if (error.code === DECODER_ERROR_PAGE_SIZE) {
     return "Some pages did not match the configured page size. The pages that loaded successfully were kept.";
+  }
+  if (error.code === DECODER_ERROR_RASTER_LIMIT) {
+    return "Some PDF pages exceeded configured view raster limits. The pages that loaded successfully were kept.";
   }
   return "Some pages could not be added. The pages that loaded successfully were kept.";
 }

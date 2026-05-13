@@ -1,5 +1,6 @@
+import type { DocType } from "./documentDecoder/types";
 import type { ViewerSessionStore } from "./viewerSessionStore";
-import type { PageSizeConfig } from "./pageSizeValidation";
+import type { ViewerConfig } from "./viewerConfig";
 
 export type ViewMode = "page" | "thumbnails";
 
@@ -92,13 +93,6 @@ export interface ViewerState {
   canCopy: boolean;
 }
 
-export interface ViewerDecoder {
-  decode(file: File, pageIndex: number): Promise<RasterPage>;
-  importPages(files: File[], sink: ViewerImportSink): Promise<void>;
-  thumbnail(file: File, pageIndex: number, maxSize: number): Promise<RasterPage>;
-  close?(): void;
-}
-
 export interface ViewerImportSink {
   pageCount(count: number): Promise<void> | void;
   pageReady(page: RasterPage, importIndex: number): Promise<void> | void;
@@ -106,7 +100,6 @@ export interface ViewerImportSink {
 
 export interface ViewerOptions {
   allowEdit: boolean;
-  decoder: ViewerDecoder;
   sessionStore?: ViewerSessionStore;
   selectionTheme?: PartialSelectionTheme;
   onAddError?: (error: Error) => void;
@@ -118,9 +111,10 @@ export interface ViewerOptions {
 
 export interface ViewerReady {
   addPages(files: File[] | FileList, insertIndex: number): Promise<void>;
-  readPageValidationConfig(): Promise<PageSizeConfig>;
+  decodeDoc(file: File, pageIndex: number): Promise<void>;
+  readViewerConfig(): Promise<ViewerConfig>;
   restoreSession(): Promise<boolean>;
-  savePageValidationConfig(config: PageSizeConfig): Promise<PageSizeConfig>;
+  saveViewerConfig(config: ViewerConfig): Promise<ViewerConfig>;
 }
 
 export interface SelectedGroup {
@@ -181,12 +175,15 @@ export interface ThumbnailPage {
 
 export interface RasterPage {
   sourceName: string;
+  sourceType?: DocType;
   pageIndex: number;
   pageNumber: number;
   pageCount: number;
   width: number;
   height: number;
   pixels: Uint8ClampedArray<ArrayBuffer>;
+  xResolution?: number;
+  yResolution?: number;
 }
 
 export type { ViewerDocumentInput, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore } from "./viewerSessionStore";

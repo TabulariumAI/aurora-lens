@@ -1,4 +1,5 @@
 Aurora Lens
 Copyright 2026 Tabularium AI
 
-Aurora is a proprietary Tabularium AI runtime and is not included in this open-source package.
+The files under src/core/documentDecoder/vendor provide AuroraTiff browser decoding runtime support.
+Confirm distribution rights for those files before publishing this package.

@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { DetailsPanel } from "./DetailsPanel";
-import type { PageSizeConfig, ViewerDetails } from "../lens/types";
+import type { ViewerConfig, ViewerDetails } from "../lens/types";
 
 const details: ViewerDetails = {
   source: "sample.tiff",
@@ -40,14 +40,39 @@ const details: ViewerDetails = {
   },
 };
 
-const validationConfig: PageSizeConfig = {
+const viewerConfig: ViewerConfig = {
   formats: [
     { name: "letter", width: 8.5, height: 11 },
     { name: "legal", width: 8.5, height: 14 },
     { name: "a4", width: 8.27, height: 11.69 },
   ],
   tolerance: 0.02,
+  view: {
+    pdfRasterDpi: 150,
+    maxRasterPixels: 40_000_000,
+    maxRasterWidth: 10_000,
+    maxRasterHeight: 10_000,
+  },
+  export: {
+    pdfRasterDpi: 300,
+    maxRasterPixels: 160_000_000,
+    maxRasterWidth: 20_000,
+    maxRasterHeight: 20_000,
+  },
 };
+
+function defaultViewerConfig(): ViewerConfig {
+  return {
+    formats: viewerConfig.formats.map((format) => ({ ...format })),
+    tolerance: viewerConfig.tolerance,
+    view: { ...viewerConfig.view },
+    export: { ...viewerConfig.export },
+  };
+}
+
+function renderDetails(config = viewerConfig, onViewerConfig: (value: ViewerConfig) => void = () => undefined) {
+  return render(<DetailsPanel allowEdit={true} defaultConfig={defaultViewerConfig()} details={details} error="" pageCount={1} status="ready" viewerConfig={config} onAllowEdit={() => undefined} onViewerConfig={onViewerConfig} />);
+}
 
 describe("DetailsPanel", () => {
   afterEach(() => {
@@ -55,7 +80,7 @@ describe("DetailsPanel", () => {
   });
 
   it("renders selected element counts", () => {
-    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={validationConfig} onAllowEdit={() => undefined} onValidationConfig={() => undefined} />);
+    renderDetails();
 
     const panel = screen.getByLabelText("Page details");
     const selection = within(panel).getByLabelText("Selection");
@@ -69,7 +94,7 @@ describe("DetailsPanel", () => {
   });
 
   it("renders selection theme configuration", () => {
-    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={validationConfig} onAllowEdit={() => undefined} onValidationConfig={() => undefined} />);
+    renderDetails();
 
     const panel = screen.getByLabelText("Page details");
     expect(within(panel).getByRole("heading", { name: "Style" })).toBeInTheDocument();
@@ -92,9 +117,9 @@ describe("DetailsPanel", () => {
 
   it("renders the edit toggle", () => {
     let allowEdit = true;
-    render(<DetailsPanel allowEdit={allowEdit} details={details} error="" pageCount={1} status="ready" validationConfig={validationConfig} onAllowEdit={(value) => {
+    render(<DetailsPanel allowEdit={allowEdit} defaultConfig={defaultViewerConfig()} details={details} error="" pageCount={1} status="ready" viewerConfig={viewerConfig} onAllowEdit={(value) => {
       allowEdit = value;
-    }} onValidationConfig={() => undefined} />);
+    }} onViewerConfig={() => undefined} />);
 
     const toggle = screen.getByLabelText("Edit pages");
     expect(toggle).toBeChecked();
@@ -105,20 +130,23 @@ describe("DetailsPanel", () => {
   });
 
   it("drafts page validation controls before save", () => {
-    let config: PageSizeConfig = validationConfig;
-    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={config} onAllowEdit={() => undefined} onValidationConfig={(value) => {
+    let config: ViewerConfig = viewerConfig;
+    renderDetails(config, (value) => {
       config = value;
-    }} />);
+    });
 
     const panel = screen.getByLabelText("Page details");
-    const validation = within(panel).getByLabelText("Page validation formats");
-    expect(within(panel).getByRole("heading", { name: "Validation" })).toBeInTheDocument();
-    expect(within(panel).getByLabelText("Tolerance")).toHaveValue(0.02);
+    expect(within(panel).getByRole("button", { name: "Validation Settings" })).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: "Validation Settings" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    const validation = within(dialog).getByLabelText("Page validation formats");
+    expect(within(dialog).getByLabelText("Tolerance")).toHaveValue(0.02);
     expect(within(validation).getByText("letter")).toBeInTheDocument();
     expect(within(validation).getByLabelText("letter width")).toHaveValue(8.5);
     expect(within(validation).getByLabelText("letter height")).toHaveValue(11);
-    expect(within(panel).getByRole("button", { name: "Save" })).toBeDisabled();
-    expect(within(panel).getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
 
     fireEvent.change(within(validation).getByLabelText("letter width"), {
       target: {
@@ -126,11 +154,11 @@ describe("DetailsPanel", () => {
       },
     });
 
-    expect(config).toBe(validationConfig);
-    expect(within(panel).getByRole("button", { name: "Save" })).toBeEnabled();
-    expect(within(panel).getByRole("button", { name: "Cancel" })).toBeEnabled();
+    expect(config).toBe(viewerConfig);
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeEnabled();
 
-    fireEvent.click(within(panel).getByRole("button", { name: "Save" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
 
     expect(config).toEqual({
       formats: [
@@ -139,25 +167,106 @@ describe("DetailsPanel", () => {
         { name: "a4", width: 8.27, height: 11.69 },
       ],
       tolerance: 0.02,
+      view: viewerConfig.view,
+      export: viewerConfig.export,
     });
   });
 
-  it("cancels drafted page validation changes", () => {
-    let config: PageSizeConfig = validationConfig;
-    render(<DetailsPanel allowEdit={true} details={details} error="" pageCount={1} status="ready" validationConfig={config} onAllowEdit={() => undefined} onValidationConfig={(value) => {
+  it("drafts view and export raster controls before save", () => {
+    let config: ViewerConfig = viewerConfig;
+    renderDetails(config, (value) => {
       config = value;
-    }} />);
+    });
 
-    fireEvent.change(screen.getByLabelText("letter width"), {
+    const panel = screen.getByLabelText("Page details");
+    expect(within(panel).queryByLabelText("View PDF DPI")).not.toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: "Validation Settings" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    expect(within(dialog).getByLabelText("View PDF DPI")).toHaveValue(150);
+    expect(within(dialog).getByLabelText("View max pixels")).toHaveValue(40_000_000);
+    expect(within(dialog).getByLabelText("View max width")).toHaveValue(10_000);
+    expect(within(dialog).getByLabelText("View max height")).toHaveValue(10_000);
+    expect(within(dialog).getByLabelText("Export PDF DPI")).toHaveValue(300);
+    expect(within(dialog).getByLabelText("Export max pixels")).toHaveValue(160_000_000);
+    expect(within(dialog).getByLabelText("Export max width")).toHaveValue(20_000);
+    expect(within(dialog).getByLabelText("Export max height")).toHaveValue(20_000);
+
+    fireEvent.change(within(dialog).getByLabelText("View PDF DPI"), {
+      target: {
+        value: "125",
+      },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(config).toEqual({
+      ...viewerConfig,
+      view: {
+        ...viewerConfig.view,
+        pdfRasterDpi: 125,
+      },
+    });
+  });
+
+  it("resets drafted viewer config to package defaults before save", () => {
+    let config: ViewerConfig = {
+      formats: [
+        { name: "custom", width: 4, height: 6 },
+      ],
+      tolerance: 0.5,
+      view: {
+        pdfRasterDpi: 75,
+        maxRasterPixels: 20_000_000,
+        maxRasterWidth: 5_000,
+        maxRasterHeight: 5_000,
+      },
+      export: {
+        pdfRasterDpi: 200,
+        maxRasterPixels: 80_000_000,
+        maxRasterWidth: 12_000,
+        maxRasterHeight: 12_000,
+      },
+    };
+    renderDetails(config, (value) => {
+      config = value;
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Validation Settings" }));
+    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    expect(within(dialog).getByLabelText("Tolerance")).toHaveValue(0.5);
+    expect(within(dialog).getByLabelText("View PDF DPI")).toHaveValue(75);
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reset" }));
+
+    expect(config.tolerance).toBe(0.5);
+    expect(within(dialog).getByLabelText("Tolerance")).toHaveValue(0.02);
+    expect(within(dialog).getByLabelText("letter width")).toHaveValue(8.5);
+    expect(within(dialog).getByLabelText("View PDF DPI")).toHaveValue(150);
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeEnabled();
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    expect(config).toEqual(defaultViewerConfig());
+  });
+
+  it("cancels drafted page validation changes", () => {
+    let config: ViewerConfig = viewerConfig;
+    renderDetails(config, (value) => {
+      config = value;
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Validation Settings" }));
+    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    fireEvent.change(within(dialog).getByLabelText("letter width"), {
       target: {
         value: "8.25",
       },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
 
-    expect(config).toBe(validationConfig);
-    expect(screen.getByLabelText("letter width")).toHaveValue(8.5);
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled();
+    expect(config).toBe(viewerConfig);
+    expect(within(dialog).getByLabelText("letter width")).toHaveValue(8.5);
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled();
   });
 });

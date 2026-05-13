@@ -42,20 +42,20 @@ Aurora Lens accepts Tabularium AI metadata as a JSON object with a `pages` array
 
 ## Coordinates
 
-Coordinates are expressed in source-page pixels. Aurora Lens maps them into the current rendered viewport, so metadata should use the same page dimensions returned by the decoder.
+Coordinates are expressed in source-page pixels. Aurora Lens maps them into the current rendered viewport, so metadata should use the same page dimensions returned by document decoding.
 
 ## Lifecycle
 
-Metadata is held on the `AuroraLens` instance, not on the `File` object. Calling `decodeTiff()` changes the displayed raster page but does not clear previously loaded metadata. This allows hosts to load metadata before or after decoding, but it also means hosts must explicitly clear the lens when changing to a document without matching metadata.
+Metadata is held on the `AuroraLens` instance, not on the `File` object. Calling `decodeDoc()` changes the displayed raster page but does not clear previously loaded metadata. This allows hosts to load metadata before or after decoding, but it also means hosts must explicitly clear the lens when changing to a document without matching metadata.
 
 Use one of these flows:
 
 ```ts
 await lens.loadMetadata(metadataForFile);
-await lens.decodeTiff(file, 0);
+await lens.decodeDoc(file, 0);
 ```
 
 ```ts
 lens.clear();
-await lens.decodeTiff(fileWithoutMetadata, 0);
+await lens.decodeDoc(fileWithoutMetadata, 0);
 ```

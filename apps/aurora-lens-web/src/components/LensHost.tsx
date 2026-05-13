@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { ReactViewer } from "@tabularium/aurora-lens/react";
-import type { AuroraLens, ViewerDecoder, ViewerReady } from "@tabularium/aurora-lens";
+import type { AuroraLens, ViewerReady } from "@tabularium/aurora-lens";
 import { selectionTheme } from "../lens/selectionTheme";
 import type { ViewerState, ViewerStatus } from "../lens/types";
 import { AlertDialog } from "./AlertDialog";
@@ -11,7 +11,6 @@ import { ViewerToolbar } from "./ViewerToolbar";
 interface LensHostProps {
   addError: string;
   allowEdit: boolean;
-  decoder: ViewerDecoder;
   fatalError: string;
   lensRef: RefObject<AuroraLens | null>;
   progressText: string;
@@ -28,7 +27,7 @@ interface LensHostProps {
   onViewerErrorOk: () => void;
 }
 
-export function LensHost({ addError, allowEdit, decoder, fatalError, lensRef, progressText, state, status, viewerError, onAddError, onAddErrorOk, onError, onFatalErrorOk, onReady, onStateChange, onStatusChange, onViewerErrorOk }: LensHostProps) {
+export function LensHost({ addError, allowEdit, fatalError, lensRef, progressText, state, status, viewerError, onAddError, onAddErrorOk, onError, onFatalErrorOk, onReady, onStateChange, onStatusChange, onViewerErrorOk }: LensHostProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [copyConfirmed, setCopyConfirmed] = useState(false);
@@ -97,7 +96,6 @@ export function LensHost({ addError, allowEdit, decoder, fatalError, lensRef, pr
           <ReactViewer
             ref={lensRef}
             allowEdit={allowEdit}
-            decoder={decoder}
             selectionTheme={selectionTheme}
             onAddError={onAddError}
             onError={onError}
@@ -105,7 +103,7 @@ export function LensHost({ addError, allowEdit, decoder, fatalError, lensRef, pr
             onStateChange={onStateChange}
             onStatusChange={onStatusChange}
           />
-          {status === "idle" && !viewerError ? <div className="viewer-message viewer-overlay">Choose, drop, or select a sample TIFF file.</div> : null}
+          {status === "idle" && !viewerError ? <div className="viewer-message viewer-overlay">Choose, drop, or select a sample document.</div> : null}
           {isBusy ? (
             <div className="viewer-message viewer-overlay">
               <ProgressBar text={progressText} />

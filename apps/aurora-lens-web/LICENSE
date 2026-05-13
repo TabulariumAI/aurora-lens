@@ -11,5 +11,5 @@ Unless required by applicable law or agreed to in writing, source code distribut
 under the Apache License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 OR CONDITIONS OF ANY KIND, either express or implied.
 
-Files under src/aurora/vendor are third-party or proprietary AuroraTiff runtime artifacts.
-They are not relicensed by this file. See NOTICE for repository-specific notices.
+Decoder runtime artifacts are owned by the aurora-lens package. See package
+NOTICE files for repository-specific notices.

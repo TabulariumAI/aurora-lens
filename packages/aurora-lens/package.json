@@ -1,7 +1,7 @@
 {
   "name": "@tabularium/aurora-lens",
   "version": "0.1.0",
-  "description": "Framework-agnostic document viewer with metadata overlays, selection, search, thumbnails, and pluggable raster decoding.",
+  "description": "Framework-agnostic document viewer with package-owned document decoding, metadata overlays, selection, search, and thumbnails.",
   "type": "module",
   "license": "Apache-2.0",
   "main": "./dist/index.js",
@@ -22,7 +22,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node ./scripts/copy-assets.mjs",
     "prepack": "npm run build",
     "test": "vitest run"
   },

@@ -22,7 +22,7 @@ html,
 body,
 #root {
   min-width: 0;
-  min-height: 100%;
+  height: 100%;
   margin: 0;
 }
 
@@ -64,7 +64,7 @@ button:disabled {
 
 .app-shell {
   display: grid;
-  min-height: 100vh;
+  height: 100vh;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(238, 246, 248, 0)),
@@ -74,8 +74,9 @@ button:disabled {
 .workspace {
   display: grid;
   grid-template-columns: 292px minmax(0, 1fr) 280px;
-  min-height: 100vh;
+  height: 100vh;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -612,6 +613,7 @@ button:disabled {
 }
 
 .details-panel {
+  position: relative;
   display: grid;
   align-content: start;
   gap: 14px;
@@ -739,18 +741,96 @@ button:disabled {
 
 .validation-grid {
   display: grid;
-  grid-template-columns: minmax(70px, 1fr) 64px 64px;
-  gap: 7px 8px;
+  grid-template-columns: minmax(90px, 1fr) 88px 88px;
+  gap: 8px 10px;
   align-items: center;
+  width: min(100%, 320px);
 }
 
-.validation-actions {
+.settings-button {
+  justify-self: start;
+  height: 32px;
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(8, 31, 42, 0.32);
+}
+
+.settings-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  background: var(--surface);
+}
+
+.settings-heading,
+.settings-actions {
   display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+}
+
+.settings-heading {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.settings-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.settings-body {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+}
+
+.settings-section {
+  display: grid;
   gap: 8px;
 }
 
-.validation-actions button {
+.settings-actions {
+  justify-content: end;
+  border-top: 1px solid var(--border);
+}
+
+.settings-actions button {
   height: 32px;
+}
+
+.raster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 160px));
+  gap: 10px 12px;
+  width: min(100%, 332px);
+}
+
+.raster-grid h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .validation-head,
@@ -806,5 +886,10 @@ button:disabled {
   .viewer-footer {
     margin: 0 4px 8px;
     padding: 8px 4px 0;
+  }
+
+  .raster-grid {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
   }
 }

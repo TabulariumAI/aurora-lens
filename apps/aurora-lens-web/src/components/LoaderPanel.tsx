@@ -11,19 +11,19 @@ interface LoaderPanelProps {
 
 export function LoaderPanel({ disabled, fileInputRef, samples, onFiles, onSample }: LoaderPanelProps) {
   return (
-    <aside className="loader-panel" aria-label="TIFF loader">
+    <aside className="loader-panel" aria-label="Document loader">
       <div className="brand-block">
         <img className="brand-logo" src="/brand/tabularium-ai-lens-logo.png" alt="" aria-hidden="true" />
         <h1>Tabularium AI Lens</h1>
       </div>
 
       <label className="field">
-        <span>Load TIFF</span>
+        <span>Load document</span>
         <input
           ref={fileInputRef}
           className="file-input"
           type="file"
-          accept=".tif,.tiff,image/tiff"
+          accept=".tif,.tiff,.pdf,.png,.jpg,.jpeg,image/tiff,application/pdf,image/png,image/jpeg"
           disabled={disabled}
           onChange={(event) => onFiles(event.currentTarget.files || [])}
         />
@@ -76,7 +76,7 @@ function DropTarget({ disabled, onFiles }: DropTargetProps) {
         onFiles(event.dataTransfer.files || []);
       }}
     >
-      Drop one TIFF here
+      Drop one document here
     </div>
   );
 }

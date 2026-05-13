@@ -3,5 +3,5 @@ Copyright 2026 Tabularium AI
 
 This repository uses @tabularium/aurora-lens as its viewer component.
 
-The files under src/aurora/vendor provide AuroraTiff browser decoding runtime support.
-Confirm distribution rights for those files before publishing this repository.
+Document decoding runtime support is provided by @tabularium/aurora-lens.
+Confirm distribution rights for bundled samples before publishing this repository.

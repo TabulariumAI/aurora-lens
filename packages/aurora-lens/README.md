@@ -1,6 +1,6 @@
 # Aurora Lens
 
-Aurora Lens is a framework-agnostic document viewer from Tabularium AI. It renders decoded raster pages, overlays Tabularium AI metadata, supports selection, copy, search, zoom, and thumbnails, and keeps decoding behind an application-owned adapter.
+Aurora Lens is a framework-agnostic document viewer from Tabularium AI. It decodes supported documents, renders normalized raster pages, overlays Tabularium AI metadata, supports selection, copy, search, zoom, and thumbnails, and stores decoded pages for fast navigation.
 
 Aurora, the proprietary Tabularium AI runtime, is not included in this package.
 
@@ -13,60 +13,43 @@ npm install @tabularium/aurora-lens
 ## Usage
 
 ```tsx
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import { ReactViewer } from "@tabularium/aurora-lens/react";
-import type { AuroraLens, ViewerDecoder } from "@tabularium/aurora-lens";
+import type { AuroraLens } from "@tabularium/aurora-lens";
 
-export function Viewer({ decoder }: { decoder: ViewerDecoder }) {
+export function Viewer() {
   const lensRef = useRef<AuroraLens | null>(null);
-  const stableDecoder = useMemo(() => decoder, [decoder]);
 
   return (
     <ReactViewer
       ref={lensRef}
       allowEdit={true}
-      decoder={stableDecoder}
       onError={(error) => console.error(error)}
     />
   );
 }
 ```
 
-## Decoder Contract
+## Document Decoding
 
-Applications own decoding. Provide an `ViewerDecoder` implementation that returns RGBA pixels for a requested page.
-Because the decoder is host-owned, release decoder resources from the host application lifecycle.
+The package owns document detection and decoding through `decodeDoc(file, pageIndex)`. Supported input formats are TIFF/TIF, PDF, PNG, and JPG/JPEG.
 
-```ts
-import type { ViewerDecoder, RasterPage } from "@tabularium/aurora-lens";
+## Viewer Config
 
-export class AppDecoder implements ViewerDecoder {
-  async decode(file: File, pageIndex: number): Promise<RasterPage> {
-    return decodePageInYourApplication(file, pageIndex);
-  }
-
-  async thumbnail(file: File, pageIndex: number, maxSize: number): Promise<RasterPage> {
-    return decodeThumbnailInYourApplication(file, pageIndex, maxSize);
-  }
-
-  close() {
-    releaseApplicationDecoderResources();
-  }
-}
-```
+The package owns viewer configuration through `readViewerConfig()` and `saveViewerConfig(config)`. The config includes accepted page formats, tolerance, view raster settings, and export raster settings. Current viewing uses the `view` raster settings; export settings are stored separately for export workflows.
 
 ## Metadata
 
 Aurora Lens can render Tabularium AI metadata when the host application calls `loadMetadata(metadata)` before or after decoding a page. Metadata is document-scoped and remains loaded on the lens instance until the host calls `clear()` or replaces it with another `loadMetadata()` call.
 
-When switching to a document that does not have matching metadata, call `clear()` before `decodeTiff()` so metadata from the previous document cannot be reused by page index.
+When switching to a document that does not have matching metadata, call `clear()` before `decodeDoc()` so metadata from the previous document cannot be reused by page index.
 
 ```ts
 await lensRef.current?.loadMetadata(metadata);
-await lensRef.current?.decodeTiff(fileWithMetadata, 0);
+await lensRef.current?.decodeDoc(fileWithMetadata, 0);
 
 lensRef.current?.clear();
-await lensRef.current?.decodeTiff(fileWithoutMetadata, 0);
+await lensRef.current?.decodeDoc(fileWithoutMetadata, 0);
 ```
 
 See [docs/metadata-schema.md](docs/metadata-schema.md).
@@ -82,7 +65,7 @@ npm pack --dry-run
 
 ## Public Repository Notes
 
-This package does not include the proprietary Aurora runtime. Host applications provide decoding through the `ViewerDecoder` contract.
+This package includes the document decoding module used by the viewer.
 
 Generated build output, Playwright reports, test results, and local environment files are ignored by Git. Source, tests, documentation, and package metadata are the public repository surface.
 

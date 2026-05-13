@@ -6,7 +6,10 @@ export interface AuroraTiffModule {
   _TiffCreate(pointer: number, size: number): number;
   _TiffDestroy(handle: number): void;
   _TiffGetHeight(handle: number): number;
+  _TiffGetResolutionUnit(handle: number): number;
   _TiffGetWidth(handle: number): number;
+  _TiffGetXResolution(handle: number): number;
+  _TiffGetYResolution(handle: number): number;
   _TiffReadRGBA(handle: number, pointer: number, size: number): number;
   _TiffSetDirectory(handle: number, index: number): number;
 }

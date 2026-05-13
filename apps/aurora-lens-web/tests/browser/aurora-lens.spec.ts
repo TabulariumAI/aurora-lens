@@ -15,12 +15,12 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Tabularium AI Lens" })).toBeVisible();
-  await expect(page.getByLabel("TIFF loader")).toBeVisible();
+  await expect(page.getByLabel("Document loader")).toBeVisible();
   await expect(page.getByLabel("Page details")).toBeVisible();
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
-  await page.getByLabel("Load TIFF").setInputFiles(fixture);
-  await expect(page.getByText(/Decoding TIFF page|Loading page/)).toBeVisible();
+  await page.getByLabel("Load document").setInputFiles(fixture);
+  await expect(page.getByText(/Decoding document page|Loading page/)).toBeVisible();
 
   const details = page.getByLabel("Page details");
   await expect(details.getByText("sample-multipage.tiff")).toBeVisible();
@@ -32,9 +32,18 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await expect(page.getByLabel("Intelligence ready", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Search" })).toBeDisabled();
   await expect.poll(() => page.locator(".viewer-footer").evaluate((element) => getComputedStyle(element).borderTopColor)).toBe("rgb(214, 220, 226)");
+  await expect(page.locator(".viewer-footer")).toBeInViewport();
   await expect
     .poll(() => page.getByRole("button", { name: "All thumbnails" }).evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe("rgb(255, 255, 255)");
+  await page.getByRole("button", { name: "Validation Settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Validation Settings" })).toBeVisible();
+  await expect(page.locator(".viewer-footer")).toBeInViewport();
+  await expect(page.getByLabel("View PDF DPI")).toHaveValue("150");
+  await expect.poll(async () => (await page.getByLabel("Page validation formats").boundingBox())?.width ?? 0).toBeLessThanOrEqual(340);
+  await expect.poll(async () => (await page.getByLabel("View PDF DPI").boundingBox())?.width ?? 0).toBeLessThanOrEqual(240);
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByRole("dialog", { name: "Validation Settings" })).toHaveCount(0);
 
   const pageImage = page.locator('.viewer-body img[alt="sample-multipage.tiff page 1"]').first();
   await expect(pageImage).toBeVisible();
@@ -134,7 +143,7 @@ test("scrolls thumbnail grid when thumbnail cards exceed the visible area", asyn
   await page.goto("/");
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
-  await page.getByLabel("Load TIFF").setInputFiles(fixture);
+  await page.getByLabel("Load document").setInputFiles(fixture);
   await expect(page.getByRole("button", { name: "All thumbnails" })).toBeEnabled();
   await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: /page 2/i })).toBeVisible();
@@ -229,7 +238,7 @@ test("adds TIFF pages from thumbnail add button and stores the inserted pages", 
   await page.goto("/");
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
-  await page.getByLabel("Load TIFF").setInputFiles(fixture);
+  await page.getByLabel("Load document").setInputFiles(fixture);
   const details = page.getByLabel("Page details");
   await expect(details.getByText("1 of 2")).toBeVisible();
   await page.getByRole("button", { name: "All thumbnails" }).click();
@@ -257,31 +266,73 @@ test("adds TIFF pages from thumbnail add button and stores the inserted pages", 
   await expect.poll(() => storedPageIndex(page)).toBe(0);
 });
 
-test("rejects a PDF without clearing the stored TIFF session", async ({ page }) => {
+test("loads a PDF through the package document decoder", async ({ page }) => {
   await page.goto("/");
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
-  await page.getByLabel("Load TIFF").setInputFiles(fixture);
+  await page.getByLabel("Load document").setInputFiles(fixture);
   const details = page.getByLabel("Page details");
   await expect(details.getByText("sample-multipage.tiff")).toBeVisible();
   await expect(details.getByText("1 of 2")).toBeVisible();
-  const pagesBefore = await storedPages(page);
-  const blobCountBefore = await storedBlobCount(page);
-  const pageIndexBefore = await storedPageIndex(page);
 
-  const pdf = path.resolve("public/samples/sample-pdf/document_1.pdf");
-  await page.getByLabel("Load TIFF").setInputFiles(pdf);
+  await page.getByLabel("Load document").setInputFiles({
+    name: "letter.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from(letterPdf()),
+  });
 
   const dialog = page.getByRole("alertdialog", { name: "Document Error" });
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText("Choose a .tif or .tiff file.");
-  await expect.poll(() => dialog.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgba(8, 31, 42, 0.32)");
-  await expect.poll(() => dialog.locator(".alert-dialog").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(255, 255, 255)");
-  await expect.poll(() => storedPages(page)).toEqual(pagesBefore);
-  await expect.poll(() => storedBlobCount(page)).toBe(blobCountBefore);
-  await expect.poll(() => storedPageIndex(page)).toBe(pageIndexBefore);
-  await expect(details.getByText("sample-multipage.tiff")).toBeVisible();
-  await expect(details.getByText("1 of 2")).toBeVisible();
+  await expect(dialog).toHaveCount(0);
+  await expect(details.getByText("letter.pdf")).toBeVisible();
+  await expect.poll(async () => (await storedPages(page)).length).toBeGreaterThan(0);
+  await expect.poll(() => storedBlobCount(page)).toBeGreaterThan(0);
+});
+
+test("loads a PNG through the package document decoder with parsed DPI", async ({ page }) => {
+  await page.goto("/");
+
+  const fixture = path.resolve("tests/fixtures/letter-10dpi.png");
+  await page.getByLabel("Load document").setInputFiles(fixture);
+
+  const details = page.getByLabel("Page details");
+  await expect(details.getByText("letter-10dpi.png")).toBeVisible();
+  await expect(details.getByText("85 x 110")).toBeVisible();
+  await expect.poll(async () => {
+    const [record] = await storedPageBlobs(page);
+    return record ? closeTo(record.xResolution, 10) && closeTo(record.yResolution, 10) : false;
+  }).toBe(true);
+});
+
+test("loads a JPG through the package document decoder with parsed DPI", async ({ page }) => {
+  await page.goto("/");
+
+  const fixture = path.resolve("tests/fixtures/letter-10dpi.jpg");
+  await page.getByLabel("Load document").setInputFiles(fixture);
+
+  const details = page.getByLabel("Page details");
+  await expect(details.getByText("letter-10dpi.jpg")).toBeVisible();
+  await expect(details.getByText("85 x 110")).toBeVisible();
+  await expect.poll(async () => {
+    const [record] = await storedPageBlobs(page);
+    return record ? closeTo(record.xResolution, 10) && closeTo(record.yResolution, 10) : false;
+  }).toBe(true);
+});
+
+test("caps an oversized PDF to configured view raster limits", async ({ page }) => {
+  await page.goto("/");
+
+  const pdf = path.resolve("public/samples/sample-pdf/document_1.pdf");
+  await page.getByLabel("Load document").setInputFiles(pdf);
+
+  const dialog = page.getByRole("alertdialog", { name: "Document Error" });
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByLabel("Page details").getByText("document_1.pdf")).toBeVisible();
+  await expect.poll(async () => (await storedPages(page)).length).toBeGreaterThan(0);
+  await expect.poll(() => storedBlobCount(page)).toBeGreaterThan(0);
+  await expect.poll(async () => {
+    const [record] = await storedPageBlobs(page);
+    return record ? record.width <= 10_000 && record.height <= 10_000 && record.width * record.height <= 40_000_000 : false;
+  }).toBe(true);
 });
 
 test("clears sample metadata when a user-selected TIFF is loaded", async ({ page }) => {
@@ -313,7 +364,7 @@ test("clears sample metadata when a user-selected TIFF is loaded", async ({ page
   await expect(page.getByLabel("Intelligence ready for page 1")).toBeVisible();
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
-  await page.getByLabel("Load TIFF").setInputFiles(fixture);
+  await page.getByLabel("Load document").setInputFiles(fixture);
   await expect(page.locator('.viewer-body img[alt="sample-multipage.tiff page 1"]').first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Search" })).toBeDisabled();
 
@@ -345,9 +396,10 @@ test("restores a no-intelligence TIFF source after refresh", async ({ page }) =>
   await page.goto("/");
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
-  await page.getByLabel("Load TIFF").setInputFiles(fixture);
+  await page.getByLabel("Load document").setInputFiles(fixture);
   const details = page.getByLabel("Page details");
   await expect(details.getByText("1 of 2")).toBeVisible();
+  await expect.poll(() => storedBlobCount(page), { timeout: 45000 }).toBeGreaterThanOrEqual(2);
   await page.getByRole("button", { name: "Next page" }).click();
   await expect(details.getByText("2 of 2")).toBeVisible();
   await expect.poll(() => storedPageIndex(page)).toBe(1);
@@ -368,7 +420,7 @@ test("ignores corrupt persisted viewer sessions", async ({ page }) => {
   await expect(page.getByText("Could not restore the previous viewer session.")).toBeVisible();
   const details = page.getByLabel("Page details");
   await expect(details.getByText("None").first()).toBeVisible();
-  await expect(page.getByText("Choose, drop, or select a sample TIFF file.")).toBeVisible();
+  await expect(page.getByText("Choose, drop, or select a sample document.")).toBeVisible();
 });
 
 function canvasPoint(
@@ -490,6 +542,38 @@ async function storedBlobCount(page: Page) {
   }, viewerSessionContext());
 }
 
+async function storedPageBlobs(page: Page) {
+  return page.evaluate(async ({ blobStoreName, databaseName, databaseVersion }) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(databaseName, databaseVersion);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<Array<{ height: number; width: number; xResolution: number; yResolution: number }>>((resolve, reject) => {
+        const transaction = database.transaction(blobStoreName, "readonly");
+        const blobsRequest = transaction.objectStore(blobStoreName).getAll();
+        transaction.oncomplete = () => {
+          const blobs = blobsRequest.result as Array<{ height?: unknown; width?: unknown; xResolution?: unknown; yResolution?: unknown }>;
+          resolve(blobs.map((record) => ({
+            height: Number(record.height),
+            width: Number(record.width),
+            xResolution: Number(record.xResolution),
+            yResolution: Number(record.yResolution),
+          })));
+        };
+        transaction.onerror = () => reject(transaction.error);
+      });
+    } finally {
+      database.close();
+    }
+  }, viewerSessionContext());
+}
+
+function closeTo(value: number, expected: number) {
+  return Math.abs(value - expected) < 0.1;
+}
+
 async function dragThumbnail(page: Page, sourcePageIndex: number, targetPageIndex: number) {
   await page.evaluate(({ sourcePageIndex, targetPageIndex }) => {
     const source = document.querySelector(`[data-page-index="${sourcePageIndex}"] [data-thumbnail-drag-handle="true"]`);
@@ -555,4 +639,26 @@ function viewerSessionContext() {
     pageStoreName: VIEWER_PAGE_STORE_NAME,
     sessionId: ACTIVE_VIEWER_SESSION_ID,
   };
+}
+
+function letterPdf() {
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    "<< /Length 42 >>\nstream\nBT /F1 24 Tf 72 720 Td (Aurora PDF) Tj ET\nendstream",
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((object, index) => {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+  });
+  const xref = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
+  pdf += offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("");
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return pdf;
 }

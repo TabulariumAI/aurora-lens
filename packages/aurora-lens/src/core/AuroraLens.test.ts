@@ -1,113 +1,142 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuroraLens } from "./AuroraLens";
 import { ACTIVE_VIEWER_SESSION_ID, insertPageRecords } from "./viewerSessionStore";
-import { DECODER_ERROR_UNKNOWN, DecoderError } from "./DecoderError";
-import type { ViewerDecoder, ViewerDocumentInput, ViewerImportSink, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore, ViewerState, ViewerStatus, RasterPage } from "./types";
-import type { PageSizeConfig } from "./pageSizeValidation";
+import { DECODER_ERROR_UNKNOWN } from "./DecoderError";
+import { defaultViewerConfig, type ViewerConfig } from "./viewerConfig";
+import type { ViewerDocumentInput, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore, ViewerState, ViewerStatus, RasterPage } from "./types";
 
-let mockPageCount = 2;
-let decoderMessages: Array<{ kind: "page" | "thumbnail"; pageIndex: number }> = [];
+const decoderMock = vi.hoisted(() => {
+  function page(sourceName: string, pageIndex: number, width: number, height: number, pageCount: number) {
+    return {
+      sourceName,
+      sourceType: "tiff",
+      pageIndex,
+      pageNumber: pageIndex + 1,
+      pageCount,
+      width,
+      height,
+      pixels: new Uint8ClampedArray(width * height * 4),
+      xResolution: width / 8.5,
+      yResolution: height / 11,
+    };
+  }
+
+  function decoderError(message: string) {
+    const error = new Error(message) as Error & { code: string };
+    error.name = "DecoderError";
+    error.code = "unknown";
+    return error;
+  }
+
+  const state = {
+    pageCount: 2,
+    messages: [] as Array<{ kind: "page"; pageIndex: number }>,
+    decodeCount: 0,
+    failDecode: false,
+    partialImport: false,
+    gatePage: null as Promise<void> | null,
+    resolvePage: (() => undefined) as () => void,
+    importGate: false,
+    importSink: null as { pageReady(page: ReturnType<typeof page>, importIndex: number): Promise<void> | void } | null,
+    resolveImport: (() => undefined) as () => void,
+    lastRaster: null as ViewerConfig["view"] | null,
+    reset() {
+      this.pageCount = 2;
+      this.messages = [];
+      this.decodeCount = 0;
+      this.failDecode = false;
+      this.partialImport = false;
+      this.gatePage = null;
+      this.resolvePage = () => undefined;
+      this.importGate = false;
+      this.importSink = null;
+      this.resolveImport = () => undefined;
+      this.lastRaster = null;
+    },
+    startPageGate() {
+      this.gatePage = new Promise<void>((resolve) => {
+        this.resolvePage = resolve;
+      });
+    },
+    finishPageGate() {
+      this.resolvePage();
+    },
+    startImportGate() {
+      this.importGate = true;
+      this.importSink = null;
+    },
+    async finishImportGate() {
+      if (!this.importSink) {
+        throw new Error("Import did not start.");
+      }
+      await this.importSink.pageReady(page("insert.tiff", 0, 85, 110, 2), 0);
+      await this.importSink.pageReady(page("insert.tiff", 1, 85, 110, 2), 1);
+      this.importGate = false;
+      this.resolveImport();
+    },
+  };
+
+  return {
+    state,
+    DocumentDecoder: class DocumentDecoder {
+      async decodeDoc(file: File, sink: { pageCount(count: number): Promise<void> | void; pageReady(page: ReturnType<typeof page>, importIndex: number): Promise<void> | void }, raster: ViewerConfig["view"]) {
+        state.decodeCount += 1;
+        state.lastRaster = raster;
+        if (state.failDecode) {
+          throw decoderError("Decode failed.");
+        }
+        const count = file.name.startsWith("insert") ? 1 : state.pageCount;
+        await sink.pageCount(count);
+        for (let pageIndex = 0; pageIndex < count; pageIndex += 1) {
+          state.messages.push({ kind: "page", pageIndex });
+          if (pageIndex === 1 && state.gatePage) {
+            await state.gatePage;
+          }
+          const width = file.name.startsWith("insert") ? 85 : 100 + pageIndex;
+          const height = file.name.startsWith("insert") ? 110 : 200 + pageIndex;
+          await sink.pageReady(page(file.name, pageIndex, width, height, count), pageIndex);
+        }
+      }
+
+      async decodeDocs(files: File[], sink: { pageCount(count: number): Promise<void> | void; pageReady(page: ReturnType<typeof page>, importIndex: number): Promise<void> | void }, raster: ViewerConfig["view"]) {
+        state.lastRaster = raster;
+        if (state.partialImport) {
+          await sink.pageCount(3);
+          await sink.pageReady(page("insert.tiff", 0, 85, 110, 3), 0);
+          throw decoderError("Import failed.");
+        }
+        if (state.importGate) {
+          await sink.pageCount(2);
+          state.importSink = sink;
+          return new Promise<void>((resolve) => {
+            state.resolveImport = resolve;
+          });
+        }
+        const pages = files.flatMap((file) => [
+          page(file.name, 0, 85, 110, 2),
+          page(file.name, 1, 85, 110, 2),
+        ]);
+        await sink.pageCount(pages.length);
+        for (let index = 0; index < pages.length; index += 1) {
+          await sink.pageReady(pages[index], index);
+        }
+      }
+
+      close() {}
+    },
+  };
+});
+
+vi.mock("./documentDecoder/DocumentDecoder", () => ({
+  DocumentDecoder: decoderMock.DocumentDecoder,
+}));
+
 let frameId = 0;
 let frames = new Map<number, FrameRequestCallback>();
 
-class DecoderMock implements ViewerDecoder {
-  async decode(file: File, pageIndex: number) {
-    decoderMessages.push({ kind: "page", pageIndex });
-    const pageCount = file.name.startsWith("insert") ? 1 : mockPageCount;
-    const width = file.name.startsWith("insert") ? 85 : 100 + pageIndex;
-    const height = file.name.startsWith("insert") ? 110 : 200 + pageIndex;
-    return rasterPage(file.name, pageIndex, width, height, pageCount);
-  }
-
-  async importPages(files: File[], sink: ViewerImportSink) {
-    const pages = files.flatMap((file) => [
-      rasterPage(file.name, 0, 85, 110, 2),
-      rasterPage(file.name, 1, 85, 110, 2),
-    ]);
-    await sink.pageCount(pages.length);
-    for (let index = 0; index < pages.length; index += 1) {
-      await sink.pageReady(pages[index], index);
-    }
-  }
-
-  async thumbnail(file: File, pageIndex: number) {
-    decoderMessages.push({ kind: "thumbnail", pageIndex });
-    return rasterPage(file.name, pageIndex, 32, 48);
-  }
-}
-
-class GateDecoder implements ViewerDecoder {
-  private readonly nextPage: Promise<RasterPage>;
-  private resolvePage: (page: RasterPage) => void = () => undefined;
-
-  constructor() {
-    this.nextPage = new Promise((resolve) => {
-      this.resolvePage = resolve;
-    });
-  }
-
-  async decode(file: File, pageIndex: number) {
-    decoderMessages.push({ kind: "page", pageIndex });
-    if (pageIndex === 1) {
-      return this.nextPage;
-    }
-    return rasterPage(file.name, pageIndex, 100 + pageIndex, 200 + pageIndex);
-  }
-
-  async thumbnail(file: File, pageIndex: number) {
-    decoderMessages.push({ kind: "thumbnail", pageIndex });
-    return rasterPage(file.name, pageIndex, 32, 48);
-  }
-
-  async importPages(files: File[], sink: ViewerImportSink) {
-    await new DecoderMock().importPages(files, sink);
-  }
-
-  finish(fileName: string) {
-    this.resolvePage(rasterPage(fileName, 1, 101, 201));
-  }
-}
-
-class ImportGateDecoder extends DecoderMock {
-  private sink: ViewerImportSink | null = null;
-  private resolveImport: () => void = () => undefined;
-
-  async importPages(_files: File[], sink: ViewerImportSink) {
-    this.sink = sink;
-    await sink.pageCount(2);
-    return new Promise<void>((resolve) => {
-      this.resolveImport = resolve;
-    });
-  }
-
-  async finish() {
-    if (!this.sink) {
-      throw new Error("Import did not start.");
-    }
-    await this.sink.pageReady(rasterPage("insert.tiff", 0, 85, 110, 2), 0);
-    await this.sink.pageReady(rasterPage("insert.tiff", 1, 85, 110, 2), 1);
-    this.resolveImport();
-  }
-}
-
-class FailingDecodeDecoder extends DecoderMock {
-  async decode() {
-    throw new DecoderError(DECODER_ERROR_UNKNOWN, "Decode failed.");
-  }
-}
-
-class PartialImportDecoder extends DecoderMock {
-  async importPages(_files: File[], sink: ViewerImportSink) {
-    await sink.pageCount(3);
-    await sink.pageReady(rasterPage("insert.tiff", 0, 85, 110, 3), 0);
-    throw new DecoderError(DECODER_ERROR_UNKNOWN, "Import failed.");
-  }
-}
-
 describe("AuroraLens", () => {
   beforeEach(() => {
-    mockPageCount = 2;
-    decoderMessages = [];
+    decoderMock.state.reset();
     frameId = 0;
     frames = new Map();
     let pageId = 0;
@@ -130,6 +159,11 @@ describe("AuroraLens", () => {
     vi.stubGlobal("cancelAnimationFrame", (id: number) => {
       frames.delete(id);
     });
+    vi.stubGlobal("createImageBitmap", vi.fn((blob: Blob) => Promise.resolve({
+      width: (blob as Blob & { mockWidth?: number }).mockWidth ?? 85,
+      height: (blob as Blob & { mockHeight?: number }).mockHeight ?? 110,
+      close: vi.fn(),
+    })));
     Object.defineProperty(URL, "createObjectURL", {
       configurable: true,
       value: vi.fn(() => "blob:page"),
@@ -162,7 +196,12 @@ describe("AuroraLens", () => {
     });
     Object.defineProperty(HTMLCanvasElement.prototype, "toBlob", {
       configurable: true,
-      value: vi.fn((callback: BlobCallback) => callback(new Blob(["png"], { type: "image/png" }))),
+      value: vi.fn(function toBlob(this: HTMLCanvasElement, callback: BlobCallback) {
+        const blob = new Blob(["png"], { type: "image/png" });
+        Object.defineProperty(blob, "mockWidth", { value: this.width });
+        Object.defineProperty(blob, "mockHeight", { value: this.height });
+        callback(blob);
+      }),
     });
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
@@ -181,13 +220,12 @@ describe("AuroraLens", () => {
     const statuses: ViewerStatus[] = [];
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       onStateChange: (state) => states.push(state),
       onStatusChange: (status) => statuses.push(status),
     });
 
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
 
     expect(statuses).toContain("loadingPage");
     expect(statuses.at(-1)).toBe("ready");
@@ -208,13 +246,12 @@ describe("AuroraLens", () => {
     const store = new MemorySessionStore();
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
     });
     const file = new File(["raster"], "stored.raster", { type: "image/tiff" });
 
     lens.loadMetadata(metadataValue);
-    await lens.decodeTiff(file, 0);
+    await lens.decodeDoc(file, 0);
     await flush();
 
     expect(store.session?.document).toMatchObject({
@@ -235,24 +272,23 @@ describe("AuroraLens", () => {
   it("shows the first page before remaining page storage completes", async () => {
     const metadataValue = metadata();
     const statuses: ViewerStatus[] = [];
-    const decoder = new GateDecoder();
+    decoderMock.state.startPageGate();
     const store = new MemorySessionStore();
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder,
       sessionStore: store,
       onStatusChange: (status) => statuses.push(status),
     });
     const file = new File(["raster"], "stored.raster", { type: "image/tiff" });
 
     lens.loadMetadata(metadataValue);
-    await lens.decodeTiff(file, 0);
+    await lens.decodeDoc(file, 0);
 
     expect(statuses.at(-1)).toBe("ready");
     expect(store.blobs.map((blob) => blob.pageId)).toEqual(["page-1"]);
     expect(store.metadata.map((page) => page.pageId)).toEqual(["page-1"]);
 
-    decoder.finish(file.name);
+    decoderMock.state.finishPageGate();
     await flush();
 
     expect(store.blobs.map((blob) => blob.pageId)).toEqual(["page-1", "page-2"]);
@@ -265,14 +301,13 @@ describe("AuroraLens", () => {
     const store = new FailingSaveStore();
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
       onError: (error) => errors.push(error),
       onStatusChange: (status) => statuses.push(status),
     });
 
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await flush();
 
     expect(store.deleted).toBe(true);
@@ -285,18 +320,18 @@ describe("AuroraLens", () => {
     const errors: Error[] = [];
     const store = new MemorySessionStore(sessionRecord());
     store.blobs = [
-      { pageId: "page-1", blob: new Blob(["one"]), updatedAt: 1 },
-      { pageId: "page-2", blob: new Blob(["two"]), updatedAt: 1 },
+      pageBlob("page-1"),
+      pageBlob("page-2"),
     ];
+    decoderMock.state.failDecode = true;
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new FailingDecodeDecoder(),
       sessionStore: store,
       onError: (error) => errors.push(error),
     });
-    const error = await lens.decodeTiff(new File(["bad"], "bad.tiff", { type: "image/tiff" }), 0).catch((reason: unknown) => reason);
+    const error = await lens.decodeDoc(new File(["bad"], "bad.tiff", { type: "image/tiff" }), 0).catch((reason: unknown) => reason);
 
-    expect(error).toBeInstanceOf(DecoderError);
+    expect(error).toMatchObject({ code: DECODER_ERROR_UNKNOWN, message: "Decode failed." });
     expect(store.session).toBeNull();
     expect(store.blobs).toEqual([]);
     expect(store.metadata).toEqual([]);
@@ -307,56 +342,119 @@ describe("AuroraLens", () => {
     const store = new MemorySessionStore();
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
     });
 
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await flush();
     await lens.nextPage();
 
     expect(store.session?.document.currentPageId).toBe("page-2");
   });
 
-  it("reads default validation config without package-owned storage", async () => {
+  it("reads default viewer config without package-owned storage", async () => {
     const lens = new AuroraLens(document.createElement("div"), {
-      allowEdit: true,
-      decoder: new DecoderMock(),
-    });
+      allowEdit: true });
 
-    await expect(lens.readPageValidationConfig()).resolves.toEqual({
-      formats: [
-        { name: "letter", width: 8.5, height: 11 },
-        { name: "legal", width: 8.5, height: 14 },
-        { name: "a4", width: 8.27, height: 11.69 },
-      ],
-      tolerance: 0.02,
-    });
+    await expect(lens.readViewerConfig()).resolves.toEqual(defaultViewerConfig());
   });
 
-  it("updates package-owned validation config storage", async () => {
+  it("updates package-owned viewer config storage", async () => {
     const store = new MemorySessionStore();
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
     });
-    const config = {
+    const config: ViewerConfig = {
       formats: [
         { name: "letter", width: 8.5, height: 11 },
       ],
       tolerance: 0.01,
+      view: {
+        pdfRasterDpi: 125,
+        maxRasterPixels: 30_000_000,
+        maxRasterWidth: 9_000,
+        maxRasterHeight: 9_000,
+      },
+      export: {
+        pdfRasterDpi: 300,
+        maxRasterPixels: 160_000_000,
+        maxRasterWidth: 20_000,
+        maxRasterHeight: 20_000,
+      },
     };
 
-    await expect(lens.readPageValidationConfig()).resolves.toEqual({
+    await expect(lens.readViewerConfig()).resolves.toEqual(defaultViewerConfig());
+    await expect(lens.saveViewerConfig(config)).resolves.toEqual(config);
+    await expect(lens.readViewerConfig()).resolves.toEqual(config);
+  });
+
+  it("passes view raster config to package decoder", async () => {
+    const store = new MemorySessionStore();
+    store.viewerConfig = {
       formats: [
         { name: "letter", width: 8.5, height: 11 },
-        { name: "legal", width: 8.5, height: 14 },
-        { name: "a4", width: 8.27, height: 11.69 },
       ],
-      tolerance: 0.02,
+      tolerance: 0.01,
+      view: {
+        pdfRasterDpi: 125,
+        maxRasterPixels: 30_000_000,
+        maxRasterWidth: 9_000,
+        maxRasterHeight: 9_000,
+      },
+      export: {
+        pdfRasterDpi: 300,
+        maxRasterPixels: 160_000_000,
+        maxRasterWidth: 20_000,
+        maxRasterHeight: 20_000,
+      },
+    };
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: store,
     });
-    await expect(lens.savePageValidationConfig(config)).resolves.toEqual(config);
-    await expect(lens.readPageValidationConfig()).resolves.toEqual(config);
+
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+
+    expect(decoderMock.state.lastRaster).toEqual(store.viewerConfig.view);
+  });
+
+  it("re-decodes the open document after saving viewer config", async () => {
+    const store = new MemorySessionStore();
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: store,
+    });
+    const config: ViewerConfig = {
+      formats: [
+        { name: "letter", width: 8.5, height: 11 },
+      ],
+      tolerance: 0.01,
+      view: {
+        pdfRasterDpi: 75,
+        maxRasterPixels: 20_000_000,
+        maxRasterWidth: 5_000,
+        maxRasterHeight: 5_000,
+      },
+      export: {
+        pdfRasterDpi: 300,
+        maxRasterPixels: 160_000_000,
+        maxRasterWidth: 20_000,
+        maxRasterHeight: 20_000,
+      },
+    };
+
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await flush();
+    await lens.nextPage();
+    await flush();
+    expect(decoderMock.state.decodeCount).toBe(1);
+
+    await expect(lens.saveViewerConfig(config)).resolves.toEqual(config);
+
+    expect(decoderMock.state.decodeCount).toBe(2);
+    expect(decoderMock.state.lastRaster).toEqual(config.view);
+    expect(store.session?.currentPage.sourcePageIndex).toBe(1);
   });
 
   it("updates package-owned page sequence when thumbnails are reordered", async () => {
@@ -364,11 +462,10 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
     });
 
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await lens.showThumbnails();
     drag(handle(container, 1), card(container, 0));
     await flush();
@@ -387,11 +484,10 @@ describe("AuroraLens", () => {
     const store = new MemorySessionStore();
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
     });
 
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await flush();
     await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1);
 
@@ -413,19 +509,19 @@ describe("AuroraLens", () => {
     const errors: Error[] = [];
     const store = new MemorySessionStore();
     const container = document.createElement("div");
+    decoderMock.state.partialImport = true;
     const lens = new AuroraLens(container, {
       allowEdit: true,
-      decoder: new PartialImportDecoder(),
       sessionStore: store,
       onAddError: (error) => errors.push(error),
     });
 
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await flush();
     await lens.showThumbnails();
     const error = await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1).catch((reason: unknown) => reason);
 
-    expect(error).toBeInstanceOf(DecoderError);
+    expect(error).toMatchObject({ code: DECODER_ERROR_UNKNOWN, message: "Import failed." });
     expect(errors).toEqual([error]);
     expect(store.session?.pages.map((page) => ({
       pageId: page.pageId,
@@ -446,12 +542,11 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
     });
 
     lens.loadMetadata(firstPageMetadata());
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await lens.showThumbnails();
 
     expect(intelligenceLabels(container)).toEqual(["Intelligence ready for page 1"]);
@@ -468,11 +563,10 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
     });
 
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await lens.showThumbnails();
     runFrames();
     await flush();
@@ -490,25 +584,24 @@ describe("AuroraLens", () => {
   });
 
   it("navigates through reordered package-owned page sequence", async () => {
-    mockPageCount = 3;
+    decoderMock.state.pageCount = 3;
     const states: ViewerState[] = [];
     const store = new MemorySessionStore();
     const container = document.createElement("div");
     const lens = new AuroraLens(container, {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
       onStateChange: (state) => states.push(state),
     });
 
-    await lens.decodeTiff(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await lens.showThumbnails();
     drag(handle(container, 1), card(container, 0));
     await flush();
     await lens.goToPage(0);
     await lens.nextPage();
 
-    expect(decoderMessages.filter((message) => message.kind === "page").map((message) => message.pageIndex)).toEqual([0, 1, 2, 1, 0]);
+    expect(decoderMock.state.messages.map((message) => message.pageIndex)).toEqual([0, 1, 2]);
     expect(states.at(-1)).toMatchObject({
       pageIndex: 1,
       pageWidth: 100,
@@ -538,9 +631,12 @@ describe("AuroraLens", () => {
       { pageId: "page-1", metadata: metadataValue.pages[0], updatedAt: 1 },
       { pageId: "page-2", metadata: metadataValue.pages[1], updatedAt: 1 },
     ];
+    store.blobs = [
+      pageBlob("page-1"),
+      pageBlob("page-2"),
+    ];
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
       onStateChange: (state) => states.push(state),
     });
@@ -566,7 +662,6 @@ describe("AuroraLens", () => {
     const store = new FailingReadSessionStore();
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       sessionStore: store,
       onError: (error) => errors.push(error),
     });
@@ -578,9 +673,9 @@ describe("AuroraLens", () => {
   });
 
   it("copies selected tokens in grouped JSON shape", async () => {
-    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
 
     lens.search("Alpha");
     const result = await lens.copySelection();
@@ -616,11 +711,11 @@ describe("AuroraLens", () => {
     const states: ViewerState[] = [];
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await flush();
 
     lens.search("Alpha");
     expect(states.at(-1)?.selectionCounts.tokens).toBe(1);
@@ -642,11 +737,11 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, {
       allowEdit: true,
-      decoder: new DecoderMock(),
       onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await flush();
     await lens.showThumbnails();
 
     const pageTwo = Array.from(container.querySelectorAll("button[data-page-select='true']")).find((button) => button.getAttribute("aria-label") === "Page 2");
@@ -659,28 +754,18 @@ describe("AuroraLens", () => {
     });
   });
 
-  it("shows thumbnail placeholders before decoding the bounded range", async () => {
-    mockPageCount = 30;
+  it("shows stored thumbnails from decoded document pages", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await flush();
 
     await lens.showThumbnails();
 
-    const placeholders = container.querySelectorAll("[aria-label$='thumbnail loading']");
-    expect(container.querySelectorAll("button[data-page-select='true']")).toHaveLength(30);
-    expect(placeholders).toHaveLength(30);
-    expect(placeholders[0].getAttribute("style")).toContain("aspect-ratio");
-    expect(placeholders[0].querySelectorAll("span[aria-hidden='true']")).toHaveLength(1);
-    expect((placeholders[0].querySelector("span[aria-hidden='true']") as HTMLElement).style.animation).toContain("aurora-lens-thumbnail-sheen");
-    expect(decoderMessages.filter((message) => message.kind === "thumbnail")).toHaveLength(0);
-
-    runFrames();
-
-    const thumbnails = decoderMessages.filter((message) => message.kind === "thumbnail");
-    expect(thumbnails.length).toBeGreaterThan(0);
-    expect(thumbnails.length).toBeLessThan(30);
+    expect(container.querySelectorAll("button[data-page-select='true']")).toHaveLength(2);
+    expect(container.querySelectorAll("[data-thumbnail-media] img")).toHaveLength(2);
+    expect(decoderMock.state.messages.map((message) => message.pageIndex)).toEqual([0, 1]);
     lens.close();
   });
 
@@ -688,9 +773,9 @@ describe("AuroraLens", () => {
     const store = new MemorySessionStore();
     const container = document.createElement("div");
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock(), sessionStore: store });
+    const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     action(container, 1, "Add before").click();
@@ -698,17 +783,17 @@ describe("AuroraLens", () => {
     await flush();
 
     expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4"]);
-    expect(decoderMessages.filter((message) => message.kind === "page").map((message) => message.pageIndex)).toEqual([0, 1]);
+    expect(decoderMock.state.messages.filter((message) => message.kind === "page").map((message) => message.pageIndex)).toEqual([0, 1]);
     expect(liveText(container)).toBe("Add page complete");
   });
 
   it("shows empty thumbnail cards before imported pages are ready", async () => {
     const store = new MemorySessionStore();
-    const decoder = new ImportGateDecoder();
+    decoderMock.state.startImportGate();
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder, sessionStore: store });
+    const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     action(container, 0, "Add after").click();
@@ -716,9 +801,9 @@ describe("AuroraLens", () => {
     await flush();
 
     expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4"]);
-    expect(container.querySelectorAll("[aria-label$='thumbnail loading']")).toHaveLength(4);
+    expect(container.querySelectorAll("[aria-label$='thumbnail loading']")).toHaveLength(2);
 
-    await decoder.finish();
+    await decoderMock.state.finishImportGate();
     await flush();
 
     expect(Array.from(container.querySelectorAll("[data-thumbnail-media] img")).map((image) => image.getAttribute("alt"))).toContain("insert.tiff page 2");
@@ -727,9 +812,9 @@ describe("AuroraLens", () => {
 
   it("scopes thumbnail control visibility to card hover and focus", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     const page = card(container, 1);
@@ -754,9 +839,9 @@ describe("AuroraLens", () => {
 
   it("places thumbnail remove and drag controls in their card zones", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     const remove = action(container, 0, "Remove");
@@ -793,12 +878,11 @@ describe("AuroraLens", () => {
     const states: ViewerState[] = [];
     const container = document.createElement("div");
     const lens = new AuroraLens(container, {
-      allowEdit: false,
-      decoder: new DecoderMock(),
-      onStateChange: (state) => states.push(state),
+      allowEdit: false,      onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await flush();
     await lens.showThumbnails();
 
     expect(container.querySelector("[data-thumbnail-action]")).toBeNull();
@@ -821,9 +905,9 @@ describe("AuroraLens", () => {
 
   it("toggles thumbnail edit controls without replacing thumbnail images", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
     runFrames();
     await flush();
@@ -850,9 +934,9 @@ describe("AuroraLens", () => {
     const store = new MemorySessionStore();
     const container = document.createElement("div");
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock(), sessionStore: store });
+    const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     action(container, 0, "Add after").click();
@@ -864,16 +948,17 @@ describe("AuroraLens", () => {
 
   it("removes a thumbnail visually", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
-    action(container, 0, "Remove").click();
+    const confirm = action(container, 0, "Remove");
+    confirm.click();
     await flush();
 
     expect(cardLabels(container)).toEqual(["Page 1", "Page 2"]);
-    const confirm = action(container, 0, "Confirm remove");
+    expect(confirm.getAttribute("aria-label")).toBe("Confirm remove");
     expect(confirm.style.backgroundColor).toBe("rgb(180, 35, 24)");
     expect(confirm.style.width).toBe("auto");
     expect(confirm.style.minWidth).toBe("7rem");
@@ -893,9 +978,9 @@ describe("AuroraLens", () => {
   it("disarms thumbnail remove confirmation after timeout", async () => {
     vi.useFakeTimers();
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     action(container, 0, "Remove").click();
@@ -908,9 +993,9 @@ describe("AuroraLens", () => {
 
   it("reorders thumbnails visually", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     drag(handle(container, 0), card(container, 1));
@@ -922,9 +1007,9 @@ describe("AuroraLens", () => {
 
   it("uses grab and grabbing cursor states while dragging thumbnails", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     const source = card(container, 0);
@@ -956,9 +1041,9 @@ describe("AuroraLens", () => {
 
   it("uses current card identity for drop targets after thumbnail reorder", async () => {
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     drag(handle(container, 1), card(container, 0));
@@ -974,11 +1059,11 @@ describe("AuroraLens", () => {
   });
 
   it("auto-scrolls thumbnail grid upward during thumbnail drag", async () => {
-    mockPageCount = 20;
+    decoderMock.state.pageCount = 20;
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
     const root = thumbnailRoot(container);
     Object.defineProperty(root, "getBoundingClientRect", {
@@ -998,11 +1083,11 @@ describe("AuroraLens", () => {
   });
 
   it("auto-scrolls thumbnail grid downward during thumbnail drag", async () => {
-    mockPageCount = 20;
+    decoderMock.state.pageCount = 20;
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock() });
+    const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
     const root = thumbnailRoot(container);
     Object.defineProperty(root, "getBoundingClientRect", {
@@ -1020,9 +1105,9 @@ describe("AuroraLens", () => {
     const store = new MemorySessionStore();
     const container = document.createElement("div");
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
-    const lens = new AuroraLens(container, { allowEdit: true, decoder: new DecoderMock(), sessionStore: store });
+    const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
 
     dropFile(container, file);
@@ -1036,11 +1121,11 @@ describe("AuroraLens", () => {
     const states: ViewerState[] = [];
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
-      decoder: new DecoderMock(),
       onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeTiff(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await flush();
 
     await lens.goToPage(1);
 
@@ -1053,15 +1138,33 @@ describe("AuroraLens", () => {
   });
 });
 
-function rasterPage(sourceName: string, pageIndex: number, width: number, height: number, pageCount = mockPageCount): RasterPage {
+function rasterPage(sourceName: string, pageIndex: number, width: number, height: number, pageCount = decoderMock.state.pageCount): RasterPage {
   return {
     sourceName,
+    sourceType: "tiff",
     pageIndex,
     pageNumber: pageIndex + 1,
     pageCount,
     width,
     height,
     pixels: new Uint8ClampedArray(width * height * 4),
+    xResolution: width / 8.5,
+    yResolution: height / 11,
+  };
+}
+function pageBlob(pageId: string): ViewerPageBlobRecord {
+  return {
+    pageId,
+    blob: new Blob(["png"], { type: "image/png" }),
+    sourceType: "tiff",
+    width: 85,
+    height: 110,
+    xResolution: 10,
+    yResolution: 10,
+    documentType: "letter",
+    physicalWidth: 8.5,
+    physicalHeight: 11,
+    updatedAt: 1,
   };
 }
 
@@ -1253,7 +1356,7 @@ function flush() {
 class MemorySessionStore implements ViewerSessionStore {
   blobs: ViewerPageBlobRecord[] = [];
   metadata: ViewerPageMetadataRecord[] = [];
-  validationConfig: PageSizeConfig | null = null;
+  viewerConfig: ViewerConfig | null = null;
 
   constructor(public session: ViewerSession | null = null) {}
 
@@ -1326,15 +1429,8 @@ class MemorySessionStore implements ViewerSessionStore {
     return orderedPages;
   }
 
-  async readPageValidationConfig() {
-    return this.validationConfig ?? {
-      formats: [
-        { name: "letter", width: 8.5, height: 11 },
-        { name: "legal", width: 8.5, height: 14 },
-        { name: "a4", width: 8.27, height: 11.69 },
-      ],
-      tolerance: 0.02,
-    };
+  async readViewerConfig() {
+    return this.viewerConfig ?? defaultViewerConfig();
   }
 
   async saveCurrentPage(pageId: string, updatedAt: number) {
@@ -1364,8 +1460,8 @@ class MemorySessionStore implements ViewerSessionStore {
     this.metadata.push(record);
   }
 
-  async savePageValidationConfig(config: PageSizeConfig) {
-    this.validationConfig = config;
+  async saveViewerConfig(config: ViewerConfig) {
+    this.viewerConfig = config;
     return config;
   }
 
@@ -1446,18 +1542,11 @@ class FailingReadSessionStore implements ViewerSessionStore {
 
   async savePageMetadata(_record: ViewerPageMetadataRecord) {}
 
-  async readPageValidationConfig() {
-    return {
-      formats: [
-        { name: "letter", width: 8.5, height: 11 },
-        { name: "legal", width: 8.5, height: 14 },
-        { name: "a4", width: 8.27, height: 11.69 },
-      ],
-      tolerance: 0.02,
-    };
+  async readViewerConfig() {
+    return defaultViewerConfig();
   }
 
-  async savePageValidationConfig(config: PageSizeConfig) {
+  async saveViewerConfig(config: ViewerConfig) {
     return config;
   }
 

@@ -28,12 +28,12 @@ describe("LoaderPanel", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Tabularium AI Lens" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Load TIFF")).toBeInTheDocument();
+    expect(screen.getByLabelText("Load document")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Samples (Intelligence ready)" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "sample-1" })).toBeInTheDocument();
 
     const file = new File(["sample"], "sample.tiff", { type: "image/tiff" });
-    fireEvent.drop(screen.getByRole("button", { name: "Drop one TIFF here" }), {
+    fireEvent.drop(screen.getByRole("button", { name: "Drop one document here" }), {
       dataTransfer: {
         files: [file],
       },

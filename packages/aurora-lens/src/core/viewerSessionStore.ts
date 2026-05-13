@@ -1,14 +1,15 @@
 export const VIEWER_SESSION_DB_NAME = "aurora-lens-web";
-import { DEFAULT_PAGE_FORMATS, DEFAULT_PAGE_TOLERANCE, type PageSizeConfig } from "./pageSizeValidation";
+import type { DocType } from "./documentDecoder/types";
+import { defaultViewerConfig, type RasterConfig, type ViewerConfig } from "./viewerConfig";
 
-export const VIEWER_SESSION_DB_VERSION = 3;
+export const VIEWER_SESSION_DB_VERSION = 4;
 export const VIEWER_DOCUMENT_STORE_NAME = "viewer-documents";
 export const VIEWER_PAGE_STORE_NAME = "viewer-pages";
 export const VIEWER_PAGE_BLOB_STORE_NAME = "viewer-page-blobs";
 export const VIEWER_PAGE_METADATA_STORE_NAME = "viewer-page-metadata";
-export const VIEWER_VALIDATION_STORE_NAME = "viewer-validation";
+export const VIEWER_CONFIG_STORE_NAME = "viewer-config";
 export const ACTIVE_VIEWER_SESSION_ID = "active";
-const PAGE_VALIDATION_CONFIG_ID = "page-size";
+const VIEWER_CONFIG_ID = "viewer-config";
 
 export interface ViewerDocumentRecord {
   id: typeof ACTIVE_VIEWER_SESSION_ID;
@@ -33,6 +34,14 @@ export interface ViewerPageBlobRecord {
   // pageId is the system-assigned unique page GUID, not the page number.
   pageId: string;
   blob: Blob;
+  sourceType: DocType;
+  width: number;
+  height: number;
+  xResolution: number;
+  yResolution: number;
+  documentType: string;
+  physicalWidth: number;
+  physicalHeight: number;
   updatedAt: number;
 }
 
@@ -63,11 +72,11 @@ export interface ViewerSessionStore {
   resetDocument(input: ViewerDocumentInput): Promise<ViewerPageRecord[]>;
   insertPages(insertIndex: number, pages: ViewerPageRecord[], blobs: ViewerPageBlobRecord[], updatedAt: number): Promise<ViewerPageRecord[]>;
   removePages(pageIds: string[], updatedAt: number): Promise<ViewerPageRecord[]>;
-  readPageValidationConfig(): Promise<PageSizeConfig>;
+  readViewerConfig(): Promise<ViewerConfig>;
   saveCurrentPage(pageId: string, updatedAt: number): Promise<void>;
   savePageBlob(record: ViewerPageBlobRecord): Promise<void>;
   savePageMetadata(record: ViewerPageMetadataRecord): Promise<void>;
-  savePageValidationConfig(config: PageSizeConfig): Promise<PageSizeConfig>;
+  saveViewerConfig(config: ViewerConfig): Promise<ViewerConfig>;
   reorderPages(fromPageIndex: number, toPageIndex: number, updatedAt: number): Promise<ViewerPageRecord[]>;
   read(): Promise<ViewerSession | null>;
   readPageBlob(pageId: string): Promise<Blob | null>;
@@ -181,13 +190,13 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
     }
   }
 
-  async readPageValidationConfig(): Promise<PageSizeConfig> {
+  async readViewerConfig(): Promise<ViewerConfig> {
     const database = await this.open();
     try {
-      const transaction = database.transaction(VIEWER_VALIDATION_STORE_NAME, "readonly");
-      const value = await requestToPromise(transaction.objectStore(VIEWER_VALIDATION_STORE_NAME).get(PAGE_VALIDATION_CONFIG_ID));
+      const transaction = database.transaction(VIEWER_CONFIG_STORE_NAME, "readonly");
+      const value = await requestToPromise(transaction.objectStore(VIEWER_CONFIG_STORE_NAME).get(VIEWER_CONFIG_ID));
       await transactionDone(transaction);
-      return value === undefined ? defaultPageValidationConfig() : validatePageValidationConfig(value);
+      return value === undefined ? defaultViewerConfig() : validateViewerConfig(value);
     } finally {
       database.close();
     }
@@ -215,17 +224,19 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
     }
   }
 
-  async savePageValidationConfig(config: PageSizeConfig): Promise<PageSizeConfig> {
-    const value = validatePageValidationConfig({
-      id: PAGE_VALIDATION_CONFIG_ID,
+  async saveViewerConfig(config: ViewerConfig): Promise<ViewerConfig> {
+    const value = validateViewerConfig({
+      id: VIEWER_CONFIG_ID,
       formats: config.formats,
       tolerance: config.tolerance,
+      view: config.view,
+      export: config.export,
     });
     const database = await this.open();
     try {
-      const transaction = database.transaction(VIEWER_VALIDATION_STORE_NAME, "readwrite");
-      await requestToPromise(transaction.objectStore(VIEWER_VALIDATION_STORE_NAME).put({
-        id: PAGE_VALIDATION_CONFIG_ID,
+      const transaction = database.transaction(VIEWER_CONFIG_STORE_NAME, "readwrite");
+      await requestToPromise(transaction.objectStore(VIEWER_CONFIG_STORE_NAME).put({
+        id: VIEWER_CONFIG_ID,
         ...value,
       }));
       await transactionDone(transaction);
@@ -345,7 +356,7 @@ export class IndexedDbViewerSessionStore implements ViewerSessionStore {
         createStore(database, VIEWER_PAGE_STORE_NAME, "pageId");
         createStore(database, VIEWER_PAGE_BLOB_STORE_NAME, "pageId");
         createStore(database, VIEWER_PAGE_METADATA_STORE_NAME, "pageId");
-        createStore(database, VIEWER_VALIDATION_STORE_NAME, "id");
+        createStore(database, VIEWER_CONFIG_STORE_NAME, "id");
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error ?? new Error("Could not open viewer session database."));
@@ -485,11 +496,40 @@ function validatePage(value: unknown): ViewerPageRecord {
 
 function validatePageBlob(value: unknown): ViewerPageBlobRecord {
   const updatedAt = isRecord(value) ? value.updatedAt : null;
+  const sourceType = isRecord(value) ? value.sourceType : null;
+  const width = isRecord(value) ? value.width : null;
+  const height = isRecord(value) ? value.height : null;
+  const xResolution = isRecord(value) ? value.xResolution : null;
+  const yResolution = isRecord(value) ? value.yResolution : null;
+  const documentType = isRecord(value) ? value.documentType : null;
+  const physicalWidth = isRecord(value) ? value.physicalWidth : null;
+  const physicalHeight = isRecord(value) ? value.physicalHeight : null;
   if (
     !isRecord(value) ||
     typeof value.pageId !== "string" ||
     value.pageId.trim() === "" ||
     !(value.blob instanceof Blob) ||
+    !isDocType(sourceType) ||
+    typeof width !== "number" ||
+    !Number.isFinite(width) ||
+    width <= 0 ||
+    typeof height !== "number" ||
+    !Number.isFinite(height) ||
+    height <= 0 ||
+    typeof xResolution !== "number" ||
+    !Number.isFinite(xResolution) ||
+    xResolution <= 0 ||
+    typeof yResolution !== "number" ||
+    !Number.isFinite(yResolution) ||
+    yResolution <= 0 ||
+    typeof documentType !== "string" ||
+    documentType.trim() === "" ||
+    typeof physicalWidth !== "number" ||
+    !Number.isFinite(physicalWidth) ||
+    physicalWidth <= 0 ||
+    typeof physicalHeight !== "number" ||
+    !Number.isFinite(physicalHeight) ||
+    physicalHeight <= 0 ||
     typeof updatedAt !== "number" ||
     !Number.isFinite(updatedAt) ||
     updatedAt <= 0
@@ -499,6 +539,14 @@ function validatePageBlob(value: unknown): ViewerPageBlobRecord {
   return {
     pageId: value.pageId,
     blob: value.blob,
+    sourceType,
+    width,
+    height,
+    xResolution,
+    yResolution,
+    documentType,
+    physicalWidth,
+    physicalHeight,
     updatedAt,
   };
 }
@@ -523,25 +571,31 @@ function validatePageMetadata(value: unknown): ViewerPageMetadataRecord {
   };
 }
 
-function validatePageValidationConfig(value: unknown): PageSizeConfig {
+function validateViewerConfig(value: unknown): ViewerConfig {
   if (!isRecord(value)) {
     throw invalidSessionError();
   }
   const formats = value.formats;
   const tolerance = value.tolerance;
+  const view = value.view;
+  const exportConfig = value.export;
   if (
-    value.id !== PAGE_VALIDATION_CONFIG_ID ||
+    value.id !== VIEWER_CONFIG_ID ||
     !Array.isArray(formats) ||
     !formats.length ||
     typeof tolerance !== "number" ||
     !Number.isFinite(tolerance) ||
-    tolerance < 0
+    tolerance < 0 ||
+    !isRecord(view) ||
+    !isRecord(exportConfig)
   ) {
     throw invalidSessionError();
   }
   return {
     formats: formats.map(validatePageFormat),
     tolerance,
+    view: validateRasterConfig(view),
+    export: validateRasterConfig(exportConfig),
   };
 }
 
@@ -571,10 +625,35 @@ function validatePageFormat(value: unknown) {
   };
 }
 
-function defaultPageValidationConfig(): PageSizeConfig {
+function validateRasterConfig(value: unknown): RasterConfig {
+  if (!isRecord(value)) {
+    throw invalidSessionError();
+  }
+  const pdfRasterDpi = value.pdfRasterDpi;
+  const maxRasterPixels = value.maxRasterPixels;
+  const maxRasterWidth = value.maxRasterWidth;
+  const maxRasterHeight = value.maxRasterHeight;
+  if (
+    typeof pdfRasterDpi !== "number" ||
+    !Number.isFinite(pdfRasterDpi) ||
+    pdfRasterDpi <= 0 ||
+    typeof maxRasterPixels !== "number" ||
+    !Number.isFinite(maxRasterPixels) ||
+    maxRasterPixels <= 0 ||
+    typeof maxRasterWidth !== "number" ||
+    !Number.isFinite(maxRasterWidth) ||
+    maxRasterWidth <= 0 ||
+    typeof maxRasterHeight !== "number" ||
+    !Number.isFinite(maxRasterHeight) ||
+    maxRasterHeight <= 0
+  ) {
+    throw invalidSessionError();
+  }
   return {
-    formats: DEFAULT_PAGE_FORMATS.map((format) => ({ ...format })),
-    tolerance: DEFAULT_PAGE_TOLERANCE,
+    pdfRasterDpi,
+    maxRasterPixels,
+    maxRasterWidth,
+    maxRasterHeight,
   };
 }
 
@@ -595,6 +674,10 @@ function transactionDone(transaction: IDBTransaction): Promise<void> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isDocType(value: unknown): value is DocType {
+  return value === "tiff" || value === "pdf" || value === "png" || value === "jpeg";
 }
 
 function invalidSessionError() {
