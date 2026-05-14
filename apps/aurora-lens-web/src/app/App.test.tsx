@@ -186,6 +186,7 @@ describe("App", () => {
     lensMock.status = "idle";
     lensMock.state = {
       ...lensMock.state,
+      viewMode: "page",
       status: "idle",
       sourceName: null,
       pageIndex: -1,
@@ -672,10 +673,11 @@ describe("App", () => {
         },
       ],
     };
-    render(<App />);
+    const { container } = render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "Search indexes" }));
     expect(screen.getByLabelText("Document index")).toHaveDisplayValue("Recording Number: 20250631357");
+    expect(container.querySelector(".viewer-toolbar .viewer-zoom-label")).toBeNull();
     fireEvent.change(screen.getByLabelText("Document index"), {
       target: {
         value: "1",
@@ -715,6 +717,65 @@ describe("App", () => {
       source: "Recorded Date: January 08, 2025",
       ambiguous: "NO",
     });
+  });
+
+  it("keeps search and index search mutually exclusive", () => {
+    lensMock.status = "ready";
+    lensMock.state = {
+      ...lensMock.state,
+      status: "ready",
+      sourceName: "sample.tiff",
+      pageIndex: 0,
+      pageCount: 1,
+      metadataPageCount: 1,
+      pageWidth: 100,
+      pageHeight: 200,
+      canSearch: true,
+    };
+    lensMock.state.pageInfo = {
+      pageNumber: 1,
+      class: null,
+      segments: [],
+      indexes: [
+        {
+          label: "Recording Number",
+          value: "20250631357",
+          source: "Document Number: 20250631357",
+          ambiguous: "NO",
+        },
+      ],
+    };
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search indexes" }));
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Document index")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.queryByLabelText("Document index")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox")).toBeInTheDocument();
+  });
+
+  it("shows loading progress as a detached transparent overlay", () => {
+    lensMock.status = "loadingPage";
+    lensMock.state = {
+      ...lensMock.state,
+      status: "loadingPage",
+      sourceName: "sample.tiff",
+      pageIndex: 0,
+      pageCount: 2,
+      metadataPageCount: 2,
+      viewMode: "thumbnails",
+    };
+    render(<App />);
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Loading page...");
+    expect(status.parentElement).toHaveClass("viewer-progress-overlay");
+    expect(status.parentElement).not.toHaveClass("viewer-message");
   });
 
   it("marks the search field when a submitted search returns no results", () => {

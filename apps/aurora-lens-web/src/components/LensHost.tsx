@@ -123,13 +123,28 @@ export function LensHost({ addError, allowEdit, fatalError, lensRef, pageInfo, p
           onSearchText={setSearchText}
           onSelectIndex={setSelectedIndex}
           onToggleDrawMode={() => lensRef.current?.setDrawMode(!state.drawMode)}
-          onToggleIndexes={() => setIndexOpen((current) => !current)}
+          onToggleIndexes={() => {
+            setIndexOpen((current) => {
+              const next = !current;
+              if (next) {
+                setSearchOpen(false);
+                setSearchText("");
+                setSearchResultCount(null);
+              }
+              return next;
+            });
+          }}
           onToggleSearch={() => {
-            setSearchOpen((current) => !current);
-            if (searchOpen) {
-              setSearchText("");
-              setSearchResultCount(null);
-            }
+            setSearchOpen((current) => {
+              const next = !current;
+              if (next) {
+                setIndexOpen(false);
+              } else {
+                setSearchText("");
+                setSearchResultCount(null);
+              }
+              return next;
+            });
           }}
           onZoomIn={() => lensRef.current?.zoomIn()}
           onZoomOut={() => lensRef.current?.zoomOut()}
@@ -147,7 +162,7 @@ export function LensHost({ addError, allowEdit, fatalError, lensRef, pageInfo, p
           />
           {status === "idle" && !viewerError ? <div className="viewer-message viewer-overlay">Choose, drop, or select a sample document.</div> : null}
           {isBusy ? (
-            <div className="viewer-message viewer-overlay">
+            <div className="viewer-progress-overlay">
               <ProgressBar text={progressText} />
             </div>
           ) : null}

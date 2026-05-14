@@ -94,25 +94,28 @@ export function ViewerToolbar({
         ) : null}
         {indexOpen ? (
           <>
-            <select
-              className="viewer-index-select"
-              title="Document index"
-              aria-label="Document index"
-              value={selectedIndex}
-              disabled={!pageActive || !state.canSearch || !indexes.length}
-              onChange={(event) => onSelectIndex(Number(event.currentTarget.value))}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                  onToggleIndexes();
-                }
-              }}
-            >
-              {indexes.map((index, optionIndex) => (
-                <option key={`${index.label}\n${index.value}\n${index.source}`} value={optionIndex}>
-                  {index.label}: {index.value}
-                </option>
-              ))}
-            </select>
+            <label className="viewer-index-field">
+              <span>Index</span>
+              <select
+                className="viewer-index-select"
+                title="Document index"
+                aria-label="Document index"
+                value={selectedIndex}
+                disabled={!pageActive || !state.canSearch || !indexes.length}
+                onChange={(event) => onSelectIndex(Number(event.currentTarget.value))}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    onToggleIndexes();
+                  }
+                }}
+              >
+                {indexes.map((index, optionIndex) => (
+                  <option key={`${index.label}\n${index.value}\n${index.source}`} value={optionIndex}>
+                    {index.label}: {index.value}
+                  </option>
+                ))}
+              </select>
+            </label>
             <IconButton icon="go" title="Go to selected index" disabled={!pageActive || !state.canSearch || !indexes.length} onClick={onRunIndex} />
           </>
         ) : null}
@@ -133,7 +136,6 @@ export function ViewerToolbar({
           {intelligence.text}
         </div>
       ) : null}
-      <div className="viewer-zoom-label">{Math.round(state.zoom * 100)}%</div>
     </div>
   );
 }
