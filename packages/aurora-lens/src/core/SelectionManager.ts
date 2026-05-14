@@ -89,6 +89,11 @@ export class SelectionManager {
     hits.tokens.forEach((token) => {
       this.addToken(token, hits.contexts);
     });
+    if (!hits.tokens.length) {
+      hits.contexts.forEach((context) => {
+        this.addContext(this.polygonKey("c", context.polygon), new ContextElement(context, this.theme));
+      });
+    }
     hits.figures.forEach((figure) => {
       this.addFigure(figure);
     });

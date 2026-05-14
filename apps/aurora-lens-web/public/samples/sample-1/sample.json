@@ -6,6 +6,15 @@
       "width": 2540,
       "height": 3312,
       "unit": "pixel",
+      "class": "assumed name abandonment",
+      "segments": [
+          "Exhibit",
+          "Recital",
+          "Transaction",
+          "Party clause",
+          "Confidential",
+          "Acknowledgment"
+      ],
       "tokens": [
         {
           "content": "Doc#",
@@ -3495,6 +3504,44 @@
             3125
           ]
         }
+      ],
+      "indexes": [
+        {
+          "label": "Effective date",
+          "value": "2025-01-08",
+          "source": "To certify which, witness my/our hand(s)  8th day of  January  2025",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Assumed business",
+          "value": "BUILDERS DECOR",
+          "source": "BUILDERS DECOR",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Withdrawing party",
+          "value": "SAMMY NARANJO",
+          "source": "Withdrawing Party or Parties: SAMMY NARANJO",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Notary acknowledgment date",
+          "value": "2025-01-08",
+          "source": "GIVEN UNDER MY HAND AND SEAL OF OFFICE, 8th day of January, 2025",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Notary Name",
+          "value": "Pavil Peeples",
+          "source": "By Pavil Peeples",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Parcel address",
+          "value": "1323 JERRY DRIVE SAN ANTONIO TX 78201",
+          "source": "BUILDERS DECOR\n\n1323 JERRY DRIVE SAN ANTONIO TX 78201",
+          "ambiguous": "NO"
+        }
       ]
     },
     {
@@ -3503,6 +3550,10 @@
       "width": 2540,
       "height": 3314,
       "unit": "pixel",
+      "class": "Record Confirmation",
+      "segments": [
+          "Endorsement"
+      ],
       "tokens": [
         {
           "content": "Doc#",
@@ -5801,6 +5852,44 @@
             748,
             2635
           ]
+        }
+      ],
+      "indexes": [
+        {
+          "label": "Recording Number",
+          "value": "20250631357",
+          "source": "Document Number:  20250631357",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Recording date",
+          "value": "2025-08-01",
+          "source": "Recorded Date:  January 08, 2025",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Recording fee",
+          "value": "$13.00",
+          "source": "Total Fees:  $13.00",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Recording clerk",
+          "value": "Lucy Adame-Clark",
+          "source": "FILED IN THE OFFICIAL PUBLIC RECORDS OF BEXAR COUNTY LUCY ADAME-CLARK, BEXAR COUNTY CLERK",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Recording County",
+          "value": "Bexar",
+          "source": "FILED IN THE OFFICIAL PUBLIC RECORDS OF BEXAR COUNTY LUCY ADAME-CLARK, BEXAR COUNTY CLERK",
+          "ambiguous": "NO"
+        },
+        {
+          "label": "Recording State",
+          "value": "Texas",
+          "source": "STATE OF TEXAS, COUNTY OF BEXAR",
+          "ambiguous": "NO"
         }
       ]
     }

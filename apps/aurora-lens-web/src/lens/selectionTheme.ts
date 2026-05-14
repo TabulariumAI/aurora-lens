@@ -9,6 +9,10 @@ export const selectionTheme = {
     fill: "rgba(0, 0, 128, 0.12)",
     stroke: "navy",
   },
+  intelligence: {
+    fill: "rgba(0, 81, 104, 0.08)",
+    stroke: "#005168",
+  },
   token: {
     high: {
       fill: "rgba(0, 81, 104, 0.12)",

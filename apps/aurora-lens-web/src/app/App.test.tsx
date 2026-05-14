@@ -14,6 +14,8 @@ const lensMock = vi.hoisted(() => ({
     sourceName: null as string | null,
     pageIndex: -1,
     pageCount: 0,
+    metadataPageCount: 0,
+    pageInfo: null,
     pageWidth: null as number | null,
     pageHeight: null as number | null,
     zoom: 1,
@@ -62,6 +64,7 @@ const lensMock = vi.hoisted(() => ({
     restoreSession: vi.fn(),
     saveViewerConfig: vi.fn(),
     search: vi.fn(),
+    searchIndex: vi.fn(),
     setDrawMode: vi.fn(),
     showThumbnails: vi.fn(),
     zoomIn: vi.fn(),
@@ -187,6 +190,7 @@ describe("App", () => {
       sourceName: null,
       pageIndex: -1,
       pageCount: 0,
+      pageInfo: null,
       pageWidth: null,
       pageHeight: null,
       zoom: 1,
@@ -276,9 +280,9 @@ describe("App", () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Validation Settings" })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "Validation Settings" }));
-    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Image Settings" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Image Settings" }));
+    const dialog = screen.getByRole("dialog", { name: "Image Settings" });
     expect(within(dialog).getByLabelText("Tolerance")).toHaveValue(0.01);
     expect(within(dialog).getByLabelText("letter width")).toHaveValue(8.25);
     expect(within(dialog).getByLabelText("letter height")).toHaveValue(10.75);
@@ -289,8 +293,8 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(lensMock.instance.readViewerConfig).toHaveBeenCalledTimes(1));
-    fireEvent.click(await screen.findByRole("button", { name: "Validation Settings" }));
-    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    fireEvent.click(await screen.findByRole("button", { name: "Image Settings" }));
+    const dialog = screen.getByRole("dialog", { name: "Image Settings" });
     fireEvent.change(within(dialog).getByLabelText("letter width"), {
       target: {
         value: "8.25",
@@ -599,6 +603,19 @@ describe("App", () => {
       displayCoordinates: { x: 30, y: 40 },
       selectionCounts: { tokens: 1, figures: 2, context: 3 },
     };
+    lensMock.state.pageInfo = {
+      pageNumber: 1,
+      class: "assumed name abandonment",
+      segments: ["Exhibit", "Recital"],
+      indexes: [
+        {
+          label: "Recording Number",
+          value: "20250631357",
+          source: "Document Number: 20250631357",
+          ambiguous: "NO",
+        },
+      ],
+    };
 
     render(<App />);
 
@@ -610,11 +627,150 @@ describe("App", () => {
     expect(details.queryByText("X 3, Y 4")).not.toBeInTheDocument();
     expect(details.queryByText("X 30, Y 40")).not.toBeInTheDocument();
     expect(details.getByRole("heading", { name: "Document" })).toBeInTheDocument();
+    expect(details.getByRole("heading", { name: "Page Info" })).toBeInTheDocument();
+    expect(details.getByText("assumed name abandonment")).toBeInTheDocument();
+    expect(details.getByText("Exhibit, Recital")).toBeInTheDocument();
+    expect(details.queryByText("Recording Number: 20250631357")).not.toBeInTheDocument();
     expect(details.getByRole("heading", { name: "Selection" })).toBeInTheDocument();
     expect(details.getByRole("heading", { name: "Style" })).toBeInTheDocument();
     expect(details.getByLabelText("Context fill rgba(255, 230, 128, 0.25)")).toBeInTheDocument();
     expect(details.getByText("High >=95%")).toBeInTheDocument();
     expect(details.getByText("Medium >=80%")).toBeInTheDocument();
     expect(details.getByText("Low <80%")).toBeInTheDocument();
+  });
+
+  it("runs an index search from the intelligence toolbar", () => {
+    lensMock.status = "ready";
+    lensMock.state = {
+      ...lensMock.state,
+      status: "ready",
+      sourceName: "sample.tiff",
+      pageIndex: 0,
+      pageCount: 1,
+      metadataPageCount: 1,
+      pageWidth: 100,
+      pageHeight: 200,
+      canSearch: true,
+      canDraw: true,
+    };
+    lensMock.state.pageInfo = {
+      pageNumber: 1,
+      class: null,
+      segments: [],
+      indexes: [
+        {
+          label: "Recording Number",
+          value: "20250631357",
+          source: "Document Number: 20250631357",
+          ambiguous: "NO",
+        },
+        {
+          label: "Recorded Date",
+          value: "January 08, 2025",
+          source: "Recorded Date: January 08, 2025",
+          ambiguous: "NO",
+        },
+      ],
+    };
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Search indexes" }));
+    expect(screen.getByLabelText("Document index")).toHaveDisplayValue("Recording Number: 20250631357");
+    fireEvent.change(screen.getByLabelText("Document index"), {
+      target: {
+        value: "1",
+      },
+    });
+    act(() => {
+      lensMock.onStateChange?.({
+        ...lensMock.state,
+        zoom: 1.5,
+        pageInfo: {
+          pageNumber: 1,
+          class: null,
+          segments: [],
+          indexes: [
+            {
+              label: "Recording Number",
+              value: "20250631357",
+              source: "Document Number: 20250631357",
+              ambiguous: "NO",
+            },
+            {
+              label: "Recorded Date",
+              value: "January 08, 2025",
+              source: "Recorded Date: January 08, 2025",
+              ambiguous: "NO",
+            },
+          ],
+        },
+      });
+    });
+    expect(screen.getByLabelText("Document index")).toHaveDisplayValue("Recorded Date: January 08, 2025");
+    fireEvent.click(screen.getByRole("button", { name: "Go to selected index" }));
+
+    expect(lensMock.instance.searchIndex).toHaveBeenCalledWith(1, {
+      label: "Recorded Date",
+      value: "January 08, 2025",
+      source: "Recorded Date: January 08, 2025",
+      ambiguous: "NO",
+    });
+  });
+
+  it("marks the search field when a submitted search returns no results", () => {
+    lensMock.status = "ready";
+    lensMock.instance.search.mockReturnValue({
+      tokens: [],
+      contexts: [],
+      figures: [],
+    });
+    lensMock.state = {
+      ...lensMock.state,
+      status: "ready",
+      sourceName: "sample.tiff",
+      pageIndex: 0,
+      pageCount: 1,
+      metadataPageCount: 1,
+      pageWidth: 100,
+      pageHeight: 200,
+      canSearch: true,
+    };
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, {
+      target: {
+        value: "missing",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Search text" }));
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+
+    fireEvent.change(input, {
+      target: {
+        value: "updated",
+      },
+    });
+
+    expect(input).toHaveAttribute("aria-invalid", "false");
+  });
+
+  it("reports partial intelligence when only some pages have metadata", () => {
+    lensMock.status = "ready";
+    lensMock.state = {
+      ...lensMock.state,
+      status: "ready",
+      sourceName: "sample.tiff",
+      pageIndex: 0,
+      pageCount: 2,
+      metadataPageCount: 1,
+      canSearch: true,
+    };
+    render(<App />);
+
+    expect(screen.queryByLabelText("Intelligence ready")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Intelligence metadata exists for 1 of 2 document pages")).toHaveTextContent("Partial intelligence 1/2");
   });
 });

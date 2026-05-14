@@ -38,6 +38,8 @@ const emptyLensState: ViewerState = {
   sourceName: null,
   pageIndex: -1,
   pageCount: 0,
+  metadataPageCount: 0,
+  pageInfo: null,
   pageWidth: null,
   pageHeight: null,
   zoom: 1,
@@ -109,6 +111,10 @@ export function App() {
       .then(setViewerConfig)
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : String(reason)));
     void viewer.restoreSession();
+  }, []);
+
+  const updateViewerState = useCallback((state: ViewerState) => {
+    setLensState(state);
   }, []);
 
   const saveViewerConfig = useCallback((config: ViewerConfig) => {
@@ -247,6 +253,7 @@ export function App() {
           allowEdit={allowEdit}
           fatalError={lensStatus === "error" ? error : ""}
           lensRef={lensRef}
+          pageInfo={lensState.pageInfo}
           progressText={progressText}
           state={lensState}
           status={lensStatus}
@@ -257,7 +264,7 @@ export function App() {
           onFatalErrorOk={acknowledgeFatalError}
           onViewerErrorOk={() => setViewerError("")}
           onReady={restoreViewerSession}
-          onStateChange={setLensState}
+          onStateChange={updateViewerState}
           onStatusChange={setLensStatus}
         />
         <DetailsPanel
@@ -295,6 +302,7 @@ function toDetails(state: ViewerState): ViewerDetails {
     page: state.pageCount > 0 && state.pageIndex >= 0 ? `${state.pageIndex + 1} of ${state.pageCount}` : "None",
     size: state.pageWidth && state.pageHeight ? `${state.pageWidth} x ${state.pageHeight}` : "None",
     zoom: `${Math.round(state.zoom * 100)}%`,
+    info: state.pageInfo,
     tokens: String(state.selectionCounts.tokens),
     figures: String(state.selectionCounts.figures),
     context: String(state.selectionCounts.context),

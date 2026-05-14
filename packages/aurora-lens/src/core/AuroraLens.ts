@@ -19,8 +19,10 @@ import type {
   ViewMode,
   CopySelectionResult,
   DecodedPage,
+  MetadataIndex,
   PageMetadataHits,
   PagePoint,
+  PageInfo,
   RasterPage,
   ViewerPageBlobRecord,
   ViewerPageRecord,
@@ -59,6 +61,7 @@ interface ImportedPage extends RasterPage {
 export class AuroraLens {
   private readonly metadata = new MetadataHelper();
   private readonly metadataRepository = new MetadataRepository();
+  private readonly theme: ReturnType<typeof normalizeSelectionTheme>;
   private readonly selection: SelectionManager;
   private readonly decoder = new DocumentDecoder();
   private readonly sessionStore: ViewerSessionStore | null;
@@ -87,7 +90,8 @@ export class AuroraLens {
   constructor(private readonly container: HTMLElement, private readonly options: ViewerOptions) {
     assertContainer(container);
     this.sessionStore = options.sessionStore ?? null;
-    this.selection = new SelectionManager(normalizeSelectionTheme(options.selectionTheme));
+    this.theme = normalizeSelectionTheme(options.selectionTheme);
+    this.selection = new SelectionManager(this.theme);
     this.pageViewer = new PageViewer({
       metadata: this.metadata,
       selection: this.selection,
@@ -100,11 +104,13 @@ export class AuroraLens {
     });
     this.thumbnailViewer = new ThumbnailViewer({
       allowEdit: options.allowEdit,
+      intelligenceColor: this.theme.intelligence,
       onAdd: (files, insertIndex) => this.addPages(files, insertIndex),
       onRange: (pageIndexes) => {
         this.loadThumbnails(pageIndexes);
       },
       onReorder: (request) => this.reorderPages(request),
+      onRemove: (pageId) => this.removePage(pageId),
       onSelect: (pageIndex) => {
         void Promise.resolve(this.goPage(pageIndex)).catch(() => undefined);
       },
@@ -422,6 +428,13 @@ export class AuroraLens {
     return exportTiffPages(pages, config.export);
   }
 
+  readPageInfo(): PageInfo | null {
+    if (!this.page || !this.metadata.hasPage(this.page.pageIndex)) {
+      return null;
+    }
+    return this.metadata.pageInfo(this.page.pageIndex);
+  }
+
   async copySelection(): Promise<CopySelectionResult> {
     if (!this.page || !this.selection.hasTokens()) {
       return {
@@ -459,13 +472,67 @@ export class AuroraLens {
     this.pageViewer.fitWidth();
   }
 
-  search(text: string, options?: { additive?: boolean }): PageMetadataHits | null {
+  search(text: string, options?: { additive?: boolean; context?: string | null }): PageMetadataHits | null {
+    console.info("[PACK] search start", {
+      activePageNumber: this.page?.pageNumber ?? null,
+      text,
+      context: options?.context ?? null,
+      additive: options?.additive ?? false,
+    });
     if (!this.page || !this.metadata.hasPage(this.page.pageIndex)) {
+      console.info("[PACK] search skipped", {
+        hasPage: Boolean(this.page),
+        activePageNumber: this.page?.pageNumber ?? null,
+        hasMetadata: this.page ? this.metadata.hasPage(this.page.pageIndex) : false,
+      });
       return null;
     }
-    const hits = this.metadata.search(this.page.pageIndex, text);
-    if (hits.tokens.length || hits.figures.length) {
-      if (options?.additive) {
+    const hits = this.metadata.search(this.page.pageIndex, text, options?.context);
+    console.info("[PACK] search hits", {
+      tokens: hits.tokens.length,
+      contexts: hits.contexts.length,
+      figures: hits.figures.length,
+    });
+    this.showSearchHits(hits, options?.additive);
+    return hits;
+  }
+
+  searchIndex(pageNumber: number, index: MetadataIndex, options?: { additive?: boolean }): PageMetadataHits | null {
+    console.info("[PACK] searchIndex start", {
+      activePageNumber: this.page?.pageNumber ?? null,
+      requestedPageNumber: pageNumber,
+      index,
+      additive: options?.additive ?? false,
+    });
+    if (!this.page || this.page.pageNumber !== pageNumber || !this.metadata.hasPage(this.page.pageIndex)) {
+      console.info("[PACK] searchIndex skipped", {
+        hasPage: Boolean(this.page),
+        activePageNumber: this.page?.pageNumber ?? null,
+        requestedPageNumber: pageNumber,
+        hasMetadata: this.page ? this.metadata.hasPage(this.page.pageIndex) : false,
+      });
+      return null;
+    }
+    const hits = this.metadata.searchIndex(this.page.pageIndex, index);
+    console.info("[PACK] searchIndex hits", {
+      tokens: hits.tokens.length,
+      contexts: hits.contexts.length,
+      figures: hits.figures.length,
+    });
+    this.showSearchHits(hits, options?.additive);
+    return hits;
+  }
+
+  private showSearchHits(hits: PageMetadataHits, additive?: boolean) {
+    console.info("[PACK] show search hits", {
+      additive: additive ?? false,
+      tokens: hits.tokens.length,
+      contexts: hits.contexts.length,
+      figures: hits.figures.length,
+      willRender: Boolean(hits.tokens.length || hits.contexts.length || hits.figures.length),
+    });
+    if (hits.tokens.length || hits.contexts.length || hits.figures.length) {
+      if (additive) {
         this.selection.showElements(hits);
       } else {
         this.selection.showElement(hits);
@@ -473,7 +540,6 @@ export class AuroraLens {
       this.pageViewer.render();
       this.emitState();
     }
-    return hits;
   }
 
   setDrawMode(enabled: boolean): void {
@@ -813,6 +879,77 @@ export class AuroraLens {
     return reorderPageRecords(this.sessionPages, fromPageIndex, toPageIndex, updatedAt);
   }
 
+  private async removePage(pageId: string) {
+    if (!this.sessionStore || this.sessionPages.length < 2) {
+      throw new Error("AuroraLens.removePage: package-owned storage and at least two pages are required.");
+    }
+    const pageIndex = this.sessionPages.findIndex((page) => page.pageId === pageId);
+    if (pageIndex < 0) {
+      throw new Error("AuroraLens.removePage: pageId must match an open document page.");
+    }
+    this.persistenceRun += 1;
+    this.setStatus("loadingPage");
+    const currentRemoved = this.page?.pageId === pageId;
+    const nextIndex = Math.min(pageIndex, this.sessionPages.length - 2);
+    const nextPageId = currentRemoved ? this.sessionPages[nextIndex === pageIndex ? pageIndex + 1 : nextIndex].pageId : null;
+    if (nextPageId) {
+      await this.saveCurrentPage(nextPageId);
+    }
+    const updatedAt = Date.now();
+    this.sessionPages = await this.sessionStore.removePages([pageId], updatedAt);
+    this.removeThumbnail(pageId);
+    this.memoryBlobs.delete(pageId);
+    this.storedPageIds.delete(pageId);
+    this.metadataPageIds.delete(pageId);
+    this.pageCount = this.sessionPages.length;
+    if (currentRemoved) {
+      await this.loadCurrentAfterRemove(nextIndex);
+    } else {
+      await this.refreshCurrentPageOrder();
+    }
+    if (this.viewMode === "thumbnails") {
+      this.thumbnailViewer.update(this.pageIds(), this.thumbnails, this.state().pageIndex, this.thumbnailMetadata());
+    }
+    this.setStatus("ready");
+  }
+
+  private removeThumbnail(pageId: string) {
+    const thumbnails = new Map(this.thumbnails.filter((page): page is ThumbnailPage => Boolean(page)).map((page) => [page.pageId, page]));
+    const removed = thumbnails.get(pageId);
+    if (removed) {
+      URL.revokeObjectURL(removed.url);
+    }
+    thumbnails.delete(pageId);
+    this.thumbnails = this.sessionPages.map((record, index) => {
+      const page = thumbnails.get(record.pageId);
+      return page ? {
+        ...page,
+        pageIndex: index,
+        pageNumber: index + 1,
+        pageCount: this.sessionPages.length,
+      } : undefined;
+    });
+  }
+
+  private async loadCurrentAfterRemove(pageIndex: number) {
+    const raster = await this.loadStoredRaster(pageIndex);
+    if (!raster) {
+      return;
+    }
+    const page = await this.toPage(raster, undefined, pageIndex);
+    this.revokePage();
+    this.page = page;
+    this.coordinates = null;
+    this.displayCoordinates = null;
+    this.selection.clear();
+    await this.loadStoredPageMetadata(page.pageId, page.pageIndex);
+    if (this.viewMode === "page") {
+      this.showView("page");
+      this.pageViewer.show(page);
+    }
+    await this.saveCurrentPage(page.pageId);
+  }
+
   private async refreshCurrentPageOrder() {
     if (!this.page) {
       return;
@@ -916,6 +1053,8 @@ export class AuroraLens {
       sourceName: this.page?.sourceName ?? null,
       pageIndex,
       pageCount: this.pageCount,
+      metadataPageCount: this.metadataPageIds.size,
+      pageInfo: hasPage && this.metadata.hasPage(pageIndex) ? this.metadata.pageInfo(pageIndex) : null,
       pageWidth: this.page?.width ?? null,
       pageHeight: this.page?.height ?? null,
       zoom: this.pageViewer.getZoom(),

@@ -31,8 +31,8 @@ export function LoaderPanel({ disabled, fileInputRef, samples, onFiles, onSample
 
       <DropTarget disabled={disabled} onFiles={onFiles} />
 
-      <section className="sample-section" aria-label="Samples (Intelligence ready)">
-        <h2>Samples (Intelligence ready)</h2>
+      <section className="sample-section" aria-label="Samples">
+        <h2>Samples</h2>
         <div className="sample-list">
           {samples.map((sample) => (
             <button className="sample-button" type="button" key={sample.label} disabled={disabled} onClick={() => onSample(sample)}>

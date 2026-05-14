@@ -1,10 +1,11 @@
-import type { ViewerState, ViewerStatus, SelectionColor, ViewerConfig } from "@tabularium/aurora-lens";
+import type { MetadataIndex, PageInfo, ViewerState, ViewerStatus, SelectionColor, ViewerConfig } from "@tabularium/aurora-lens";
 
 export interface ViewerDetails {
   source: string;
   page: string;
   size: string;
   zoom: string;
+  info: PageInfo | null;
   tokens: string;
   figures: string;
   context: string;
@@ -24,4 +25,4 @@ export interface ViewerDetails {
 
 export type HostViewerStatus = "empty" | "loading" | "ready";
 
-export type { ViewerState, ViewerStatus, SelectionColor, ViewerConfig };
+export type { MetadataIndex, PageInfo, ViewerState, ViewerStatus, SelectionColor, ViewerConfig };

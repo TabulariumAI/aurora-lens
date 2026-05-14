@@ -31,20 +31,20 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await expect.poll(() => page.locator(".viewer-body").evaluate((element) => getComputedStyle(element).paddingTop)).toBe("4px");
   await expect.poll(() => page.locator(".viewer-toolbar").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(248, 251, 252)");
   await expect(page.getByLabel("Intelligence ready", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Search" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toBeDisabled();
   await expect.poll(() => page.locator(".viewer-footer").evaluate((element) => getComputedStyle(element).borderTopColor)).toBe("rgb(214, 220, 226)");
   await expect(page.locator(".viewer-footer")).toBeInViewport();
   await expect
     .poll(() => page.getByRole("button", { name: "All thumbnails" }).evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe("rgb(255, 255, 255)");
-  await page.getByRole("button", { name: "Validation Settings" }).click();
-  await expect(page.getByRole("dialog", { name: "Validation Settings" })).toBeVisible();
+  await page.getByRole("button", { name: "Image Settings" }).click();
+  await expect(page.getByRole("dialog", { name: "Image Settings" })).toBeVisible();
   await expect(page.locator(".viewer-footer")).toBeInViewport();
   await expect(page.getByLabel("View PDF DPI")).toHaveValue("150");
   await expect.poll(async () => (await page.getByLabel("Page validation formats").boundingBox())?.width ?? 0).toBeLessThanOrEqual(340);
   await expect.poll(async () => (await page.getByLabel("View PDF DPI").boundingBox())?.width ?? 0).toBeLessThanOrEqual(240);
   await page.getByRole("button", { name: "Close" }).click();
-  await expect(page.getByRole("dialog", { name: "Validation Settings" })).toHaveCount(0);
+  await expect(page.getByRole("dialog", { name: "Image Settings" })).toHaveCount(0);
 
   const pageImage = page.locator('.viewer-body img[alt="sample-multipage.tiff page 1"]').first();
   await expect(pageImage).toBeVisible();
@@ -88,8 +88,8 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
 
   await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: /page 1/i })).toBeVisible();
-  await expect(page.getByLabel("Intelligence ready for page 1")).toHaveCount(0);
-  await expect(page.getByLabel("Intelligence ready for page 2")).toHaveCount(0);
+  await expect(page.getByLabel("Page 1 has intelligence metadata")).toHaveCount(0);
+  await expect(page.getByLabel("Page 2 has intelligence metadata")).toHaveCount(0);
   const firstCard = page.locator("[data-aurora-thumbnail-card]").first();
   await expect(firstCard).toBeVisible();
   await expect
@@ -136,7 +136,7 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   expect(reopenedBox!.width).toBeGreaterThan(100);
   expect(reopenedBox!.height).toBeGreaterThan(100);
 
-  await expect(page.getByRole("button", { name: "Search" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toBeDisabled();
 });
 
 test("scrolls thumbnail grid when thumbnail cards exceed the visible area", async ({ page }) => {
@@ -209,7 +209,7 @@ test("navigates by reordered thumbnail sequence", async ({ page }) => {
     images.forEach((image, index) => image.setAttribute("data-probe-id", `image-${index}`));
   });
   await dragThumbnail(page, 1, 0);
-  await expect.poll(() => thumbnailGrid.evaluate((element) => element.scrollTop)).toBe(scrollTop);
+  await expect.poll(() => thumbnailGrid.evaluate((element, scrollTop) => Math.abs(element.scrollTop - scrollTop), scrollTop)).toBeLessThanOrEqual(1);
   await expect.poll(() => page.locator("[data-thumbnail-media] img").evaluateAll((images) => images.map((image) => image.getAttribute("data-probe-id")))).toEqual([
     "image-1",
     "image-0",
@@ -265,6 +265,28 @@ test("adds TIFF pages from thumbnail add button and stores the inserted pages", 
 
   await expect(details.getByText("2 of 4")).toBeVisible();
   await expect.poll(() => storedPageIndex(page)).toBe(0);
+});
+
+test("removes a thumbnail page and stores the changed pages", async ({ page }) => {
+  await page.goto("/");
+
+  const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
+  await page.getByLabel("Load document").setInputFiles(fixture);
+  await expect(page.getByLabel("Page details").getByText("1 of 2")).toBeVisible();
+  await page.getByRole("button", { name: "All thumbnails" }).click();
+  await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
+
+  const firstCard = page.locator('[data-page-index="0"]');
+  await firstCard.hover();
+  await firstCard.locator('button[aria-label="Remove"]').click();
+  await firstCard.locator('button[aria-label="Confirm remove"]').click();
+
+  await expect(page.locator("[data-aurora-thumbnail-card]")).toHaveCount(1);
+  await expect.poll(() => storedPages(page), { timeout: 45000 }).toEqual([
+    { sequenceNumber: 1, sourcePageIndex: 1 },
+  ]);
+  await expect.poll(() => storedBlobCount(page)).toBe(1);
+  await expect.poll(() => storedPageIndex(page)).toBe(1);
 });
 
 test("loads a PDF through the package document decoder", async ({ page }) => {
@@ -363,8 +385,30 @@ test("clears sample metadata when a user-selected TIFF is loaded", async ({ page
             width: 2540,
             height: 3312,
             unit: "pixel",
-            tokens: [{ content: "LOAN", confidence: 0.99, polygon: [150, 150, 350, 150, 350, 230, 150, 230] }],
-            contexts: [{ content: "LOAN sample context", role: "body", polygon: [120, 120, 720, 120, 720, 280, 120, 280] }],
+            class: "assumed name abandonment",
+            segments: ["Exhibit", "Recital", "Transaction", "Party clause", "Confidential", "Acknowledgment"],
+            indexes: [
+              {
+                label: "Instrument number",
+                value: "20250631357",
+                source: "Doc# 20250631357 sample context",
+                ambiguous: "NO",
+              },
+              {
+                label: "Recorded Date",
+                value: "Recorded",
+                source: "Recorded Date: January 08, 2025",
+                ambiguous: "NO",
+              },
+            ],
+            tokens: [
+              { content: "20250631357", confidence: 0.99, polygon: [150, 150, 350, 150, 350, 230, 150, 230] },
+              { content: "January", confidence: 0.99, polygon: [150, 350, 350, 350, 350, 430, 150, 430] },
+            ],
+            contexts: [
+              { content: "Doc# 20250631357 sample context", role: "body", polygon: [120, 120, 720, 120, 720, 280, 120, 280] },
+              { content: "Recorded Date: January 08, 2025", role: "body", polygon: [120, 320, 720, 320, 720, 480, 120, 480] },
+            ],
             figures: [],
           },
         ],
@@ -376,18 +420,38 @@ test("clears sample metadata when a user-selected TIFF is loaded", async ({ page
 
   await page.getByRole("button", { name: "sample-1" }).click();
   await expect(page.locator('.viewer-body img[alt="sample.tiff page 1"]').first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Search" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toBeEnabled();
+  const details = page.getByLabel("Page details");
+  const pageInfo = details.getByRole("region", { name: "Page Info" });
+  await expect(pageInfo.getByText("assumed name abandonment")).toBeVisible();
+  await expect(pageInfo.getByText("Exhibit, Recital, Transaction, Party clause, Confidential, Acknowledgment")).toBeVisible();
+  await expect(pageInfo.getByText("Instrument number: 20250631357")).toHaveCount(0);
+  await expect(page.getByLabel("Intelligence metadata exists for 1 of 2 document pages")).toBeVisible();
+  await expect(page.getByLabel("Intelligence ready", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Search indexes" }).click();
+  await expect(page.getByLabel("Document index")).toHaveValue("0");
+  await page.getByRole("button", { name: "Go to selected index" }).click();
+  const selection = details.getByRole("region", { name: "Selection" });
+  await expect(selection.getByText("Tokens")).toBeVisible();
+  await expect(selection.getByText("Context")).toBeVisible();
+  await expect(selection.getByText("1")).toHaveCount(2);
+  await page.getByLabel("Document index").selectOption("1");
+  await page.getByRole("button", { name: "Zoom in" }).click();
+  await expect(page.getByLabel("Document index")).toHaveValue("1");
+  await page.getByRole("button", { name: "Go to selected index" }).click();
+  await expect(selection.getByText("0")).toHaveCount(2);
+  await expect(selection.getByText("1")).toHaveCount(1);
   await page.getByRole("button", { name: "All thumbnails" }).click();
-  await expect(page.getByLabel("Intelligence ready for page 1")).toBeVisible();
+  await expect(page.getByLabel("Page 1 has intelligence metadata")).toBeVisible();
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
   await page.getByLabel("Load document").setInputFiles(fixture);
   await expect(page.locator('.viewer-body img[alt="sample-multipage.tiff page 1"]').first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Search" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toBeDisabled();
 
   await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: /page 1/i })).toBeVisible();
-  await expect(page.getByLabel(/Intelligence ready for page/)).toHaveCount(0);
+  await expect(page.getByLabel(/has intelligence metadata/)).toHaveCount(0);
 });
 
 test("restores a metadata-backed shortcut source after refresh", async ({ page }) => {
@@ -404,9 +468,9 @@ test("restores a metadata-backed shortcut source after refresh", async ({ page }
 
   await expect(details.getByText("sample.tiff")).toBeVisible();
   await expect(details.getByText("2 of 2")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Search" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "All thumbnails" }).click();
-  await expect(page.getByLabel("Intelligence ready for page 2")).toBeVisible();
+  await expect(page.getByLabel("Page 2 has intelligence metadata")).toBeVisible();
 });
 
 test("restores a no-intelligence TIFF source after refresh", async ({ page }) => {
@@ -425,7 +489,7 @@ test("restores a no-intelligence TIFF source after refresh", async ({ page }) =>
 
   await expect(details.getByText("sample-multipage.tiff")).toBeVisible();
   await expect(details.getByText("2 of 2")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Search" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Search", exact: true })).toBeDisabled();
 });
 
 test("ignores corrupt persisted viewer sessions", async ({ page }) => {

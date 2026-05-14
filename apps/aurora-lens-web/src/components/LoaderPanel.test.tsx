@@ -29,7 +29,7 @@ describe("LoaderPanel", () => {
 
     expect(screen.getByRole("heading", { name: "Tabularium AI Lens" })).toBeInTheDocument();
     expect(screen.getByLabelText("Load document")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Samples (Intelligence ready)" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Samples" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "sample-1" })).toBeInTheDocument();
 
     const file = new File(["sample"], "sample.tiff", { type: "image/tiff" });

@@ -30,16 +30,29 @@ export function DetailsPanel({ allowEdit, canExport, defaultConfig, details, err
 
   return (
     <aside className="details-panel" aria-label="Page details">
-      <div className="details-heading">
-        <span>Page Details</span>
-        <strong>{status === "loading" ? "Decoding" : `${pageCount} page${pageCount === 1 ? "" : "s"}`}</strong>
-      </div>
-
       <section className="details-section" aria-labelledby="document-details-heading">
         <h2 id="document-details-heading">Document</h2>
         <dl>
           <dt>Source</dt>
           <dd>{details.source}</dd>
+        </dl>
+        <div className="details-actions">
+          <button type="button" className="settings-button" disabled={!canExport || exporting} onClick={onExport}>
+            {exporting ? "Exporting TIFF" : "Download TIFF"}
+          </button>
+          {draft ? (
+            <button type="button" className="settings-button" onClick={() => setSettingsOpen(true)}>Image Settings</button>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="details-section page-section" aria-labelledby="page-details-heading">
+        <h2 id="page-details-heading">Page</h2>
+        <label className="edit-toggle">
+          <input type="checkbox" checked={allowEdit} onChange={(event) => onAllowEdit(event.currentTarget.checked)} />
+          <span>Edit pages</span>
+        </label>
+        <dl>
           <dt>Page</dt>
           <dd>{details.page}</dd>
           <dt>Size</dt>
@@ -47,54 +60,47 @@ export function DetailsPanel({ allowEdit, canExport, defaultConfig, details, err
           <dt>Zoom</dt>
           <dd>{details.zoom}</dd>
         </dl>
-      </section>
 
-      <section className="details-section" aria-labelledby="selection-details-heading">
-        <h2 id="selection-details-heading">Selection</h2>
-        <dl>
-          <dt>Tokens</dt>
-          <dd>{details.tokens}</dd>
-          <dt>Figures</dt>
-          <dd>{details.figures}</dd>
-          <dt>Context</dt>
-          <dd>{details.context}</dd>
-        </dl>
-      </section>
+        {details.info ? (
+          <section className="details-subsection" aria-labelledby="page-info-heading">
+            <h3 id="page-info-heading">Page Info</h3>
+            <dl>
+              <dt>Number</dt>
+              <dd>{details.info.pageNumber}</dd>
+              <dt>Class</dt>
+              <dd>{details.info.class ?? "None"}</dd>
+              <dt>Segments</dt>
+              <dd>{details.info.segments.length ? details.info.segments.join(", ") : "None"}</dd>
+            </dl>
+          </section>
+        ) : null}
 
-      <section className="details-section" aria-labelledby="style-details-heading">
-        <h2 id="style-details-heading">Style</h2>
-        <div className="theme-grid" role="table" aria-label="Selection style">
-          <div className="theme-head" role="columnheader" />
-          <div className="theme-head" role="columnheader">Fill</div>
-          <div className="theme-head" role="columnheader">Border</div>
-          <StyleRow label="Context" colors={details.theme.context} />
-          <StyleRow label="Figure" colors={details.theme.figure} />
-          <StyleRow label={`High ${details.theme.confidence.high}`} colors={details.theme.tokenHigh} />
-          <StyleRow label={`Medium ${details.theme.confidence.medium}`} colors={details.theme.tokenMedium} />
-          <StyleRow label={`Low ${details.theme.confidence.low}`} colors={details.theme.tokenLow} />
-        </div>
-      </section>
-
-      <section className="details-section" aria-labelledby="edit-details-heading">
-        <h2 id="edit-details-heading">Edit</h2>
-        <label className="edit-toggle">
-          <input type="checkbox" checked={allowEdit} onChange={(event) => onAllowEdit(event.currentTarget.checked)} />
-          <span>Edit pages</span>
-        </label>
-      </section>
-
-      <section className="details-section" aria-labelledby="export-details-heading">
-        <h2 id="export-details-heading">Export</h2>
-        <button type="button" className="settings-button" disabled={!canExport || exporting} onClick={onExport}>
-          {exporting ? "Exporting TIFF" : "Download TIFF"}
-        </button>
-      </section>
-
-      {draft ? (
-        <section className="details-section" aria-label="Validation settings">
-          <button type="button" className="settings-button" onClick={() => setSettingsOpen(true)}>Validation Settings</button>
+        <section className="details-subsection" aria-labelledby="selection-details-heading">
+          <h3 id="selection-details-heading">Selection</h3>
+          <dl>
+            <dt>Tokens</dt>
+            <dd>{details.tokens}</dd>
+            <dt>Figures</dt>
+            <dd>{details.figures}</dd>
+            <dt>Context</dt>
+            <dd>{details.context}</dd>
+          </dl>
         </section>
-      ) : null}
+
+        <section className="details-subsection" aria-labelledby="style-details-heading">
+          <h3 id="style-details-heading">Style</h3>
+          <div className="theme-grid" role="table" aria-label="Selection style">
+            <div className="theme-head" role="columnheader" />
+            <div className="theme-head" role="columnheader">Fill</div>
+            <div className="theme-head" role="columnheader">Border</div>
+            <StyleRow label="Context" colors={details.theme.context} />
+            <StyleRow label="Figure" colors={details.theme.figure} />
+            <StyleRow label={`High ${details.theme.confidence.high}`} colors={details.theme.tokenHigh} />
+            <StyleRow label={`Medium ${details.theme.confidence.medium}`} colors={details.theme.tokenMedium} />
+            <StyleRow label={`Low ${details.theme.confidence.low}`} colors={details.theme.tokenLow} />
+          </div>
+        </section>
+      </section>
 
       {settingsOpen && draft ? (
         <ValidationDialog
@@ -134,7 +140,7 @@ function ValidationDialog({ defaultConfig, dirty, draft, viewerConfig, onClose, 
     <div className="settings-overlay" role="presentation">
       <div className="settings-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="settings-heading">
-          <h2 id={titleId}>Validation Settings</h2>
+          <h2 id={titleId}>Image Settings</h2>
           <button type="button" onClick={onClose}>Close</button>
         </div>
         <div className="settings-body">

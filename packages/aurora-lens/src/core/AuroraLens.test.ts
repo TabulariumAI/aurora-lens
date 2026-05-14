@@ -662,13 +662,15 @@ describe("AuroraLens", () => {
     await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
     await lens.showThumbnails();
 
-    expect(intelligenceLabels(container)).toEqual(["Intelligence ready for page 1"]);
+    expect(intelligenceLabels(container)).toEqual(["Page 1 has intelligence metadata"]);
+    expect(card(container, 0).style.borderTop).toBe("0.25rem solid rgb(124, 58, 237)");
 
     drag(handle(container, 0), card(container, 1));
     await flush();
 
     expect(Array.from(container.querySelectorAll("[data-item-id]")).map((card) => (card as HTMLElement).dataset.itemId)).toEqual(["page-2", "page-1"]);
-    expect(intelligenceLabels(container)).toEqual(["Intelligence ready for page 2"]);
+    expect(intelligenceLabels(container)).toEqual(["Page 2 has intelligence metadata"]);
+    expect(card(container, 1).style.borderTop).toBe("0.25rem solid rgb(124, 58, 237)");
   });
 
   it("keeps thumbnail scroll and image nodes when thumbnails are reordered", async () => {
@@ -760,6 +762,7 @@ describe("AuroraLens", () => {
       sourceName: "restored.raster",
       pageIndex: 1,
       pageCount: 2,
+      metadataPageCount: 2,
       canSearch: true,
     });
     expect(store.session).toMatchObject({
@@ -818,6 +821,105 @@ describe("AuroraLens", () => {
         2
       ),
     });
+  });
+
+  it("provides current page metadata info through the public API", async () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+
+    expect(lens.readPageInfo()).toEqual({
+      pageNumber: 1,
+      class: "assumed name abandonment",
+      segments: ["Exhibit", "Recital"],
+      indexes: [
+        {
+          label: "Recording Number",
+          value: "20250631357",
+          source: "Document Number: 20250631357",
+          ambiguous: "NO",
+        },
+      ],
+    });
+  });
+
+  it("restricts token search to the matched context", async () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+
+    const hits = lens.search("Source", { context: "The opening source URLs from the PDF are clean." });
+
+    expect(hits?.tokens.map((token) => token.token)).toEqual(["source"]);
+    expect(hits?.contexts.map((context) => context.content)).toEqual(["The opening source URLs from the PDF are clean."]);
+  });
+
+  it("matches search context by explicit AND token terms", async () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+
+    const hits = lens.search("Source", { context: "opening AND clean" });
+
+    expect(hits?.tokens.map((token) => token.token)).toEqual(["source"]);
+    expect(hits?.contexts.map((context) => context.content)).toEqual(["The opening source URLs from the PDF are clean."]);
+  });
+
+  it("matches search context by explicit OR token terms", async () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+
+    const hits = lens.search("Source", { context: "actual OR clean" });
+
+    expect(hits?.tokens.map((token) => token.token)).toEqual(["source", "source"]);
+    expect(hits?.contexts.map((context) => context.content)).toEqual([
+      "Now let me look at the actual source URLs from the PDF to build the reference list properly.",
+      "The opening source URLs from the PDF are clean.",
+    ]);
+  });
+
+  it("returns matched context when context search has no token match", async () => {
+    const states: ViewerState[] = [];
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      onStateChange: (state) => states.push(state),
+    });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+
+    const hits = lens.search("MissingToken", { context: "The opening source URLs from the PDF are clean." });
+
+    expect(hits?.tokens).toEqual([]);
+    expect(hits?.contexts.map((context) => context.content)).toEqual(["The opening source URLs from the PDF are clean."]);
+    expect(states.at(-1)?.selectionCounts.context).toBe(1);
+  });
+
+  it("falls back to token search when context search has no match", async () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+
+    const hits = lens.search("Alpha", { context: "MissingContext" });
+
+    expect(hits?.tokens.map((token) => token.token)).toEqual(["Alpha"]);
+    expect(hits?.contexts.map((context) => context.content)).toEqual(["Alpha Beta"]);
+  });
+
+  it("searches indexes through the package API", async () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+
+    const hits = lens.searchIndex(1, {
+      label: "Recording Number",
+      value: "Alpha",
+      source: "Document Number: Alpha",
+      ambiguous: "NO",
+    });
+
+    expect(hits?.tokens.map((token) => token.token)).toEqual(["Alpha"]);
+    expect(hits?.contexts.map((context) => context.content)).toEqual(["Alpha Beta"]);
   });
 
   it("clears selection when navigating pages", async () => {
@@ -934,7 +1036,7 @@ describe("AuroraLens", () => {
     const add = action(container, 1, "Add before");
     const style = document.getElementById("aurora-lens-thumbnail-style");
     expect(page.dataset.auroraThumbnailCard).toBe("true");
-    expect(page.style.border).toBe("0px");
+    expect(page.style.borderTop).toBe("0px");
     expect(add.dataset.thumbnailAction).toBe("true");
     expect(add.style.width).toBe("3rem");
     expect(add.style.height).toBe("3rem");
@@ -962,7 +1064,8 @@ describe("AuroraLens", () => {
     const move = handle(container, 0);
     const selected = card(container, 0);
 
-    expect(selected.style.border).toBe("1px solid rgb(0, 81, 104)");
+    expect(selected.style.borderLeft).toBe("1px solid rgb(0, 81, 104)");
+    expect(selected.style.borderTop).toBe("1px solid rgb(0, 81, 104)");
     expect(remove.style.left).toBe("50%");
     expect(remove.style.top).toBe("0.375rem");
     expect(remove.style.transform).toBe("translateX(-50%)");
@@ -1059,9 +1162,10 @@ describe("AuroraLens", () => {
     expect(cardLabels(container)).toEqual(["Page 1", "Page 2", "Page 3", "Page 4"]);
   });
 
-  it("removes a thumbnail visually", async () => {
+  it("removes a thumbnail and persists the page removal", async () => {
+    const store = new MemorySessionStore();
     const container = document.createElement("div");
-    const lens = new AuroraLens(container, { allowEdit: true });
+    const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
     await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
     await lens.showThumbnails();
@@ -1084,8 +1188,15 @@ describe("AuroraLens", () => {
     confirm.click();
     await flush();
 
-    expect(cardLabels(container)).toEqual(["Page 2"]);
+    expect(cardLabels(container)).toEqual(["Page 1"]);
     expect(liveText(container)).toBe("Remove page complete");
+    expect(store.session?.pages.map((page) => ({
+      sequenceNumber: page.sequenceNumber,
+      sourcePageIndex: page.sourcePageIndex,
+    }))).toEqual([
+      { sequenceNumber: 1, sourcePageIndex: 1 },
+    ]);
+    expect(store.session?.currentPage.sourcePageIndex).toBe(1);
   });
 
   it("disarms thumbnail remove confirmation after timeout", async () => {
@@ -1288,11 +1399,31 @@ function metadata() {
         pageNumber: 1,
         width: 100,
         height: 200,
+        class: "assumed name abandonment",
+        segments: ["Exhibit", "Recital"],
+        indexes: [
+          {
+            label: "Recording Number",
+            value: "20250631357",
+            source: "Document Number: 20250631357",
+            ambiguous: "NO",
+          },
+        ],
         tokens: [
           {
             content: "Alpha",
             confidence: 0.98,
             polygon: [10, 10, 40, 10, 40, 30, 10, 30],
+          },
+          {
+            content: "source",
+            confidence: 0.98,
+            polygon: [10, 50, 50, 50, 50, 70, 10, 70],
+          },
+          {
+            content: "source",
+            confidence: 0.98,
+            polygon: [10, 90, 50, 90, 50, 110, 10, 110],
           },
         ],
         contexts: [
@@ -1300,6 +1431,16 @@ function metadata() {
             content: "Alpha Beta",
             role: "body",
             polygon: [5, 5, 75, 5, 75, 35, 5, 35],
+          },
+          {
+            content: "Now let me look at the actual source URLs from the PDF to build the reference list properly.",
+            role: "body",
+            polygon: [5, 45, 95, 45, 95, 75, 5, 75],
+          },
+          {
+            content: "The opening source URLs from the PDF are clean.",
+            role: "body",
+            polygon: [5, 85, 95, 85, 95, 115, 5, 115],
           },
         ],
         figures: [],
@@ -1392,7 +1533,7 @@ function cardLabels(container: HTMLElement) {
 }
 
 function intelligenceLabels(container: HTMLElement) {
-  return Array.from(container.querySelectorAll("[aria-label^='Intelligence ready for page']")).map((element) => element.getAttribute("aria-label") ?? "");
+  return Array.from(container.querySelectorAll("[aria-label$='has intelligence metadata']")).map((element) => element.getAttribute("aria-label") ?? "");
 }
 
 function drag(source: HTMLElement, target: HTMLElement) {

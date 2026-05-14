@@ -1,8 +1,12 @@
+import type { SelectionColor } from "./types";
+
 interface ThumbnailViewerOptions {
   allowEdit: boolean;
+  intelligenceColor: SelectionColor;
   onAdd: (files: File[], insertIndex: number) => Promise<void> | void;
   onRange: (pageIndexes: number[]) => void;
   onReorder: (request: ThumbnailReorderRequest) => Promise<void> | void;
+  onRemove: (pageId: string) => Promise<void> | void;
   onSelect: (pageIndex: number) => void;
 }
 
@@ -66,11 +70,10 @@ const labels = {
   confirmRemove: "Confirm remove",
   addedLoading: "Added page thumbnail loading",
   addedPage: "Added page",
-  intelligence: "Intelligence",
   loading: "Loading",
   remove: "Remove",
   move: "Move page",
-  intelligenceReady: (pageNumber: number) => `Intelligence ready for page ${pageNumber}`,
+  intelligenceReady: (pageNumber: number) => `Page ${pageNumber} has intelligence metadata`,
   page: (pageNumber: number) => `Page ${pageNumber}`,
   thumbLoading: (sourceName: string, pageNumber: number) => `${sourceName} page ${pageNumber} thumbnail loading`,
 };
@@ -97,9 +100,6 @@ const layout = {
 
 const colors = {
   activeBorder: "#005168",
-  badgeBackground: "#edf6ff",
-  badgeBorder: "#b7d6ff",
-  badgeText: "#2253a3",
   buttonBorder: "#b7c5cf",
   cardBackground: "#ffffff",
   cardBorder: "#d6dce2",
@@ -269,20 +269,16 @@ const styles = {
     lineHeight: "1",
     whiteSpace: "nowrap",
   },
-  badge: {
+  intelligence: {
     position: "absolute",
-    zIndex: "2",
-    top: "0.75rem",
-    right: "0.75rem",
-    border: `1px solid ${colors.badgeBorder}`,
-    borderRadius: "999px",
-    padding: "0.125rem 0.375rem",
-    color: colors.badgeText,
-    background: colors.badgeBackground,
-    fontSize: "0.6875rem",
-    fontWeight: "800",
-    lineHeight: "1.2",
-    boxShadow: "0 1px 4px rgba(17, 24, 39, 0.12)",
+    width: "1px",
+    height: "1px",
+    margin: "-1px",
+    padding: "0",
+    overflow: "hidden",
+    clip: "rect(0 0 0 0)",
+    whiteSpace: "nowrap",
+    border: "0",
   },
   sheen: {
     position: "absolute",
@@ -495,9 +491,11 @@ export class ThumbnailViewer {
 
   private card(item: ThumbnailItem) {
     const card = document.createElement("div");
+    const hasMetadata = this.metadataPages.has(item.pageId);
     card.dataset[data.card] = "true";
     Object.assign(card.style, styles.card, {
       border: item.pageIndex === this.activeIndex ? `1px solid ${colors.activeBorder}` : "0",
+      borderTop: hasMetadata ? `0.25rem solid ${this.options.intelligenceColor.stroke}` : item.pageIndex === this.activeIndex ? `1px solid ${colors.activeBorder}` : "0",
     });
     card.dataset[data.itemId] = item.pageId;
     card.dataset[data.pageIndex] = String(item.pageIndex);
@@ -518,6 +516,9 @@ export class ThumbnailViewer {
     });
     card.addEventListener("drop", (event) => this.handleReorder(event, card));
     card.append(this.media(item.pageIndex), this.title(labels.page(item.pageIndex + 1), this.sizeText(item.pageIndex)), this.select(item.pageIndex));
+    if (hasMetadata) {
+      card.append(this.intelligenceLabel(item.pageIndex + 1));
+    }
     if (this.allowEdit) {
       this.addEditControls(card);
     }
@@ -548,7 +549,6 @@ export class ThumbnailViewer {
 
   private media(index: number) {
     const page = this.pages[index];
-    const pageId = page?.pageId ?? this.pageIds[index];
     const media = this.mediaFrame(page, index + 1);
     if (page) {
       const image = document.createElement("img");
@@ -558,9 +558,6 @@ export class ThumbnailViewer {
       media.append(image);
     } else {
       media.append(this.sheen());
-    }
-    if (pageId && this.metadataPages.has(pageId)) {
-      media.append(this.badge(index + 1));
     }
     return media;
   }
@@ -711,12 +708,11 @@ export class ThumbnailViewer {
     }
   }
 
-  private badge(pageNumber: number) {
-    const badge = document.createElement("span");
-    badge.textContent = labels.intelligence;
-    badge.setAttribute("aria-label", labels.intelligenceReady(pageNumber));
-    Object.assign(badge.style, styles.badge);
-    return badge;
+  private intelligenceLabel(pageNumber: number) {
+    const label = document.createElement("span");
+    label.setAttribute("aria-label", labels.intelligenceReady(pageNumber));
+    Object.assign(label.style, styles.intelligence);
+    return label;
   }
 
   private chooseFile(event: Event, card: HTMLDivElement, side: "left" | "right") {
@@ -763,13 +759,9 @@ export class ThumbnailViewer {
     if (!item) {
       return;
     }
-    const index = this.items.findIndex((value) => value.pageId === item.pageId);
-    if (index < 0) {
-      return;
-    }
-    this.items.splice(index, 1);
-    this.render(false, false);
-    this.report(messages.remove);
+    void Promise.resolve(this.options.onRemove(item.pageId)).then(() => {
+      this.report(messages.remove);
+    }).catch(() => undefined);
   }
 
   private handleReorder(event: DragEvent, targetCard: HTMLDivElement) {
@@ -834,10 +826,12 @@ export class ThumbnailViewer {
         return;
       }
       const pageIndex = item.pageIndex;
+      const hasMetadata = this.metadataPages.has(item.pageId);
       card.dataset[data.itemId] = item.pageId;
       card.dataset[data.pageIndex] = String(pageIndex);
       Object.assign(card.style, {
         border: pageIndex === this.activeIndex ? `1px solid ${colors.activeBorder}` : "0",
+        borderTop: hasMetadata ? `0.25rem solid ${this.options.intelligenceColor.stroke}` : pageIndex === this.activeIndex ? `1px solid ${colors.activeBorder}` : "0",
       });
       const primary = card.querySelector(`[data-title-primary]`);
       const secondary = card.querySelector(`[data-title-secondary]`);
@@ -861,13 +855,13 @@ export class ThumbnailViewer {
       if (media instanceof HTMLElement) {
         media.setAttribute("aria-label", page ? `${page.sourceName} page ${page.pageNumber}` : labels.thumbLoading(this.sourceName, pageIndex + 1));
       }
-      const badge = card.querySelector("[aria-label^='Intelligence ready for page']");
-      if (this.metadataPages.has(item.pageId) && !(badge instanceof HTMLElement) && media instanceof HTMLElement) {
-        media.append(this.badge(pageIndex + 1));
-      } else if (this.metadataPages.has(item.pageId) && badge instanceof HTMLElement) {
-        badge.setAttribute("aria-label", labels.intelligenceReady(pageIndex + 1));
-      } else if (badge instanceof HTMLElement) {
-        badge.remove();
+      const label = card.querySelector("[aria-label$='has intelligence metadata']");
+      if (hasMetadata && !(label instanceof HTMLElement)) {
+        card.append(this.intelligenceLabel(pageIndex + 1));
+      } else if (hasMetadata && label instanceof HTMLElement) {
+        label.setAttribute("aria-label", labels.intelligenceReady(pageIndex + 1));
+      } else if (label instanceof HTMLElement) {
+        label.remove();
       }
     });
   }

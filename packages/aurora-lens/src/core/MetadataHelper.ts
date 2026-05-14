@@ -1,8 +1,9 @@
 import Fuse from "fuse.js";
 import { MetadataRepository } from "./MetadataRepository";
-import type { PageContext, PageFigure, PageMetadataHits, PageToken, SelectedGroup } from "./types";
+import type { MetadataIndex, PageContext, PageFigure, PageInfo, PageMetadataHits, PageToken, SelectedGroup } from "./types";
 
 const rectTolerance = 5;
+const indexContextLimit = 1;
 
 interface MetadataRoot {
   pages: PageData[];
@@ -12,6 +13,9 @@ interface PageData {
   pageNumber: number;
   width: number;
   height: number;
+  class?: string;
+  segments?: string[];
+  indexes?: MetadataIndex[];
   tokens: Array<{
     content?: string;
     confidence: number;
@@ -33,8 +37,31 @@ interface TokenItem {
   value: PageToken;
 }
 
+interface ContextItem {
+  token: string | null;
+  key: string;
+  value: PageData["contexts"][number];
+}
+
+interface SearchQuery {
+  mode: "and" | "or";
+  terms: string[];
+}
+
 interface SearchToken extends TokenItem {
   score: number;
+}
+
+interface SearchContext extends ContextItem {
+  score: number;
+}
+
+interface IndexContextScore {
+  context: PageData["contexts"][number];
+  contextCoverage: number;
+  sourceCoverage: number;
+  score: number;
+  order: number;
 }
 
 export class MetadataHelper {
@@ -73,6 +100,16 @@ export class MetadataHelper {
     };
   }
 
+  pageInfo(pageIndex: number): PageInfo {
+    const page = this.page(pageIndex);
+    return {
+      pageNumber: page.pageNumber,
+      class: page.class ?? null,
+      segments: page.segments ?? [],
+      indexes: page.indexes ?? [],
+    };
+  }
+
   getElement(pageIndex: number, x: number, y: number): PageMetadataHits {
     const page = this.page(pageIndex);
     const tokens = page.tokens
@@ -104,9 +141,18 @@ export class MetadataHelper {
     };
   }
 
-  search(pageIndex: number, text: string): PageMetadataHits {
+  search(pageIndex: number, text: string, context?: string | null): PageMetadataHits {
     const value = text.trim();
-    if (!value) {
+    const contextValue = context?.trim();
+    console.info("[PACK] metadata search", {
+      pageIndex,
+      text,
+      value,
+      context: context ?? null,
+      contextValue: contextValue ?? null,
+    });
+    if (!value && !contextValue) {
+      console.info("[PACK] metadata search empty query");
       return {
         tokens: [],
         contexts: [],
@@ -114,10 +160,93 @@ export class MetadataHelper {
       };
     }
     const page = this.page(pageIndex);
+    console.info("[PACK] metadata search page", {
+      pageNumber: page.pageNumber,
+      tokenCount: page.tokens.length,
+      contextCount: page.contexts.length,
+      figureCount: page.figures.length,
+    });
+    if (contextValue) {
+      const contexts = this.searchContexts(page, contextValue);
+      const foundTokens = value ? this.searchTokens(pageIndex, value) : [];
+      console.info("[PACK] metadata search context branch", {
+        contextMatches: contexts.length,
+        tokenMatches: foundTokens.length,
+      });
+      if (value && !contexts.length) {
+        const fallbackContexts = this.contexts(page, foundTokens);
+        console.info("[PACK] metadata search context fallback", {
+          tokenMatches: foundTokens.length,
+          contextMatches: fallbackContexts.length,
+        });
+        return {
+          tokens: foundTokens.map((token) => token.value),
+          contexts: fallbackContexts,
+          figures: [],
+        };
+      }
+      const tokens = foundTokens.filter((token) => contexts.some((match) => this.hitPoly(match.polygon, ...this.center(token.polygon))));
+      console.info("[PACK] metadata search restricted hits", {
+        tokens: tokens.length,
+        contexts: contexts.length,
+      });
+      return {
+        tokens: tokens.map((token) => token.value),
+        contexts: contexts.map((match) => this.context(match)),
+        figures: [],
+      };
+    }
     const tokens = this.searchTokens(pageIndex, value);
+    const contexts = this.contexts(page, tokens);
+    console.info("[PACK] metadata search token branch", {
+      tokens: tokens.length,
+      contexts: contexts.length,
+    });
     return {
       tokens: tokens.map((token) => token.value),
-      contexts: this.contexts(page, tokens),
+      contexts,
+      figures: [],
+    };
+  }
+
+  searchIndex(pageIndex: number, index: MetadataIndex): PageMetadataHits {
+    const page = this.page(pageIndex);
+    console.info("[PACK] metadata searchIndex", {
+      pageIndex,
+      pageNumber: page.pageNumber,
+      value: index.value,
+      source: index.source,
+    });
+    const tokens = this.searchTokens(pageIndex, index.value, "and");
+    console.info("[PACK] index value token hits", {
+      value: index.value,
+      count: tokens.length,
+      hits: tokens.map((token) => ({
+        token: token.value.token,
+        score: token.score,
+        polygon: token.value.polygon,
+      })),
+    });
+    const tokenContexts = this.contexts(page, tokens);
+    const sourceContexts = this.searchIndexContexts(page, index.source).map((context) => this.context(context));
+    console.info("[PACK] index source context hits", {
+      source: index.source,
+      count: sourceContexts.length,
+      hits: sourceContexts.map((context) => ({
+        content: context.content ?? null,
+        polygon: context.polygon,
+      })),
+    });
+    const contexts = this.mergeContexts([...tokenContexts, ...sourceContexts]);
+    console.info("[PACK] index combined hits", {
+      tokens: tokens.length,
+      tokenContexts: tokenContexts.length,
+      sourceContexts: sourceContexts.length,
+      contexts: contexts.length,
+    });
+    return {
+      tokens: tokens.map((token) => token.value),
+      contexts,
       figures: [],
     };
   }
@@ -156,28 +285,59 @@ export class MetadataHelper {
     return Array.from(groups.values());
   }
 
-  private searchTokens(pageIndex: number, text: string) {
+  private searchTokens(pageIndex: number, text: string, mode?: SearchQuery["mode"]) {
     const items = this.tokenItems(pageIndex);
-    const rawTerms = text
-      .split(/\s+/)
-      .map((term) => term.trim())
-      .filter((term) => term);
-    const hasOr = rawTerms.some((term) => /^or$/i.test(term));
-    const terms = rawTerms.filter((term) => !/^or$/i.test(term));
-    if (!terms.length) {
+    const query = this.searchQuery(text, mode);
+    console.info("[PACK] search tokens query", {
+      pageIndex,
+      text,
+      mode: query.mode,
+      terms: query.terms,
+      itemCount: items.length,
+    });
+    if (!query.terms.length) {
+      console.info("[PACK] search tokens empty terms");
       return [];
     }
-    const matches = terms.map((term) => this.searchItems(items, term));
-    if (hasOr) {
-      return this.uniqueTokens(matches.flat());
+    const matches = query.terms.map((term) => this.searchItems(items, term));
+    console.info("[PACK] search tokens term matches", matches.map((match, index) => ({
+      term: query.terms[index],
+      count: match.length,
+      hits: match.map((token) => ({
+        token: token.value.token,
+        score: token.score,
+        polygon: token.value.polygon,
+      })),
+    })));
+    if (query.mode === "or") {
+      const tokens = this.uniqueTokens(matches.flat());
+      console.info("[PACK] search tokens OR result", { count: tokens.length });
+      return tokens;
     }
     if (matches.some((match) => !match.length)) {
+      console.info("[PACK] search tokens AND missing term");
       return [];
     }
     if (matches.length === 1) {
+      console.info("[PACK] search tokens single term result", { count: matches[0].length });
       return matches[0];
     }
-    return this.contextTokens(pageIndex, matches);
+    const tokens = this.contextTokens(pageIndex, matches);
+    console.info("[PACK] search tokens AND context result", { count: tokens.length });
+    return tokens;
+  }
+
+  private searchQuery(text: string, mode?: SearchQuery["mode"]): SearchQuery {
+    const rawTerms = this.searchTerms(text);
+    const hasOr = rawTerms.some((term) => /^or$/i.test(term));
+    return {
+      mode: mode ?? (hasOr ? "or" : "and"),
+      terms: rawTerms.filter((term) => !/^(and|or)$/i.test(term)),
+    };
+  }
+
+  private searchTerms(text: string) {
+    return text.match(/[A-Za-z0-9#]+/g) ?? [];
   }
 
   private uniqueTokens(tokens: SearchToken[]) {
@@ -247,7 +407,7 @@ export class MetadataHelper {
     };
   }
 
-  private searchItems(items: TokenItem[], text: string): SearchToken[] {
+  private searchItems<T extends { token: string | null }>(items: T[], text: string): Array<T & { score: number }> {
     return new Fuse(
       items.filter((item) => item.token),
       {
@@ -257,11 +417,152 @@ export class MetadataHelper {
         includeScore: true,
       }
     ).search(text).map((match) => ({
-      token: match.item.token,
-      polygon: match.item.polygon,
+      ...match.item,
       score: match.score!,
-      value: match.item.value,
     }));
+  }
+
+  private searchContexts(page: PageData, text: string) {
+    const items = this.contextItems(page);
+    const query = this.searchQuery(text);
+    console.info("[PACK] search contexts query", {
+      pageNumber: page.pageNumber,
+      text,
+      mode: query.mode,
+      terms: query.terms,
+      itemCount: items.length,
+    });
+    if (!query.terms.length) {
+      console.info("[PACK] search contexts empty terms");
+      return [];
+    }
+    const matches = query.terms.map((term) => this.searchItems(items, term));
+    console.info("[PACK] search contexts term matches", matches.map((match, index) => ({
+      term: query.terms[index],
+      count: match.length,
+      hits: match.map((context) => ({
+        token: context.token,
+        score: context.score,
+        polygon: context.value.polygon,
+        content: context.value.content ?? null,
+      })),
+    })));
+    if (query.mode === "or") {
+      const contexts = this.uniqueContexts(matches.flat());
+      console.info("[PACK] search contexts OR result", { count: contexts.length });
+      return contexts;
+    }
+    if (matches.some((match) => !match.length)) {
+      console.info("[PACK] search contexts AND missing term");
+      return [];
+    }
+    const contexts = this.intersectContexts(matches);
+    console.info("[PACK] search contexts AND result", { count: contexts.length });
+    return contexts;
+  }
+
+  private searchIndexContexts(page: PageData, text: string) {
+    const query = this.searchQuery(text, "or");
+    console.info("[PACK] index source query", {
+      source: text,
+      terms: query.terms,
+    });
+    const ranked = page.contexts
+      .map((context, order) => this.scoreIndexContext(context, order, query.terms))
+      .filter((match): match is IndexContextScore => Boolean(match))
+      .sort((left, right) =>
+        right.contextCoverage - left.contextCoverage ||
+        right.sourceCoverage - left.sourceCoverage ||
+        left.score - right.score ||
+        left.order - right.order
+      );
+    console.info("[PACK] index source ranked contexts", ranked.map((match) => ({
+      content: match.context.content ?? null,
+      polygon: match.context.polygon,
+      contextCoverage: match.contextCoverage,
+      sourceCoverage: match.sourceCoverage,
+      score: match.score,
+      order: match.order,
+    })));
+    return ranked.slice(0, indexContextLimit).map((match) => match.context);
+  }
+
+  private scoreIndexContext(context: PageData["contexts"][number], order: number, sourceTerms: string[]): IndexContextScore | null {
+    const contextTerms = this.searchTerms(context.content ?? "");
+    if (!sourceTerms.length || !contextTerms.length) {
+      return null;
+    }
+    const contextItems = contextTerms.map((term, index) => ({
+      token: term,
+      index,
+    }));
+    const matchedContextTerms = new Set<number>();
+    const matchedSourceTerms = new Set<number>();
+    let score = 1;
+    sourceTerms.forEach((term, sourceIndex) => {
+      const matches = this.searchItems(contextItems, term);
+      if (!matches.length) {
+        return;
+      }
+      matchedSourceTerms.add(sourceIndex);
+      matches.forEach((match) => matchedContextTerms.add(match.index));
+      score = Math.min(score, ...matches.map((match) => match.score));
+    });
+    if (!matchedContextTerms.size) {
+      return null;
+    }
+    return {
+      context,
+      contextCoverage: matchedContextTerms.size / contextTerms.length,
+      sourceCoverage: matchedSourceTerms.size / sourceTerms.length,
+      score,
+      order,
+    };
+  }
+
+  private contextItems(page: PageData) {
+    return page.contexts.flatMap((context) => this.searchTerms(context.content ?? "").map((term) => ({
+      token: term,
+      key: this.contextKey(context),
+      value: context,
+    })));
+  }
+
+  private uniqueContexts(contexts: SearchContext[]) {
+    const found = new Map<string, SearchContext>();
+    contexts.forEach((context) => {
+      found.set(context.key, context);
+    });
+    return Array.from(found.values()).map((context) => context.value);
+  }
+
+  private mergeContexts(contexts: PageContext[]) {
+    const found = new Map<string, PageContext>();
+    contexts.forEach((context) => {
+      found.set(this.contextKey(context), context);
+    });
+    return Array.from(found.values());
+  }
+
+  private contextKey(context: { polygon: number[] }) {
+    return context.polygon.join(",");
+  }
+
+  private intersectContexts(matches: SearchContext[][]) {
+    const groups = matches.map((match) => {
+      const found = new Map<string, SearchContext>();
+      match.forEach((context) => {
+        const current = found.get(context.key);
+        if (!current || context.score < current.score) {
+          found.set(context.key, context);
+        }
+      });
+      return found;
+    });
+    return Array.from(groups[0].keys())
+      .filter((key) => groups.every((group) => group.has(key)))
+      .map((key) => groups.map((group) => group.get(key)!).reduce((best, context) => context.score < best.score ? context : best))
+      .map((context) => context.value);
   }
 
   private rect(x1: number, y1: number, x2: number, y2: number) {

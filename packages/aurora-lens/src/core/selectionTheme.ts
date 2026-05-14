@@ -9,6 +9,10 @@ export const defaultSelectionTheme: SelectionTheme = {
     fill: "rgba(0, 0, 128, 0.12)",
     stroke: "navy",
   },
+  intelligence: {
+    fill: "rgba(124, 58, 237, 0.12)",
+    stroke: "#7c3aed",
+  },
   token: {
     high: {
       fill: "rgba(0, 81, 104, 0.12)",
@@ -33,6 +37,7 @@ export function normalizeSelectionTheme(theme?: PartialSelectionTheme): Selectio
   return {
     context: mergeColor(defaultSelectionTheme.context, theme?.context),
     figure: mergeColor(defaultSelectionTheme.figure, theme?.figure),
+    intelligence: mergeColor(defaultSelectionTheme.intelligence, theme?.intelligence),
     token: {
       high: mergeColor(defaultSelectionTheme.token.high, theme?.token?.high),
       medium: mergeColor(defaultSelectionTheme.token.medium, theme?.token?.medium),

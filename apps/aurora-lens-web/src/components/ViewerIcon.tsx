@@ -8,6 +8,8 @@ export type ViewerIconName =
   | "actual-size"
   | "thumbnails"
   | "rect"
+  | "indexes"
+  | "go"
   | "clear"
   | "copy"
   | "check"
@@ -68,6 +70,10 @@ function iconElements(name: ViewerIconName): IconElement[] {
       return [rect(4, 4, 6, 6, 1), rect(14, 4, 6, 6, 1), rect(4, 14, 6, 6, 1), rect(14, 14, 6, 6, 1)];
     case "rect":
       return [rect(5, 6, 14, 12), path("M9 6V4"), path("M15 20v-2")];
+    case "indexes":
+      return [line(8, 6, 20, 6), line(8, 12, 20, 12), line(8, 18, 20, 18), circle(4, 6, 1), circle(4, 12, 1), circle(4, 18, 1)];
+    case "go":
+      return [path("M5 12h13"), path("M13 6l6 6-6 6")];
     case "clear":
       return [path("M6 6l12 12"), path("M18 6L6 18")];
     case "copy":

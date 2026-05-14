@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { ReactViewer } from "@tabularium/aurora-lens/react";
 import type { AuroraLens, ViewerReady } from "@tabularium/aurora-lens";
 import { selectionTheme } from "../lens/selectionTheme";
@@ -7,12 +7,14 @@ import { AlertDialog } from "./AlertDialog";
 import { ProgressBar } from "./ProgressBar";
 import { ViewerFooter } from "./ViewerFooter";
 import { ViewerToolbar } from "./ViewerToolbar";
+import type { PageInfo } from "../lens/types";
 
 interface LensHostProps {
   addError: string;
   allowEdit: boolean;
   fatalError: string;
   lensRef: RefObject<AuroraLens | null>;
+  pageInfo: PageInfo | null;
   progressText: string;
   state: ViewerState;
   status: ViewerStatus;
@@ -27,18 +29,34 @@ interface LensHostProps {
   onViewerErrorOk: () => void;
 }
 
-export function LensHost({ addError, allowEdit, fatalError, lensRef, progressText, state, status, viewerError, onAddError, onAddErrorOk, onError, onFatalErrorOk, onReady, onStateChange, onStatusChange, onViewerErrorOk }: LensHostProps) {
+export function LensHost({ addError, allowEdit, fatalError, lensRef, pageInfo, progressText, state, status, viewerError, onAddError, onAddErrorOk, onError, onFatalErrorOk, onReady, onStateChange, onStatusChange, onViewerErrorOk }: LensHostProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
+  const [searchResultCount, setSearchResultCount] = useState<number | null>(null);
+  const [indexOpen, setIndexOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [copyConfirmed, setCopyConfirmed] = useState(false);
   const copyTimerRef = useRef(0);
   const isBusy = status === "loadingPage" || status === "loadingThumbnails" || status === "copyingSelection";
+  const indexes = pageInfo?.indexes ?? [];
+  const indexKey = useMemo(() => JSON.stringify([
+    pageInfo?.pageNumber ?? null,
+    indexes.map((index) => [index.label, index.value, index.source, index.ambiguous]),
+  ]), [indexes, pageInfo?.pageNumber]);
 
   useEffect(() => {
     return () => {
       window.clearTimeout(copyTimerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [indexKey]);
+
+  useEffect(() => {
+    setSearchResultCount(null);
+  }, [searchText]);
 
   const run = (action: () => unknown) => {
     try {
@@ -60,7 +78,12 @@ export function LensHost({ addError, allowEdit, fatalError, lensRef, progressTex
       <div className="viewer-shell">
         <ViewerToolbar
           state={state}
+          indexOpen={indexOpen}
+          indexes={indexes}
+          intelligenceColor={selectionTheme.intelligence}
+          selectedIndex={selectedIndex}
           searchOpen={searchOpen}
+          searchResultCount={searchResultCount}
           searchText={searchText}
           copyConfirmed={copyConfirmed}
           onActualSize={() => lensRef.current?.actualSize()}
@@ -78,15 +101,34 @@ export function LensHost({ addError, allowEdit, fatalError, lensRef, progressTex
           onFitWidth={() => lensRef.current?.fitWidth()}
           onRunSearch={(additive) => {
             if (searchText.trim()) {
-              run(() => lensRef.current?.search(searchText, { additive }));
+              run(() => {
+                const hits = lensRef.current?.search(searchText, { additive });
+                if (hits) {
+                  setSearchResultCount(hits.tokens.length + hits.contexts.length + hits.figures.length);
+                }
+              });
+            }
+          }}
+          onRunIndex={() => {
+            const index = indexes[selectedIndex];
+            if (index && pageInfo) {
+              console.info("[HOST] index search", {
+                pageNumber: pageInfo.pageNumber,
+                selectedIndex,
+                index,
+              });
+              run(() => lensRef.current?.searchIndex(pageInfo.pageNumber, index));
             }
           }}
           onSearchText={setSearchText}
+          onSelectIndex={setSelectedIndex}
           onToggleDrawMode={() => lensRef.current?.setDrawMode(!state.drawMode)}
+          onToggleIndexes={() => setIndexOpen((current) => !current)}
           onToggleSearch={() => {
             setSearchOpen((current) => !current);
             if (searchOpen) {
               setSearchText("");
+              setSearchResultCount(null);
             }
           }}
           onZoomIn={() => lensRef.current?.zoomIn()}

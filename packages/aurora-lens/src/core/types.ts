@@ -38,6 +38,7 @@ export interface SelectionColor {
 export interface SelectionTheme {
   context: SelectionColor;
   figure: SelectionColor;
+  intelligence: SelectionColor;
   token: {
     high: SelectionColor;
     medium: SelectionColor;
@@ -52,6 +53,7 @@ export interface SelectionTheme {
 export interface PartialSelectionTheme {
   context?: Partial<SelectionColor>;
   figure?: Partial<SelectionColor>;
+  intelligence?: Partial<SelectionColor>;
   token?: {
     high?: Partial<SelectionColor>;
     medium?: Partial<SelectionColor>;
@@ -69,6 +71,8 @@ export interface ViewerState {
   sourceName: string | null;
   pageIndex: number;
   pageCount: number;
+  metadataPageCount: number;
+  pageInfo: PageInfo | null;
   pageWidth: number | null;
   pageHeight: number | null;
   zoom: number;
@@ -113,9 +117,11 @@ export interface ViewerReady {
   addPages(files: File[] | FileList, insertIndex: number): Promise<void>;
   decodeDoc(file: File, pageIndex: number): Promise<void>;
   exportTiff(): Promise<Blob>;
+  readPageInfo(): PageInfo | null;
   readViewerConfig(): Promise<ViewerConfig>;
   restoreSession(): Promise<boolean>;
   saveViewerConfig(config: ViewerConfig): Promise<ViewerConfig>;
+  searchIndex(pageNumber: number, index: MetadataIndex, options?: { additive?: boolean }): PageMetadataHits | null;
 }
 
 export interface SelectedGroup {
@@ -146,6 +152,20 @@ export interface PageContext {
 
 export interface PageFigure {
   polygon: number[];
+}
+
+export interface MetadataIndex {
+  label: string;
+  value: string;
+  source: string;
+  ambiguous: string;
+}
+
+export interface PageInfo {
+  pageNumber: number;
+  class: string | null;
+  segments: string[];
+  indexes: MetadataIndex[];
 }
 
 export interface PageMetadataHits {

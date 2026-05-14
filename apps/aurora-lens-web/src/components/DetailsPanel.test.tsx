@@ -14,6 +14,19 @@ const details: ViewerDetails = {
   page: "1 of 1",
   size: "100 x 200",
   zoom: "100%",
+  info: {
+    pageNumber: 1,
+    class: "assumed name abandonment",
+    segments: ["Exhibit", "Recital"],
+    indexes: [
+      {
+        label: "Recording Number",
+        value: "20250631357",
+        source: "Document Number: 20250631357",
+        ambiguous: "NO",
+      },
+    ],
+  },
   tokens: "3",
   figures: "2",
   context: "5",
@@ -106,6 +119,27 @@ describe("DetailsPanel", () => {
     expect(within(panel).queryByText("Rectangles")).not.toBeInTheDocument();
   });
 
+  it("renders the right panel in document and page groups", () => {
+    renderDetails();
+
+    const panel = screen.getByLabelText("Page details");
+    const document = within(panel).getByRole("region", { name: "Document" });
+    const page = within(panel).getByRole("region", { name: "Page" });
+    expect(within(document).getByText("Source")).toBeInTheDocument();
+    expect(within(document).getByText("sample.tiff")).toBeInTheDocument();
+    expect(within(document).queryByText("Size")).not.toBeInTheDocument();
+    expect(within(document).getByRole("button", { name: "Download TIFF" })).toBeInTheDocument();
+    expect(within(document).getByRole("button", { name: "Image Settings" })).toBeInTheDocument();
+    expect(within(page).getByLabelText("Edit pages")).toBeInTheDocument();
+    const pageMetadata = within(page).getAllByRole("definition").map((element) => element.textContent);
+    expect(pageMetadata).toEqual(expect.arrayContaining(["1 of 1", "100 x 200", "100%", "1", "assumed name abandonment", "Exhibit, Recital"]));
+    expect(within(page).getByRole("region", { name: "Page Info" })).toBeInTheDocument();
+    expect(within(page).queryByText("Recording Number: 20250631357")).not.toBeInTheDocument();
+    expect(within(page).getByRole("region", { name: "Selection" })).toBeInTheDocument();
+    expect(within(page).getByRole("region", { name: "Style" })).toBeInTheDocument();
+    expect(document.compareDocumentPosition(page) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("renders selection theme configuration", () => {
     renderDetails();
 
@@ -149,11 +183,11 @@ describe("DetailsPanel", () => {
     });
 
     const panel = screen.getByLabelText("Page details");
-    expect(within(panel).getByRole("button", { name: "Validation Settings" })).toBeInTheDocument();
-    fireEvent.click(within(panel).getByRole("button", { name: "Validation Settings" }));
+    expect(within(panel).getByRole("button", { name: "Image Settings" })).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole("button", { name: "Image Settings" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
-    const validation = within(dialog).getByLabelText("Page validation formats");
+    const dialog = screen.getByRole("dialog", { name: "Image Settings" });
+    const validation = within(dialog).getByRole("table", { name: "Page validation formats" });
     expect(within(dialog).getByLabelText("Tolerance")).toHaveValue(0.02);
     expect(within(validation).getByText("letter")).toBeInTheDocument();
     expect(within(validation).getByLabelText("letter width")).toHaveValue(8.5);
@@ -193,9 +227,9 @@ describe("DetailsPanel", () => {
 
     const panel = screen.getByLabelText("Page details");
     expect(within(panel).queryByLabelText("View PDF DPI")).not.toBeInTheDocument();
-    fireEvent.click(within(panel).getByRole("button", { name: "Validation Settings" }));
+    fireEvent.click(within(panel).getByRole("button", { name: "Image Settings" }));
 
-    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    const dialog = screen.getByRole("dialog", { name: "Image Settings" });
     expect(within(dialog).getByLabelText("View PDF DPI")).toHaveValue(150);
     expect(within(dialog).getByLabelText("View max pixels")).toHaveValue(40_000_000);
     expect(within(dialog).getByLabelText("View max width")).toHaveValue(10_000);
@@ -250,8 +284,8 @@ describe("DetailsPanel", () => {
       config = value;
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Validation Settings" }));
-    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    fireEvent.click(screen.getByRole("button", { name: "Image Settings" }));
+    const dialog = screen.getByRole("dialog", { name: "Image Settings" });
     expect(within(dialog).getByLabelText("Tolerance")).toHaveValue(0.5);
     expect(within(dialog).getByLabelText("View PDF DPI")).toHaveValue(75);
 
@@ -276,8 +310,8 @@ describe("DetailsPanel", () => {
       config = value;
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Validation Settings" }));
-    const dialog = screen.getByRole("dialog", { name: "Validation Settings" });
+    fireEvent.click(screen.getByRole("button", { name: "Image Settings" }));
+    const dialog = screen.getByRole("dialog", { name: "Image Settings" });
     fireEvent.change(within(dialog).getByLabelText("letter width"), {
       target: {
         value: "8.25",

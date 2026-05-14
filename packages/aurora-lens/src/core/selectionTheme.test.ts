@@ -17,6 +17,9 @@ describe("selectionTheme", () => {
       context: {
         fill: "context-fill",
       },
+      intelligence: {
+        stroke: "intelligence-stroke",
+      },
       token: {
         high: {
           stroke: "high-stroke",
@@ -34,6 +37,10 @@ describe("selectionTheme", () => {
     expect(theme.token.high).toEqual({
       fill: defaultSelectionTheme.token.high.fill,
       stroke: "high-stroke",
+    });
+    expect(theme.intelligence).toEqual({
+      fill: defaultSelectionTheme.intelligence.fill,
+      stroke: "intelligence-stroke",
     });
     expect(theme.confidence).toEqual({
       high: 90,
