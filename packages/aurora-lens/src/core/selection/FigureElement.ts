@@ -1,5 +1,5 @@
 import { PolygonElement } from "./PolygonElement";
-import type { PageFigure, SelectionTheme } from "./types";
+import type { PageFigure, SelectionTheme } from "../types";
 
 export class FigureElement extends PolygonElement {
   constructor(figure: PageFigure, theme: SelectionTheme) {

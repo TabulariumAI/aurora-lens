@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
-  DECODER_ERROR_EMPTY_DOCUMENT,
-  DECODER_ERROR_PAGE_OUT_OF_RANGE,
-  DECODER_ERROR_PAGE_SIZE,
-  DECODER_ERROR_RASTER_LIMIT,
-  DECODER_ERROR_UNSUPPORTED_FORMAT,
-  DECODER_ERROR_UNKNOWN,
-  DECODER_ERROR_UNREADABLE_DOCUMENT,
+  LENS_ERROR_EMPTY_DOCUMENT,
+  LENS_ERROR_PAGE_OUT_OF_RANGE,
+  LENS_ERROR_PAGE_SIZE,
+  LENS_ERROR_RASTER_LIMIT,
+  LENS_ERROR_UNSUPPORTED_FORMAT,
+  LENS_ERROR_UNKNOWN,
+  LENS_ERROR_UNREADABLE_DOCUMENT,
   defaultViewerConfig,
-  isDecoderError,
+  isLensError,
   type AuroraLens,
-  type DecoderErrorCode,
+  type LensErrorCode,
   type ViewerConfig,
   type ViewerReady,
 } from "@tabularium/aurora-lens";
@@ -23,13 +23,13 @@ import type { ViewerState, ViewerStatus, HostViewerStatus, ViewerDetails } from 
 
 const TIFF_FILE_TYPE = "image/tiff";
 const TIFF_EXTENSION = ".tif";
-const mainDocumentErrorMessages: Record<Exclude<DecoderErrorCode, typeof DECODER_ERROR_PAGE_SIZE>, string> = {
-  [DECODER_ERROR_EMPTY_DOCUMENT]: "This document does not contain readable pages.",
-  [DECODER_ERROR_PAGE_OUT_OF_RANGE]: "The requested page is outside the document.",
-  [DECODER_ERROR_RASTER_LIMIT]: "This PDF page exceeds configured view raster limits.",
-  [DECODER_ERROR_UNSUPPORTED_FORMAT]: "Choose a TIFF, PDF, PNG, or JPG file.",
-  [DECODER_ERROR_UNKNOWN]: "We could not open this document.",
-  [DECODER_ERROR_UNREADABLE_DOCUMENT]: "This document could not be read.",
+const mainDocumentErrorMessages: Record<Exclude<LensErrorCode, typeof LENS_ERROR_PAGE_SIZE>, string> = {
+  [LENS_ERROR_EMPTY_DOCUMENT]: "This document does not contain readable pages.",
+  [LENS_ERROR_PAGE_OUT_OF_RANGE]: "The requested page is outside the document.",
+  [LENS_ERROR_RASTER_LIMIT]: "This PDF page exceeds configured view raster limits.",
+  [LENS_ERROR_UNSUPPORTED_FORMAT]: "Choose a TIFF, PDF, PNG, or JPG file.",
+  [LENS_ERROR_UNKNOWN]: "We could not open this document.",
+  [LENS_ERROR_UNREADABLE_DOCUMENT]: "This document could not be read.",
 };
 
 const emptyLensState: ViewerState = {
@@ -242,7 +242,7 @@ export function App() {
     <main className="app-shell">
       <section className="workspace" aria-label="Document viewer workspace">
         <LoaderPanel
-          disabled={lensStatus === "loadingPage" || lensStatus === "loadingThumbnails"}
+          disabled={lensStatus === "addingPages" || lensStatus === "loadingPage" || lensStatus === "loadingThumbnails"}
           fileInputRef={fileInputRef}
           samples={VIEWER_SAMPLES}
           onFiles={loadFiles}
@@ -287,7 +287,7 @@ export function App() {
 }
 
 function toHostStatus(status: ViewerStatus, state: ViewerState): HostViewerStatus {
-  if (status === "loadingPage" || status === "loadingThumbnails" || status === "copyingSelection") {
+  if (status === "addingPages" || status === "loadingPage" || status === "loadingThumbnails" || status === "copyingSelection") {
     return "loading";
   }
   if (state.pageCount > 0) {
@@ -322,6 +322,9 @@ function toDetails(state: ViewerState): ViewerDetails {
 }
 
 function toProgressText(status: ViewerStatus, state: ViewerState) {
+  if (status === "addingPages") {
+    return "Adding pages...";
+  }
   if (status === "loadingPage") {
     return state.pageCount > 0 ? "Please wait..." : "Decoding document page...";
   }
@@ -332,23 +335,23 @@ function toProgressText(status: ViewerStatus, state: ViewerState) {
 }
 
 function mainDocumentErrorMessage(error: unknown) {
-  if (!isDecoderError(error)) {
+  if (!isLensError(error)) {
     return error instanceof Error ? error.message : String(error);
   }
-  if (error.code === DECODER_ERROR_PAGE_SIZE) {
+  if (error.code === LENS_ERROR_PAGE_SIZE) {
     return error.message;
   }
   return mainDocumentErrorMessages[error.code];
 }
 
 function addPagesErrorMessage(error: unknown) {
-  if (!isDecoderError(error)) {
+  if (!isLensError(error)) {
     return "We could not add those pages.";
   }
-  if (error.code === DECODER_ERROR_PAGE_SIZE) {
+  if (error.code === LENS_ERROR_PAGE_SIZE) {
     return "Some pages did not match the configured page size. The pages that loaded successfully were kept.";
   }
-  if (error.code === DECODER_ERROR_RASTER_LIMIT) {
+  if (error.code === LENS_ERROR_RASTER_LIMIT) {
     return "Some PDF pages exceeded configured view raster limits. The pages that loaded successfully were kept.";
   }
   return "Some pages could not be added. The pages that loaded successfully were kept.";

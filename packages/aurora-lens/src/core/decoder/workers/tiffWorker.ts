@@ -1,11 +1,11 @@
 import {
-  DECODER_ERROR_EMPTY_DOCUMENT,
-  DECODER_ERROR_PAGE_OUT_OF_RANGE,
-  DECODER_ERROR_UNKNOWN,
-  DECODER_ERROR_UNREADABLE_DOCUMENT,
-  DecoderError,
-  type DecoderErrorCode,
-} from "../../DecoderError";
+  LENS_ERROR_EMPTY_DOCUMENT,
+  LENS_ERROR_PAGE_OUT_OF_RANGE,
+  LENS_ERROR_UNKNOWN,
+  LENS_ERROR_UNREADABLE_DOCUMENT,
+  LensError,
+  type LensErrorCode,
+} from "../../errors/LensError";
 import type { DecodeRequest, DecodeResponse, DecodedPage } from "../types";
 import createAuroraTiffModule from "../vendor/auroraTiff.js";
 import type { AuroraTiffModule } from "../vendor/auroraTiff";
@@ -67,7 +67,7 @@ function countPages(module: AuroraTiffModule, buffer: ArrayBuffer) {
   try {
     const count = module._TiffCountDirectories(handle);
     if (count <= 0) {
-      throw new DecoderError(DECODER_ERROR_EMPTY_DOCUMENT, "The selected file does not contain readable pages.");
+      throw new LensError(LENS_ERROR_EMPTY_DOCUMENT, "The selected file does not contain readable pages.");
     }
     return count;
   } finally {
@@ -84,7 +84,7 @@ function readPage(module: AuroraTiffModule, handle: number, sourceName: string, 
   try {
     const ok = module._TiffReadRGBA(handle, pointer, byteLength);
     if (!ok) {
-      throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "Failed to decode the selected page.");
+      throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "Failed to decode the selected page.");
     }
     const resolution = readResolution(module, handle);
     return {
@@ -129,7 +129,7 @@ function createTiff(module: AuroraTiffModule, bytes: Uint8Array): number {
     module.HEAPU8.set(bytes, pointer);
     const handle = module._TiffCreate(pointer, bytes.byteLength);
     if (!handle) {
-      throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "Failed to open the selected file.");
+      throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "Failed to open the selected file.");
     }
     return handle;
   } finally {
@@ -140,14 +140,14 @@ function createTiff(module: AuroraTiffModule, bytes: Uint8Array): number {
 function setDirectory(module: AuroraTiffModule, handle: number, pageIndex: number) {
   const ok = module._TiffSetDirectory(handle, pageIndex);
   if (!ok) {
-    throw new DecoderError(DECODER_ERROR_PAGE_OUT_OF_RANGE, `Failed to open page ${pageIndex + 1}.`);
+    throw new LensError(LENS_ERROR_PAGE_OUT_OF_RANGE, `Failed to open page ${pageIndex + 1}.`);
   }
 }
 
 function allocate(module: AuroraTiffModule, byteLength: number): number {
   const pointer = module._malloc(byteLength);
   if (!pointer) {
-    throw new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff could not allocate decoder memory.");
+    throw new LensError(LENS_ERROR_UNKNOWN, "AuroraTiff could not allocate decoder memory.");
   }
   return pointer;
 }
@@ -161,6 +161,6 @@ function post(response: DecodeResponse, transfer?: Transferable[]) {
   workerScope.postMessage(response, transfer);
 }
 
-function errorCode(error: unknown): DecoderErrorCode {
-  return error instanceof DecoderError ? error.code : DECODER_ERROR_UNKNOWN;
+function errorCode(error: unknown): LensErrorCode {
+  return error instanceof LensError ? error.code : LENS_ERROR_UNKNOWN;
 }

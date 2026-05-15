@@ -1,9 +1,9 @@
 import {
-  DECODER_ERROR_UNKNOWN,
-  DECODER_ERROR_UNREADABLE_DOCUMENT,
-  DecoderError,
-  type DecoderErrorCode,
-} from "../../DecoderError";
+  LENS_ERROR_UNKNOWN,
+  LENS_ERROR_UNREADABLE_DOCUMENT,
+  LensError,
+  type LensErrorCode,
+} from "../../errors/LensError";
 import { DOC_TYPE_JPEG, DOC_TYPE_PNG } from "../types";
 import type { DecodeRequest, DecodeResponse, DecodedPage, DocType } from "../types";
 
@@ -40,7 +40,7 @@ async function decode(request: DecodeRequest): Promise<void> {
     const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
     const context = canvas.getContext("2d");
     if (!context) {
-      throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "Raster decoder canvas is unavailable.");
+      throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "Raster decoder canvas is unavailable.");
     }
     context.drawImage(bitmap, 0, 0);
     const imageData = context.getImageData(0, 0, bitmap.width, bitmap.height);
@@ -145,6 +145,6 @@ function post(response: DecodeResponse, transfer?: Transferable[]) {
   workerScope.postMessage(response, transfer);
 }
 
-function errorCode(error: unknown): DecoderErrorCode {
-  return error instanceof DecoderError ? error.code : DECODER_ERROR_UNKNOWN;
+function errorCode(error: unknown): LensErrorCode {
+  return error instanceof LensError ? error.code : LENS_ERROR_UNKNOWN;
 }

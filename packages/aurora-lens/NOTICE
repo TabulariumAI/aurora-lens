@@ -1,5 +1,18 @@
+Tabularium AI Package
+Copyright 2026 Tabularium AI
+
+This product includes software developed by Tabularium AI.
+
+Any downstream derivative works or deployments of this software must 
+preserve the attribution requirements found in Section 10 of the LICENSE 
+file, specifically mandating the display of "Powered By Tabularium AI" 
+within all operational user interfaces.
+
+------------------------------------------------------------------------
 Aurora Lens
 Copyright 2026 Tabularium AI
 
-The files under src/core/documentDecoder/vendor provide AuroraTiff browser decoding runtime support.
-Confirm distribution rights for those files before publishing this package.
+The files under src/core/documentDecoder/vendor provide AuroraTiff 
+browser decoding runtime support. Confirm distribution rights for those 
+files before publishing this package.
+------------------------------------------------------------------------

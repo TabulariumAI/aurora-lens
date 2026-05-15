@@ -1,7 +1,7 @@
 import {
-  DECODER_ERROR_UNSUPPORTED_FORMAT,
-  DecoderError,
-} from "../DecoderError";
+  LENS_ERROR_UNSUPPORTED_FORMAT,
+  LensError,
+} from "../errors/LensError";
 import {
   DOC_TYPE_JPEG,
   DOC_TYPE_PDF,
@@ -50,7 +50,7 @@ export function detectDocType(bytes: Uint8Array, file: File): DocType {
     return DOC_TYPE_JPEG;
   }
 
-  throw new DecoderError(DECODER_ERROR_UNSUPPORTED_FORMAT, "Unsupported document format.");
+  throw new LensError(LENS_ERROR_UNSUPPORTED_FORMAT, "Unsupported document format.");
 }
 
 function isTiff(bytes: Uint8Array) {

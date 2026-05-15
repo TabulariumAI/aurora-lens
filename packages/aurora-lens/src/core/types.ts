@@ -1,11 +1,12 @@
-import type { DocType } from "./documentDecoder/types";
-import type { ViewerSessionStore } from "./viewerSessionStore";
-import type { ViewerConfig } from "./viewerConfig";
+import type { DocType } from "./decoder/types";
+import type { ViewerSessionStore } from "./session/viewerSessionStore";
+import type { ViewerConfig } from "./config/viewerConfig";
 
 export type ViewMode = "page" | "thumbnails";
 
 export type ViewerStatus =
   | "idle"
+  | "addingPages"
   | "loadingPage"
   | "loadingThumbnails"
   | "copyingSelection"
@@ -207,4 +208,4 @@ export interface RasterPage {
   yResolution?: number;
 }
 
-export type { ViewerDocumentInput, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore } from "./viewerSessionStore";
+export type { ViewerDocumentInput, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore } from "./session/viewerSessionStore";

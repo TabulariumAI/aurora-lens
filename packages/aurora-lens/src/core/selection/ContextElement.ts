@@ -1,5 +1,5 @@
 import { PolygonElement } from "./PolygonElement";
-import type { PageContext, SelectionTheme } from "./types";
+import type { PageContext, SelectionTheme } from "../types";
 
 export class ContextElement extends PolygonElement {
   constructor(context: PageContext, theme: SelectionTheme) {

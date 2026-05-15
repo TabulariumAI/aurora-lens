@@ -9,7 +9,7 @@ import {
   VIEWER_PAGE_STORE_NAME,
   VIEWER_SESSION_DB_NAME,
   VIEWER_SESSION_DB_VERSION,
-} from "../../../../packages/aurora-lens/src/core/viewerSessionStore";
+} from "../../../../packages/aurora-lens/src/core/session/viewerSessionStore";
 import { VIEWER_SAMPLES } from "../../src/samples";
 
 test("loads a TIFF through Tabularium AI Lens and exercises host controls", async ({ page }) => {

@@ -1,4 +1,4 @@
-import type { PagePoint } from "./types";
+import type { PagePoint } from "../types";
 
 export interface Box {
   left: number;

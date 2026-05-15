@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SelectionManager } from "./SelectionManager";
 import { defaultSelectionTheme, normalizeSelectionTheme, tokenStyle } from "./selectionTheme";
-import type { PageMetadataHits } from "./types";
+import type { PageMetadataHits } from "../types";
 
 describe("selectionTheme", () => {
   it("uses default token styles at default confidence thresholds", () => {
@@ -85,6 +85,7 @@ describe("selectionTheme", () => {
     expect(recorder.strokes).toContain("context-stroke");
     expect(recorder.strokes).toContain("figure-stroke");
     expect(recorder.strokes).toContain("token-stroke");
+    expect(recorder.widths).toContain(1);
   });
 
   it("draws metadata polygons in metadata page coordinates", () => {
@@ -120,6 +121,7 @@ describe("selectionTheme", () => {
 function recordingContext() {
   const fills: string[] = [];
   const strokes: string[] = [];
+  const widths: number[] = [];
   const moves: Array<{ x: number; y: number }> = [];
   const lines: Array<{ x: number; y: number }> = [];
   const context = {
@@ -151,7 +153,9 @@ function recordingContext() {
     get globalCompositeOperation() {
       return "source-over";
     },
-    set lineWidth(_value: number) {},
+    set lineWidth(value: number) {
+      widths.push(value);
+    },
     get lineWidth() {
       return 1;
     },
@@ -162,6 +166,7 @@ function recordingContext() {
     lines,
     moves,
     strokes,
+    widths,
   };
 }
 

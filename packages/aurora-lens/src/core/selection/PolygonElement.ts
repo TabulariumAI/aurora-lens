@@ -16,7 +16,8 @@ export class PolygonElement {
     private readonly fill: string,
     private readonly mode: GlobalCompositeOperation,
     private readonly padRem: { left: number; top: number; right: number; bottom: number },
-    private readonly stroke: string
+    private readonly stroke: string,
+    private readonly strokeWidth = 2
   ) {}
 
   draw(context: CanvasRenderingContext2D, page: DrawPage, image: DrawBox, frame: DrawBox) {
@@ -31,7 +32,7 @@ export class PolygonElement {
     if (this.stroke) {
       context.globalCompositeOperation = "source-over";
       context.strokeStyle = this.stroke;
-      context.lineWidth = 2;
+      context.lineWidth = this.strokeWidth;
       context.stroke();
     }
     this.drawLabel(context, points);

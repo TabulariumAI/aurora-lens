@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef } from "react";
 import { AuroraLens } from "../core/AuroraLens";
-import { IndexedDbViewerSessionStore } from "../core/viewerSessionStore";
+import { IndexedDbViewerSessionStore } from "../core/session/viewerSessionStore";
 import type { ViewerOptions } from "../core/types";
 
 export const ReactViewer = forwardRef<AuroraLens, ViewerOptions>(function ReactViewer(options, ref) {

@@ -1,7 +1,7 @@
 import { ContextElement } from "./ContextElement";
 import { FigureElement } from "./FigureElement";
 import { TokenElement } from "./TokenElement";
-import type { PageFigure, PageMetadataHits, PagePoint, PageToken, SelectionCounts, SelectionTheme } from "./types";
+import type { PageFigure, PageMetadataHits, PagePoint, PageToken, SelectionCounts, SelectionTheme } from "../types";
 
 interface TokenHit {
   key: string;

@@ -1,4 +1,4 @@
-import { DEFAULT_PAGE_FORMATS, DEFAULT_PAGE_TOLERANCE, type PageFormat } from "./pageSizeValidation";
+import { DEFAULT_PAGE_FORMATS, DEFAULT_PAGE_TOLERANCE, type PageFormat } from "../validation/pageSizeValidation";
 
 export const TIFF_PIXEL_FORMAT_BW1 = "bw1";
 export const TIFF_PIXEL_FORMAT_GRAY8 = "gray8";

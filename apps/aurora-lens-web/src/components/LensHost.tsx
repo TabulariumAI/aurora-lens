@@ -37,7 +37,7 @@ export function LensHost({ addError, allowEdit, fatalError, lensRef, pageInfo, p
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [copyConfirmed, setCopyConfirmed] = useState(false);
   const copyTimerRef = useRef(0);
-  const isBusy = status === "loadingPage" || status === "loadingThumbnails" || status === "copyingSelection";
+  const isBusy = status === "addingPages" || status === "loadingPage" || status === "loadingThumbnails" || status === "copyingSelection";
   const indexes = pageInfo?.indexes ?? [];
   const indexKey = useMemo(() => JSON.stringify([
     pageInfo?.pageNumber ?? null,

@@ -1,6 +1,6 @@
 import Fuse from "fuse.js";
 import { MetadataRepository } from "./MetadataRepository";
-import type { MetadataIndex, PageContext, PageFigure, PageInfo, PageMetadataHits, PageToken, SelectedGroup } from "./types";
+import type { MetadataIndex, PageContext, PageFigure, PageInfo, PageMetadataHits, PageToken, SelectedGroup } from "../types";
 
 const rectTolerance = 5;
 const indexContextLimit = 1;

@@ -73,13 +73,13 @@ const lensMock = vi.hoisted(() => ({
 }));
 
 vi.mock("@tabularium/aurora-lens", () => {
-  const DECODER_ERROR_EMPTY_DOCUMENT = "empty_document";
-  const DECODER_ERROR_PAGE_OUT_OF_RANGE = "page_out_of_range";
-  const DECODER_ERROR_PAGE_SIZE = "page_size";
-  const DECODER_ERROR_RASTER_LIMIT = "raster_limit";
-  const DECODER_ERROR_UNSUPPORTED_FORMAT = "unsupported_format";
-  const DECODER_ERROR_UNKNOWN = "unknown";
-  const DECODER_ERROR_UNREADABLE_DOCUMENT = "unreadable_document";
+  const LENS_ERROR_EMPTY_DOCUMENT = "empty_document";
+  const LENS_ERROR_PAGE_OUT_OF_RANGE = "page_out_of_range";
+  const LENS_ERROR_PAGE_SIZE = "page_size";
+  const LENS_ERROR_RASTER_LIMIT = "raster_limit";
+  const LENS_ERROR_UNSUPPORTED_FORMAT = "unsupported_format";
+  const LENS_ERROR_UNKNOWN = "unknown";
+  const LENS_ERROR_UNREADABLE_DOCUMENT = "unreadable_document";
   const TIFF_PIXEL_FORMAT_BW1 = "bw1";
   const TIFF_PIXEL_FORMAT_GRAY8 = "gray8";
   const TIFF_PIXEL_FORMAT_RGB24 = "rgb24";
@@ -107,26 +107,26 @@ vi.mock("@tabularium/aurora-lens", () => {
       },
     },
   });
-  class DecoderError extends Error {
+  class LensError extends Error {
     constructor(readonly code: string, message: string) {
       super(message);
-      this.name = "DecoderError";
+      this.name = "LensError";
     }
   }
   return {
-    DECODER_ERROR_EMPTY_DOCUMENT,
-    DECODER_ERROR_PAGE_OUT_OF_RANGE,
-    DECODER_ERROR_PAGE_SIZE,
-    DECODER_ERROR_RASTER_LIMIT,
-    DECODER_ERROR_UNSUPPORTED_FORMAT,
-    DECODER_ERROR_UNKNOWN,
-    DECODER_ERROR_UNREADABLE_DOCUMENT,
-    DecoderError,
+    LENS_ERROR_EMPTY_DOCUMENT,
+    LENS_ERROR_PAGE_OUT_OF_RANGE,
+    LENS_ERROR_PAGE_SIZE,
+    LENS_ERROR_RASTER_LIMIT,
+    LENS_ERROR_UNSUPPORTED_FORMAT,
+    LENS_ERROR_UNKNOWN,
+    LENS_ERROR_UNREADABLE_DOCUMENT,
+    LensError,
     TIFF_PIXEL_FORMAT_BW1,
     TIFF_PIXEL_FORMAT_GRAY8,
     TIFF_PIXEL_FORMAT_RGB24,
     defaultViewerConfig,
-    isDecoderError: (error: unknown) => error instanceof DecoderError,
+    isLensError: (error: unknown) => error instanceof LensError,
   };
 });
 
@@ -384,8 +384,8 @@ describe("App", () => {
   });
 
   it("shows main document decoder errors as a dialog", async () => {
-    const { DecoderError } = await import("@tabularium/aurora-lens");
-    lensMock.instance.decodeDoc.mockRejectedValue(new DecoderError("empty_document", "Empty document."));
+    const { LensError } = await import("@tabularium/aurora-lens");
+    lensMock.instance.decodeDoc.mockRejectedValue(new LensError("empty_document", "Empty document."));
     render(<App />);
 
     fireEvent.change(screen.getByLabelText("Load document"), {
@@ -403,8 +403,8 @@ describe("App", () => {
   });
 
   it("shows main document page-size errors with the decoder message", async () => {
-    const { DecoderError } = await import("@tabularium/aurora-lens");
-    lensMock.instance.decodeDoc.mockRejectedValue(new DecoderError("page_size", "image.png: page 1 rejected. Page size 512x512 does not match configured formats"));
+    const { LensError } = await import("@tabularium/aurora-lens");
+    lensMock.instance.decodeDoc.mockRejectedValue(new LensError("page_size", "image.png: page 1 rejected. Page size 512x512 does not match configured formats"));
     render(<App />);
 
     fireEvent.change(screen.getByLabelText("Load document"), {
@@ -418,11 +418,11 @@ describe("App", () => {
   });
 
   it("shows add-page decoder errors as a dialog", async () => {
-    const { DecoderError } = await import("@tabularium/aurora-lens");
+    const { LensError } = await import("@tabularium/aurora-lens");
     render(<App />);
 
     act(() => {
-      lensMock.onAddError?.(new DecoderError("page_size", "Page size rejected."));
+      lensMock.onAddError?.(new LensError("page_size", "Page size rejected."));
     });
 
     const dialog = screen.getByRole("alertdialog", { name: "Add Pages Error" });
@@ -776,6 +776,22 @@ describe("App", () => {
     expect(status).toHaveTextContent("Please wait...");
     expect(status.parentElement).toHaveClass("viewer-progress-overlay");
     expect(status.parentElement).not.toHaveClass("viewer-message");
+  });
+
+  it("labels add-page progress as adding pages", () => {
+    lensMock.status = "addingPages";
+    lensMock.state = {
+      ...lensMock.state,
+      status: "addingPages",
+      sourceName: "sample.tiff",
+      pageIndex: 0,
+      pageCount: 2,
+      metadataPageCount: 2,
+      viewMode: "thumbnails",
+    };
+    render(<App />);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Adding pages...");
   });
 
   it("marks the search field when a submitted search returns no results", () => {

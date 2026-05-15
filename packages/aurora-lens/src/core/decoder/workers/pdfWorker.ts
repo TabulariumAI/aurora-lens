@@ -1,12 +1,12 @@
 import "pdfjs-dist/build/pdf.worker.mjs";
 import { getDocument } from "pdfjs-dist";
 import {
-  DECODER_ERROR_EMPTY_DOCUMENT,
-  DECODER_ERROR_UNKNOWN,
-  DECODER_ERROR_UNREADABLE_DOCUMENT,
-  DecoderError,
-  type DecoderErrorCode,
-} from "../../DecoderError";
+  LENS_ERROR_EMPTY_DOCUMENT,
+  LENS_ERROR_UNKNOWN,
+  LENS_ERROR_UNREADABLE_DOCUMENT,
+  LensError,
+  type LensErrorCode,
+} from "../../errors/LensError";
 import type { DecodeRequest, DecodeResponse, DecodedPage } from "../types";
 
 const PDF_POINTS_PER_INCH = 72;
@@ -14,7 +14,7 @@ const PDF_POINTS_PER_INCH = 72;
 class WorkerCanvasFactory {
   create(width: number, height: number) {
     if (width <= 0 || height <= 0) {
-      throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "PDF decoder canvas size is invalid.");
+      throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "PDF decoder canvas size is invalid.");
     }
     const canvas = new OffscreenCanvas(width, height);
     return {
@@ -25,7 +25,7 @@ class WorkerCanvasFactory {
 
   reset(canvasAndContext: { canvas: OffscreenCanvas | null }, width: number, height: number): void {
     if (!canvasAndContext.canvas || width <= 0 || height <= 0) {
-      throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "PDF decoder canvas size is invalid.");
+      throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "PDF decoder canvas size is invalid.");
     }
     canvasAndContext.canvas.width = width;
     canvasAndContext.canvas.height = height;
@@ -94,7 +94,7 @@ async function decode(request: DecodeRequest): Promise<void> {
       disableFontFace: true,
     }).promise;
     if (pdf.numPages <= 0) {
-      throw new DecoderError(DECODER_ERROR_EMPTY_DOCUMENT, "The selected file does not contain readable pages.");
+      throw new LensError(LENS_ERROR_EMPTY_DOCUMENT, "The selected file does not contain readable pages.");
     }
     return { file, pdf };
   }));
@@ -123,7 +123,7 @@ async function decode(request: DecodeRequest): Promise<void> {
         const canvas = new OffscreenCanvas(width, height);
         const context = canvas.getContext("2d");
         if (!context) {
-          throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "PDF decoder canvas is unavailable.");
+          throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "PDF decoder canvas is unavailable.");
         }
         context.fillStyle = "white";
         context.fillRect(0, 0, canvas.width, canvas.height);
@@ -174,7 +174,7 @@ function renderScale(width: number, height: number, request: DecodeRequest): num
   );
   const scale = dpiScale * capScale;
   if (!Number.isFinite(scale) || scale <= 0) {
-    throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "PDF decoder raster scale is invalid.");
+    throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "PDF decoder raster scale is invalid.");
   }
   return scale;
 }
@@ -182,11 +182,11 @@ function renderScale(width: number, height: number, request: DecodeRequest): num
 function rasterSize(value: number): number {
   const size = Math.floor(value);
   if (!Number.isFinite(size) || size <= 0) {
-    throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "PDF decoder raster size is invalid.");
+    throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "PDF decoder raster size is invalid.");
   }
   return size;
 }
 
-function errorCode(error: unknown): DecoderErrorCode {
-  return error instanceof DecoderError ? error.code : DECODER_ERROR_UNKNOWN;
+function errorCode(error: unknown): LensErrorCode {
+  return error instanceof LensError ? error.code : LENS_ERROR_UNKNOWN;
 }

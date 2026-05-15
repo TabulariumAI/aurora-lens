@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MetadataHelper } from "./MetadataHelper";
+import { MetadataHelper } from "../metadata/MetadataHelper";
 import { PageViewer } from "./PageViewer";
-import { SelectionManager } from "./SelectionManager";
-import { normalizeSelectionTheme } from "./selectionTheme";
+import { SelectionManager } from "../selection/SelectionManager";
+import { normalizeSelectionTheme } from "../selection/selectionTheme";
 
 describe("PageViewer", () => {
   beforeEach(() => {

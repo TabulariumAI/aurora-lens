@@ -1,19 +1,19 @@
 import {
-  DECODER_ERROR_RASTER_LIMIT,
-  DECODER_ERROR_UNKNOWN,
-  DECODER_ERROR_UNREADABLE_DOCUMENT,
-  DecoderError,
-} from "./DecoderError";
-import createAuroraTiffModule from "./documentDecoder/vendor/auroraTiff.js";
-import type { AuroraTiffModule } from "./documentDecoder/vendor/auroraTiff";
+  LENS_ERROR_RASTER_LIMIT,
+  LENS_ERROR_UNKNOWN,
+  LENS_ERROR_UNREADABLE_DOCUMENT,
+  LensError,
+} from "../errors/LensError";
+import createAuroraTiffModule from "../decoder/vendor/auroraTiff.js";
+import type { AuroraTiffModule } from "../decoder/vendor/auroraTiff";
 import {
   TIFF_PIXEL_FORMAT_BW1,
   TIFF_PIXEL_FORMAT_GRAY8,
   TIFF_PIXEL_FORMAT_RGB24,
   type ExportConfig,
   type TiffPixelFormat,
-} from "./viewerConfig";
-import type { ViewerPageBlobRecord } from "./viewerSessionStore";
+} from "../config/viewerConfig";
+import type { ViewerPageBlobRecord } from "../session/viewerSessionStore";
 
 const RGBA_CHANNELS = 4;
 const RESOLUTION_INCH = 2;
@@ -37,7 +37,7 @@ export async function exportTiffPages(pages: ViewerPageBlobRecord[], config: Exp
   const pixelFormat = PIXEL_FORMATS[config.tiff.pixelFormat];
   const writer = module._TiffWriterCreate(config.tiff.compression);
   if (!writer) {
-    throw new DecoderError(DECODER_ERROR_UNKNOWN, "Failed to create TIFF writer.");
+    throw new LensError(LENS_ERROR_UNKNOWN, "Failed to create TIFF writer.");
   }
 
   try {
@@ -59,7 +59,7 @@ export async function exportTiffPages(pages: ViewerPageBlobRecord[], config: Exp
           config.pdfRasterDpi
         );
         if (ok !== 1) {
-          throw new DecoderError(DECODER_ERROR_UNKNOWN, `Failed to write page ${page.pageId}.`);
+          throw new LensError(LENS_ERROR_UNKNOWN, `Failed to write page ${page.pageId}.`);
         }
       } finally {
         module._free(pointer);
@@ -92,7 +92,7 @@ async function readImage(blob: Blob): Promise<ExportImage> {
   canvas.height = bitmap.height;
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "TIFF export canvas is unavailable.");
+    throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "TIFF export canvas is unavailable.");
   }
   context.drawImage(bitmap, 0, 0);
   const imageData = context.getImageData(0, 0, bitmap.width, bitmap.height);
@@ -109,7 +109,7 @@ function scaleImage(image: ExportImage, width: number, height: number): ExportIm
   sourceCanvas.height = image.height;
   const sourceContext = sourceCanvas.getContext("2d");
   if (!sourceContext) {
-    throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "TIFF export canvas is unavailable.");
+    throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "TIFF export canvas is unavailable.");
   }
   sourceContext.putImageData(new ImageData(new Uint8ClampedArray(image.rgba), image.width, image.height), 0, 0);
 
@@ -118,7 +118,7 @@ function scaleImage(image: ExportImage, width: number, height: number): ExportIm
   canvas.height = height;
   const context = canvas.getContext("2d");
   if (!context) {
-    throw new DecoderError(DECODER_ERROR_UNREADABLE_DOCUMENT, "TIFF export canvas is unavailable.");
+    throw new LensError(LENS_ERROR_UNREADABLE_DOCUMENT, "TIFF export canvas is unavailable.");
   }
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
@@ -140,7 +140,7 @@ function validateSize(width: number, height: number, config: ExportConfig): void
     height > config.maxRasterHeight ||
     width * height > config.maxRasterPixels
   ) {
-    throw new DecoderError(DECODER_ERROR_RASTER_LIMIT, "TIFF export exceeds configured raster limits.");
+    throw new LensError(LENS_ERROR_RASTER_LIMIT, "TIFF export exceeds configured raster limits.");
   }
 }
 
@@ -154,7 +154,7 @@ function finishTiff(module: AuroraTiffModule, writer: number): Uint8Array {
       (module.HEAPU8[sizePointer + 2] << 16) |
       (module.HEAPU8[sizePointer + 3] << 24);
     if (!pointer || size <= 0) {
-      throw new DecoderError(DECODER_ERROR_UNKNOWN, "Failed to finish TIFF export.");
+      throw new LensError(LENS_ERROR_UNKNOWN, "Failed to finish TIFF export.");
     }
     const result = module.HEAPU8.slice(pointer, pointer + size);
     module._TiffFreeMemory(pointer);
@@ -167,7 +167,7 @@ function finishTiff(module: AuroraTiffModule, writer: number): Uint8Array {
 function allocate(module: AuroraTiffModule, byteLength: number): number {
   const pointer = module._malloc(byteLength);
   if (!pointer) {
-    throw new DecoderError(DECODER_ERROR_UNKNOWN, "AuroraTiff could not allocate export memory.");
+    throw new LensError(LENS_ERROR_UNKNOWN, "AuroraTiff could not allocate export memory.");
   }
   return pointer;
 }

@@ -1,7 +1,7 @@
 import { pageRect, screenToDisplay, screenToPage } from "./coordinates";
-import { MetadataHelper } from "./MetadataHelper";
-import { SelectionManager } from "./SelectionManager";
-import type { DecodedPage, PagePoint } from "./types";
+import { MetadataHelper } from "../metadata/MetadataHelper";
+import { SelectionManager } from "../selection/SelectionManager";
+import type { DecodedPage, PagePoint } from "../types";
 
 interface PageViewerOptions {
   metadata: MetadataHelper;

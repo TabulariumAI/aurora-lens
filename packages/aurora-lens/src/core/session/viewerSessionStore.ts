@@ -1,5 +1,5 @@
 export const VIEWER_SESSION_DB_NAME = "aurora-lens-web";
-import type { DocType } from "./documentDecoder/types";
+import type { DocType } from "../decoder/types";
 import {
   TIFF_PIXEL_FORMAT_BW1,
   TIFF_PIXEL_FORMAT_GRAY8,
@@ -9,7 +9,7 @@ import {
   type RasterConfig,
   type TiffPixelFormat,
   type ViewerConfig,
-} from "./viewerConfig";
+} from "../config/viewerConfig";
 
 export const VIEWER_SESSION_DB_VERSION = 4;
 export const VIEWER_DOCUMENT_STORE_NAME = "viewer-documents";

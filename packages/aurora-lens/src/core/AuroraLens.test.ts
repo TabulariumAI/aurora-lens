@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuroraLens } from "./AuroraLens";
-import { ACTIVE_VIEWER_SESSION_ID, insertPageRecords } from "./viewerSessionStore";
-import { DECODER_ERROR_UNKNOWN } from "./DecoderError";
-import { defaultViewerConfig, type ViewerConfig } from "./viewerConfig";
+import { ACTIVE_VIEWER_SESSION_ID, insertPageRecords } from "./session/viewerSessionStore";
+import { LENS_ERROR_UNKNOWN } from "./errors/LensError";
+import { defaultViewerConfig, type ViewerConfig } from "./config/viewerConfig";
 import type { ViewerDocumentInput, ViewerPageBlobRecord, ViewerPageMetadataRecord, ViewerPageRecord, ViewerSession, ViewerSessionStore, ViewerState, ViewerStatus, RasterPage } from "./types";
 
 const decoderMock = vi.hoisted(() => {
@@ -23,7 +23,7 @@ const decoderMock = vi.hoisted(() => {
 
   function decoderError(message: string) {
     const error = new Error(message) as Error & { code: string };
-    error.name = "DecoderError";
+    error.name = "LensError";
     error.code = "unknown";
     return error;
   }
@@ -177,11 +177,11 @@ const tiffMock = vi.hoisted(() => {
   return { module, state };
 });
 
-vi.mock("./documentDecoder/DocumentDecoder", () => ({
+vi.mock("./decoder/DocumentDecoder", () => ({
   DocumentDecoder: decoderMock.DocumentDecoder,
 }));
 
-vi.mock("./documentDecoder/vendor/auroraTiff.js", () => ({
+vi.mock("./decoder/vendor/auroraTiff.js", () => ({
   default: vi.fn(() => Promise.resolve(tiffMock.module)),
 }));
 
@@ -386,7 +386,7 @@ describe("AuroraLens", () => {
     });
     const error = await lens.decodeDoc(new File(["bad"], "bad.tiff", { type: "image/tiff" }), 0).catch((reason: unknown) => reason);
 
-    expect(error).toMatchObject({ code: DECODER_ERROR_UNKNOWN, message: "Decode failed." });
+    expect(error).toMatchObject({ code: LENS_ERROR_UNKNOWN, message: "Decode failed." });
     expect(store.session).toBeNull();
     expect(store.blobs).toEqual([]);
     expect(store.metadata).toEqual([]);
@@ -595,9 +595,11 @@ describe("AuroraLens", () => {
 
   it("stores inserted TIFF pages in package-owned page order", async () => {
     const store = new MemorySessionStore();
+    const statuses: ViewerStatus[] = [];
     const lens = new AuroraLens(document.createElement("div"), {
       allowEdit: true,
       sessionStore: store,
+      onStatusChange: (status) => statuses.push(status),
     });
 
     await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
@@ -616,6 +618,7 @@ describe("AuroraLens", () => {
     ]);
     expect(store.blobs.map((blob) => blob.pageId)).toEqual(["page-1", "page-2", "page-3", "page-4"]);
     expect(store.session?.document.currentPageId).toBe("page-1");
+    expect(statuses).toContain("addingPages");
   });
 
   it("keeps successful imported pages and removes failed pending pages", async () => {
@@ -634,7 +637,7 @@ describe("AuroraLens", () => {
     await lens.showThumbnails();
     const error = await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1).catch((reason: unknown) => reason);
 
-    expect(error).toMatchObject({ code: DECODER_ERROR_UNKNOWN, message: "Import failed." });
+    expect(error).toMatchObject({ code: LENS_ERROR_UNKNOWN, message: "Import failed." });
     expect(errors).toEqual([error]);
     expect(store.session?.pages.map((page) => ({
       pageId: page.pageId,

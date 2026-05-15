@@ -1,4 +1,4 @@
-import type { ViewerPageRecord } from "./viewerSessionStore";
+import type { ViewerPageRecord } from "../session/viewerSessionStore";
 
 interface MetadataRoot {
   pages: unknown[];

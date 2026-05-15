@@ -1,4 +1,4 @@
-import type { SelectionColor } from "./types";
+import type { SelectionColor } from "../types";
 
 interface ThumbnailViewerOptions {
   allowEdit: boolean;

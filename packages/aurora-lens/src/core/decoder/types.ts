@@ -1,5 +1,5 @@
-import type { DecoderErrorCode } from "../DecoderError";
-import type { RasterConfig } from "../viewerConfig";
+import type { LensErrorCode } from "../errors/LensError";
+import type { RasterConfig } from "../config/viewerConfig";
 
 export const DOC_TYPE_TIFF = "tiff";
 export const DOC_TYPE_PDF = "pdf";
@@ -49,7 +49,7 @@ export type DecodeResponse =
   | {
     id: number;
     kind: "error";
-    errorCode: DecoderErrorCode;
+    errorCode: LensErrorCode;
     error: string;
   };
 

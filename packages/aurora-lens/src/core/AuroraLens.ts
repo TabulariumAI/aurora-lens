@@ -1,17 +1,17 @@
-import { assertContainer, assertFile, assertPageIndex } from "./inputs";
-import { MetadataRepository } from "./MetadataRepository";
-import { MetadataHelper } from "./MetadataHelper";
-import { PageViewer } from "./PageViewer";
-import { ACTIVE_VIEWER_SESSION_ID, reorderPageRecords } from "./viewerSessionStore";
-import { DECODER_ERROR_PAGE_OUT_OF_RANGE, DECODER_ERROR_PAGE_SIZE, DecoderError } from "./DecoderError";
-import { DocumentDecoder } from "./documentDecoder/DocumentDecoder";
-import { normalizeSelectionTheme } from "./selectionTheme";
-import { SelectionManager } from "./SelectionManager";
-import { ThumbnailViewer } from "./ThumbnailViewer";
-import { exportTiffPages } from "./TiffExporter";
-import { validateRasterPageSize, type PageSizeConfig } from "./pageSizeValidation";
-import { defaultViewerConfig, type ViewerConfig } from "./viewerConfig";
-import type { DecodedPage as DecodedDocPage } from "./documentDecoder/types";
+import { assertContainer, assertFile, assertPageIndex } from "./input/inputs";
+import { MetadataRepository } from "./metadata/MetadataRepository";
+import { MetadataHelper } from "./metadata/MetadataHelper";
+import { PageViewer } from "./viewer/PageViewer";
+import { ACTIVE_VIEWER_SESSION_ID, reorderPageRecords } from "./session/viewerSessionStore";
+import { LENS_ERROR_PAGE_OUT_OF_RANGE, LENS_ERROR_PAGE_SIZE, LensError } from "./errors/LensError";
+import { DocumentDecoder } from "./decoder/DocumentDecoder";
+import { normalizeSelectionTheme } from "./selection/selectionTheme";
+import { SelectionManager } from "./selection/SelectionManager";
+import { ThumbnailViewer } from "./viewer/ThumbnailViewer";
+import { exportTiffPages } from "./export/TiffExporter";
+import { validateRasterPageSize, type PageSizeConfig } from "./validation/pageSizeValidation";
+import { defaultViewerConfig, type ViewerConfig } from "./config/viewerConfig";
+import type { DecodedPage as DecodedDocPage } from "./decoder/types";
 import type {
   ViewerOptions,
   ViewerState,
@@ -233,7 +233,7 @@ export class AuroraLens {
       const done = this.decoder.decodeDoc(file, {
         pageCount: async (count) => {
           if (pageIndex >= count) {
-            throw new DecoderError(DECODER_ERROR_PAGE_OUT_OF_RANGE, `Page ${pageIndex + 1} is outside the available page range.`);
+            throw new LensError(LENS_ERROR_PAGE_OUT_OF_RANGE, `Page ${pageIndex + 1} is outside the available page range.`);
           }
           const updatedAt = Date.now();
           this.sessionPages = this.createPageRecords(count, updatedAt);
@@ -326,7 +326,7 @@ export class AuroraLens {
     }
 
     this.persistenceRun += 1;
-    this.setStatus("loadingPage");
+    this.setStatus("addingPages");
     let records: ViewerPageRecord[] = [];
     try {
       const config = await this.readViewerConfig();
@@ -1044,7 +1044,7 @@ export class AuroraLens {
   }
 
   private state(): ViewerState {
-    const busy = this.status === "loadingPage" || this.status === "loadingThumbnails" || this.status === "copyingSelection";
+    const busy = this.status === "addingPages" || this.status === "loadingPage" || this.status === "loadingThumbnails" || this.status === "copyingSelection";
     const hasPage = Boolean(this.page);
     const pageIndex = this.page?.pageIndex ?? -1;
     return {
@@ -1127,7 +1127,7 @@ export class AuroraLens {
       yResolution: "yResolution" in page && typeof page.yResolution === "number" ? page.yResolution : 0,
     }, config);
     if (!validation.valid) {
-      throw new DecoderError(DECODER_ERROR_PAGE_SIZE, `${page.sourceName}: page ${importIndex + 1} rejected. ${validation.reason}`);
+      throw new LensError(LENS_ERROR_PAGE_SIZE, `${page.sourceName}: page ${importIndex + 1} rejected. ${validation.reason}`);
     }
     if (!page.sourceType) {
       throw new Error("AuroraLens: decoded page is missing source type.");

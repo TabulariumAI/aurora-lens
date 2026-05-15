@@ -1,9 +1,9 @@
 import {
-  DECODER_ERROR_UNKNOWN,
-  DecoderError,
-  type DecoderErrorCode,
-} from "../DecoderError";
-import { defaultViewerConfig, type RasterConfig } from "../viewerConfig";
+  LENS_ERROR_UNKNOWN,
+  LensError,
+  type LensErrorCode,
+} from "../errors/LensError";
+import { defaultViewerConfig, type RasterConfig } from "../config/viewerConfig";
 import { detectDocType } from "./detect";
 import {
   DOC_TYPE_JPEG,
@@ -114,8 +114,8 @@ export class DocumentDecoder {
 
     const worker = new Worker(this.workerUrl(type), { type: "module" });
     worker.onmessage = (event: MessageEvent<DecodeResponse>) => this.receive(event.data);
-    worker.onerror = (event) => this.rejectAll(new DecoderError(DECODER_ERROR_UNKNOWN, event.message || "Document decoder worker failed."));
-    worker.onmessageerror = () => this.rejectAll(new DecoderError(DECODER_ERROR_UNKNOWN, "Document decoder worker returned an unreadable response."));
+    worker.onerror = (event) => this.rejectAll(new LensError(LENS_ERROR_UNKNOWN, event.message || "Document decoder worker failed."));
+    worker.onmessageerror = () => this.rejectAll(new LensError(LENS_ERROR_UNKNOWN, "Document decoder worker returned an unreadable response."));
     this.workers.set(type, worker);
     return worker;
   }
@@ -130,7 +130,7 @@ export class DocumentDecoder {
     if (type === DOC_TYPE_PNG || type === DOC_TYPE_JPEG) {
       return new URL("./workers/rasterWorker.js", import.meta.url);
     }
-    throw new DecoderError(DECODER_ERROR_UNKNOWN, "Document decoder received an unknown format.");
+    throw new LensError(LENS_ERROR_UNKNOWN, "Document decoder received an unknown format.");
   }
 
   private receive(response: DecodeResponse) {
@@ -142,7 +142,7 @@ export class DocumentDecoder {
     pending.queue = pending.queue.then(async () => {
       if (response.kind === "error") {
         this.pending.delete(response.id);
-        pending.reject(new DecoderError(response.errorCode, response.error));
+        pending.reject(new LensError(response.errorCode, response.error));
         return;
       }
       if (response.kind === "pageCount") {
@@ -160,7 +160,7 @@ export class DocumentDecoder {
       pending.resolve();
     }).catch((error: unknown) => {
       this.pending.delete(response.id);
-      pending.reject(error instanceof Error ? error : new DecoderError(DECODER_ERROR_UNKNOWN, String(error)));
+      pending.reject(error instanceof Error ? error : new LensError(LENS_ERROR_UNKNOWN, String(error)));
     });
   }
 

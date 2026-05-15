@@ -1,34 +1,34 @@
 export { AuroraLens } from "./core/AuroraLens";
 export {
-  DECODER_ERROR_EMPTY_DOCUMENT,
-  DECODER_ERROR_PAGE_OUT_OF_RANGE,
-  DECODER_ERROR_PAGE_SIZE,
-  DECODER_ERROR_RASTER_LIMIT,
-  DECODER_ERROR_UNSUPPORTED_FORMAT,
-  DECODER_ERROR_UNKNOWN,
-  DECODER_ERROR_UNREADABLE_DOCUMENT,
-  DecoderError,
-  isDecoderError,
-} from "./core/DecoderError";
-export { DocumentDecoder } from "./core/documentDecoder/DocumentDecoder";
-export { detectDocType } from "./core/documentDecoder/detect";
+  LENS_ERROR_EMPTY_DOCUMENT,
+  LENS_ERROR_PAGE_OUT_OF_RANGE,
+  LENS_ERROR_PAGE_SIZE,
+  LENS_ERROR_RASTER_LIMIT,
+  LENS_ERROR_UNSUPPORTED_FORMAT,
+  LENS_ERROR_UNKNOWN,
+  LENS_ERROR_UNREADABLE_DOCUMENT,
+  LensError,
+  isLensError,
+} from "./core/errors/LensError";
+export { DocumentDecoder } from "./core/decoder/DocumentDecoder";
+export { detectDocType } from "./core/decoder/detect";
 export {
   DOC_TYPE_JPEG,
   DOC_TYPE_PDF,
   DOC_TYPE_PNG,
   DOC_TYPE_TIFF,
-} from "./core/documentDecoder/types";
+} from "./core/decoder/types";
 export {
   DEFAULT_PDF_RASTER_DPI,
   configurePdfWorker,
   decodePdfBytes,
   decodePdfFile,
-} from "./core/PdfPageDecoder";
+} from "./core/decoder/PdfPageDecoder";
 export {
   DEFAULT_PAGE_FORMATS,
   DEFAULT_PAGE_TOLERANCE,
   validateRasterPageSize,
-} from "./core/pageSizeValidation";
+} from "./core/validation/pageSizeValidation";
 export {
   ACTIVE_VIEWER_SESSION_ID,
   IndexedDbViewerSessionStore,
@@ -40,7 +40,7 @@ export {
   VIEWER_SESSION_DB_NAME,
   VIEWER_SESSION_DB_VERSION,
   validateViewerSession,
-} from "./core/viewerSessionStore";
+} from "./core/session/viewerSessionStore";
 export {
   DEFAULT_EXPORT_CONFIG,
   DEFAULT_TIFF_EXPORT,
@@ -49,10 +49,10 @@ export {
   TIFF_PIXEL_FORMAT_GRAY8,
   TIFF_PIXEL_FORMAT_RGB24,
   defaultViewerConfig,
-} from "./core/viewerConfig";
+} from "./core/config/viewerConfig";
 export type {
-  DecoderErrorCode,
-} from "./core/DecoderError";
+  LensErrorCode,
+} from "./core/errors/LensError";
 export type {
   ViewerOptions,
   ViewerReady,
@@ -81,21 +81,21 @@ export type {
   DecodedPage as DecodedDocPage,
   DecodeSink,
   DocType,
-} from "./core/documentDecoder/types";
+} from "./core/decoder/types";
 export type {
   PdfDecodeOptions,
   PdfRasterPage,
-} from "./core/PdfPageDecoder";
+} from "./core/decoder/PdfPageDecoder";
 export type {
   PageFormat,
   PageSizeConfig,
   PageSizeInput,
   PageSizeResult,
-} from "./core/pageSizeValidation";
+} from "./core/validation/pageSizeValidation";
 export type {
   ExportConfig,
   RasterConfig,
   TiffExportConfig,
   TiffPixelFormat,
   ViewerConfig,
-} from "./core/viewerConfig";
+} from "./core/config/viewerConfig";

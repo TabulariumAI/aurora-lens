@@ -1,4 +1,4 @@
-import type { PartialSelectionTheme, SelectionColor, SelectionTheme } from "./types";
+import type { PartialSelectionTheme, SelectionColor, SelectionTheme } from "../types";
 
 export const defaultSelectionTheme: SelectionTheme = {
   context: {
@@ -16,15 +16,15 @@ export const defaultSelectionTheme: SelectionTheme = {
   token: {
     high: {
       fill: "rgba(0, 81, 104, 0.12)",
-      stroke: "#005168",
+      stroke: "rgba(0, 81, 104, 0.06)",
     },
     medium: {
       fill: "rgba(183, 121, 31, 0.16)",
-      stroke: "#B7791F",
+      stroke: "rgba(183, 121, 31, 0.06)",
     },
     low: {
       fill: "rgba(180, 35, 24, 0.12)",
-      stroke: "#B42318",
+      stroke: "rgba(180, 35, 24, 0.06)",
     },
   },
   confidence: {
