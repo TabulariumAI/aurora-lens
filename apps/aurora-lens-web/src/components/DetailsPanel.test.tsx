@@ -339,6 +339,8 @@ describe("DetailsPanel", () => {
   it("disables TIFF export while exporting", () => {
     render(<DetailsPanel allowEdit={true} canExport={true} defaultConfig={defaultViewerConfig()} details={details} error="" exporting={true} pageCount={1} status="ready" viewerConfig={viewerConfig} onAllowEdit={() => undefined} onExport={() => undefined} onViewerConfig={() => undefined} />);
 
-    expect(screen.getByRole("button", { name: "Exporting TIFF" })).toBeDisabled();
+    const button = screen.getByRole("button", { name: "Exporting TIFF" });
+    expect(button).toBeDisabled();
+    expect(button.querySelector(".export-spinner")).not.toBeNull();
   });
 });

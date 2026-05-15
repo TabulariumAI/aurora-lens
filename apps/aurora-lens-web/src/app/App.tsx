@@ -323,7 +323,7 @@ function toDetails(state: ViewerState): ViewerDetails {
 
 function toProgressText(status: ViewerStatus, state: ViewerState) {
   if (status === "loadingPage") {
-    return state.pageCount > 0 ? "Loading page..." : "Decoding document page...";
+    return state.pageCount > 0 ? "Please wait..." : "Decoding document page...";
   }
   if (status === "copyingSelection") {
     return "Copying selection...";

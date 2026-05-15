@@ -168,24 +168,24 @@ export class MetadataHelper {
     });
     if (contextValue) {
       const contexts = this.searchContexts(page, contextValue);
-      const foundTokens = value ? this.searchTokens(pageIndex, value) : [];
+      const hits = value ? this.searchTokens(pageIndex, value) : [];
       console.info("[PACK] metadata search context branch", {
         contextMatches: contexts.length,
-        tokenMatches: foundTokens.length,
+        tokenMatches: hits.length,
       });
       if (value && !contexts.length) {
-        const fallbackContexts = this.contexts(page, foundTokens);
-        console.info("[PACK] metadata search context fallback", {
-          tokenMatches: foundTokens.length,
-          contextMatches: fallbackContexts.length,
+        const tokenContexts = this.contexts(page, hits);
+        console.info("[PACK] metadata search token contexts", {
+          tokenMatches: hits.length,
+          contextMatches: tokenContexts.length,
         });
         return {
-          tokens: foundTokens.map((token) => token.value),
-          contexts: fallbackContexts,
+          tokens: hits.map((token) => token.value),
+          contexts: tokenContexts,
           figures: [],
         };
       }
-      const tokens = foundTokens.filter((token) => contexts.some((match) => this.hitPoly(match.polygon, ...this.center(token.polygon))));
+      const tokens = hits.filter((token) => contexts.some((match) => this.hitPoly(match.polygon, ...this.center(token.polygon))));
       console.info("[PACK] metadata search restricted hits", {
         tokens: tokens.length,
         contexts: contexts.length,
@@ -237,7 +237,11 @@ export class MetadataHelper {
         polygon: context.polygon,
       })),
     });
-    const contexts = this.mergeContexts([...tokenContexts, ...sourceContexts]);
+    const contextMap = new Map<string, PageContext>();
+    [...tokenContexts, ...sourceContexts].forEach((context) => {
+      contextMap.set(this.contextKey(context), context);
+    });
+    const contexts = Array.from(contextMap.values());
     console.info("[PACK] index combined hits", {
       tokens: tokens.length,
       tokenContexts: tokenContexts.length,
@@ -534,14 +538,6 @@ export class MetadataHelper {
       found.set(context.key, context);
     });
     return Array.from(found.values()).map((context) => context.value);
-  }
-
-  private mergeContexts(contexts: PageContext[]) {
-    const found = new Map<string, PageContext>();
-    contexts.forEach((context) => {
-      found.set(this.contextKey(context), context);
-    });
-    return Array.from(found.values());
   }
 
   private contextKey(context: { polygon: number[] }) {

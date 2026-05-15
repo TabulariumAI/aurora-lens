@@ -140,8 +140,8 @@ export function ViewerToolbar({
   );
 }
 
-function intelligenceStatus(metadataPageCount: number | undefined, pageCount: number) {
-  if (pageCount <= 0 || metadataPageCount === undefined || metadataPageCount <= 0) {
+function intelligenceStatus(metadataPageCount: number, pageCount: number) {
+  if (pageCount <= 0 || metadataPageCount <= 0) {
     return null;
   }
   if (metadataPageCount === pageCount) {

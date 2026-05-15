@@ -38,6 +38,7 @@ export function DetailsPanel({ allowEdit, canExport, defaultConfig, details, err
         </dl>
         <div className="details-actions">
           <button type="button" className="settings-button" disabled={!canExport || exporting} onClick={onExport}>
+            {exporting ? <span className="export-spinner" aria-hidden="true" /> : null}
             {exporting ? "Exporting TIFF" : "Download TIFF"}
           </button>
           {draft ? (

@@ -759,7 +759,7 @@ describe("App", () => {
     expect(screen.getByRole("textbox")).toBeInTheDocument();
   });
 
-  it("shows loading progress as a detached transparent overlay", () => {
+  it("shows loading progress as a blocking detached overlay", () => {
     lensMock.status = "loadingPage";
     lensMock.state = {
       ...lensMock.state,
@@ -773,7 +773,7 @@ describe("App", () => {
     render(<App />);
 
     const status = screen.getByRole("status");
-    expect(status).toHaveTextContent("Loading page...");
+    expect(status).toHaveTextContent("Please wait...");
     expect(status.parentElement).toHaveClass("viewer-progress-overlay");
     expect(status.parentElement).not.toHaveClass("viewer-message");
   });
