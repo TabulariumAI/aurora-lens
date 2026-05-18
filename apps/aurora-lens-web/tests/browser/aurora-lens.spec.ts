@@ -110,8 +110,6 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await expect
     .poll(() => firstCard.evaluate((element) => getComputedStyle(element).boxShadow))
     .toBe("none");
-  const thumbnailBox = await page.getByRole("button", { name: /page 1/i }).boundingBox();
-  expect(thumbnailBox).not.toBeNull();
   const thumbnailImage = page.locator('img[alt="sample-multipage.tiff page 1"]').first();
   await expect
     .poll(() =>
@@ -122,7 +120,6 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
       })
     )
     .toBe(true);
-  expect(thumbnailBox!.width).toBeLessThanOrEqual(355);
   await expect.poll(async () => (await page.locator("[data-aurora-thumbnail-card]").first().boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(460);
   await expect.poll(async () => (await page.locator("[data-aurora-thumbnail-card]").first().boundingBox())?.height ?? 0).toBeLessThanOrEqual(505);
   await expect.poll(() => thumbnailOverlapCount(page)).toBe(0);

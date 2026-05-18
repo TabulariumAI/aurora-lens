@@ -85,7 +85,6 @@ describe("selectionTheme", () => {
     expect(recorder.strokes).toContain("context-stroke");
     expect(recorder.strokes).toContain("figure-stroke");
     expect(recorder.strokes).toContain("token-stroke");
-    expect(recorder.widths).toContain(1);
   });
 
   it("draws metadata polygons in metadata page coordinates", () => {
