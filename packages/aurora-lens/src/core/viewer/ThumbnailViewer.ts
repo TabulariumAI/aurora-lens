@@ -1,4 +1,5 @@
 import type { SelectionColor } from "../types";
+import { createViewerWatermark } from "./watermark";
 
 interface ThumbnailViewerOptions {
   allowEdit: boolean;
@@ -341,6 +342,7 @@ export class ThumbnailViewer {
   private readonly root = document.createElement("div");
   private readonly fileInput = document.createElement("input");
   private readonly live = document.createElement("span");
+  private readonly watermark = createViewerWatermark();
   private pages: Array<ThumbnailPage | undefined> = [];
   private pageIds: string[] = [];
   private items: ThumbnailItem[] = [];
@@ -368,6 +370,7 @@ export class ThumbnailViewer {
     Object.assign(this.fileInput.style, { display: "none" });
     this.live.setAttribute("aria-live", "polite");
     Object.assign(this.live.style, styles.hidden);
+    this.root.append(this.watermark);
     this.root.addEventListener("scroll", () => this.emitRange());
     this.root.addEventListener("dragover", (event) => {
       if (this.allowEdit && event.dataTransfer?.types.includes("Files")) {
@@ -468,7 +471,7 @@ export class ThumbnailViewer {
     this.items.forEach((item) => {
       this.root.appendChild(this.card(item));
     });
-    this.root.append(this.fileInput, this.live);
+    this.root.append(this.fileInput, this.live, this.watermark);
     if (focusActive) {
       const active = this.root.querySelector(`[data-page-index="${this.activeIndex}"] button[data-page-select="true"]`);
       if (active instanceof HTMLElement) {

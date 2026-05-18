@@ -1,6 +1,7 @@
 import { pageRect, screenToDisplay, screenToPage } from "./coordinates";
 import { MetadataHelper } from "../metadata/MetadataHelper";
 import { SelectionManager } from "../selection/SelectionManager";
+import { createViewerWatermark } from "./watermark";
 import type { DecodedPage, PagePoint } from "../types";
 
 interface PageViewerOptions {
@@ -17,6 +18,7 @@ export class PageViewer {
   private readonly frame = document.createElement("div");
   private readonly image = document.createElement("img");
   private readonly canvas = document.createElement("canvas");
+  private readonly watermark = createViewerWatermark();
   private page: DecodedPage | null = null;
   private zoom = 1;
   private move = { x: 0, y: 0 };
@@ -33,7 +35,7 @@ export class PageViewer {
 
   constructor(private readonly options: PageViewerOptions) {
     this.root.appendChild(this.frame);
-    this.frame.append(this.image, this.canvas);
+    this.frame.append(this.image, this.canvas, this.watermark);
     this.style();
     this.bind();
   }
