@@ -22,7 +22,7 @@
     "NOTICE"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && node ./scripts/copy-assets.mjs",
+    "build": "node ./scripts/clean-dist.mjs && tsc -p tsconfig.json && node ./scripts/fix-esm-imports.mjs && node ./scripts/copy-assets.mjs",
     "prepack": "npm run build",
     "test": "vitest run"
   },
@@ -46,6 +46,9 @@
   },
   "homepage": "https://github.com/tabulariumai/aurora-lens/tree/main/packages/aurora-lens#readme",
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "fuse.js": "6.6.2",
     "pdfjs-dist": "^5.7.284"
@@ -53,6 +56,14 @@
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
