@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { TIFF_PIXEL_FORMAT_BW1, TIFF_PIXEL_FORMAT_GRAY8, TIFF_PIXEL_FORMAT_RGB24 } from "@tabularium/aurora-lens";
+import { TIFF_PIXEL_FORMAT_BW1, TIFF_PIXEL_FORMAT_GRAY8, TIFF_PIXEL_FORMAT_RGB24 } from "@tabulariumai/aurora-lens";
 import type { HostViewerStatus, ViewerConfig, ViewerDetails } from "../lens/types";
 import type { SelectionColor } from "../lens/types";
 

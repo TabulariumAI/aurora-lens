@@ -1,4 +1,4 @@
-import type { MetadataIndex, PageInfo, ViewerState, ViewerStatus, SelectionColor, ViewerConfig } from "@tabularium/aurora-lens";
+import type { MetadataIndex, PageInfo, ViewerState, ViewerStatus, SelectionColor, ViewerConfig } from "@tabulariumai/aurora-lens";
 
 export interface ViewerDetails {
   source: string;

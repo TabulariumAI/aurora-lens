@@ -1,4 +1,4 @@
-import type { SelectionTheme } from "@tabularium/aurora-lens";
+import type { SelectionTheme } from "@tabulariumai/aurora-lens";
 
 export const selectionTheme = {
   context: {

@@ -7,15 +7,15 @@ Aurora, the proprietary Tabularium AI runtime, is not included in this package.
 ## Install
 
 ```sh
-npm install @tabularium/aurora-lens
+npm install @tabulariumai/aurora-lens
 ```
 
 ## Usage
 
 ```tsx
 import { useRef } from "react";
-import { ReactViewer } from "@tabularium/aurora-lens/react";
-import type { AuroraLens } from "@tabularium/aurora-lens";
+import { ReactViewer } from "@tabulariumai/aurora-lens/react";
+import type { AuroraLens } from "@tabulariumai/aurora-lens";
 
 export function Viewer() {
   const lensRef = useRef<AuroraLens | null>(null);

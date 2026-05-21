@@ -13,7 +13,7 @@ import {
   type LensErrorCode,
   type ViewerConfig,
   type ViewerReady,
-} from "@tabularium/aurora-lens";
+} from "@tabulariumai/aurora-lens";
 import { DetailsPanel } from "../components/DetailsPanel";
 import { LensHost } from "../components/LensHost";
 import { LoaderPanel } from "../components/LoaderPanel";

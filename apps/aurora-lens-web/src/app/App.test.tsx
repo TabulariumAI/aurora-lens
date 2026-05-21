@@ -72,7 +72,7 @@ const lensMock = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("@tabularium/aurora-lens", () => {
+vi.mock("@tabulariumai/aurora-lens", () => {
   const LENS_ERROR_EMPTY_DOCUMENT = "empty_document";
   const LENS_ERROR_PAGE_OUT_OF_RANGE = "page_out_of_range";
   const LENS_ERROR_PAGE_SIZE = "page_size";
@@ -130,7 +130,7 @@ vi.mock("@tabularium/aurora-lens", () => {
   };
 });
 
-vi.mock("@tabularium/aurora-lens/react", async () => {
+vi.mock("@tabulariumai/aurora-lens/react", async () => {
   const React = await vi.importActual<typeof import("react")>("react");
   return {
     ReactViewer: React.forwardRef(function MockReactViewer(props: {
@@ -384,7 +384,7 @@ describe("App", () => {
   });
 
   it("shows main document decoder errors as a dialog", async () => {
-    const { LensError } = await import("@tabularium/aurora-lens");
+    const { LensError } = await import("@tabulariumai/aurora-lens");
     lensMock.instance.decodeDoc.mockRejectedValue(new LensError("empty_document", "Empty document."));
     render(<App />);
 
@@ -403,7 +403,7 @@ describe("App", () => {
   });
 
   it("shows main document page-size errors with the decoder message", async () => {
-    const { LensError } = await import("@tabularium/aurora-lens");
+    const { LensError } = await import("@tabulariumai/aurora-lens");
     lensMock.instance.decodeDoc.mockRejectedValue(new LensError("page_size", "image.png: page 1 rejected. Page size 512x512 does not match configured formats"));
     render(<App />);
 
@@ -418,7 +418,7 @@ describe("App", () => {
   });
 
   it("shows add-page decoder errors as a dialog", async () => {
-    const { LensError } = await import("@tabularium/aurora-lens");
+    const { LensError } = await import("@tabulariumai/aurora-lens");
     render(<App />);
 
     act(() => {

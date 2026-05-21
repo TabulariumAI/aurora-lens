@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { ReactViewer } from "@tabularium/aurora-lens/react";
-import type { AuroraLens, ViewerReady } from "@tabularium/aurora-lens";
+import { ReactViewer } from "@tabulariumai/aurora-lens/react";
+import type { AuroraLens, ViewerReady } from "@tabulariumai/aurora-lens";
 import { selectionTheme } from "../lens/selectionTheme";
 import type { ViewerState, ViewerStatus } from "../lens/types";
 import { AlertDialog } from "./AlertDialog";

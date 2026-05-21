@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { DetailsPanel } from "./DetailsPanel";
 import type { ViewerConfig, ViewerDetails } from "../lens/types";
 
-vi.mock("@tabularium/aurora-lens", () => ({
+vi.mock("@tabulariumai/aurora-lens", () => ({
   TIFF_PIXEL_FORMAT_BW1: "bw1",
   TIFF_PIXEL_FORMAT_GRAY8: "gray8",
   TIFF_PIXEL_FORMAT_RGB24: "rgb24",

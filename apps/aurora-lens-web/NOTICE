@@ -1,7 +1,7 @@
 Tabularium AI Lens Web
 Copyright 2026 Tabularium AI
 
-This repository uses @tabularium/aurora-lens as its viewer component.
+This repository uses @tabulariumai/aurora-lens as its viewer component.
 
-Document decoding runtime support is provided by @tabularium/aurora-lens.
+Document decoding runtime support is provided by @tabulariumai/aurora-lens.
 Confirm distribution rights for bundled samples before publishing this repository.

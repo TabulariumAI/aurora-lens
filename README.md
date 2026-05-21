@@ -42,7 +42,7 @@ The web app is private and is intended to be published as a repository or deploy
 The reusable package can be packed or published from its workspace:
 
 ```sh
-npm pack --dry-run --workspace @tabularium/aurora-lens
+npm pack --dry-run --workspace @tabulariumai/aurora-lens
 ```
 
 ## Public Assets

@@ -1,6 +1,6 @@
 # Tabularium AI Lens Web
 
-Tabularium AI Lens Web is a React and Vite demo application for viewing documents with the `@tabularium/aurora-lens` component. It supports local document loading, page navigation, thumbnails, metadata overlays, search, selection, and copy workflows.
+Tabularium AI Lens Web is a React and Vite demo application for viewing documents with the `@tabulariumai/aurora-lens` component. It supports local document loading, page navigation, thumbnails, metadata overlays, search, selection, and copy workflows.
 
 The reusable viewer component and document decoder live in `packages/aurora-lens`. This app is only the demo shell around the component.
 
