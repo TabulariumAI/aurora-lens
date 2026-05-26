@@ -32,7 +32,7 @@ export function Viewer() {
 
 ## Document Decoding
 
-The package owns document detection and decoding through `decodeDoc(file, pageIndex)`. Supported input formats are TIFF/TIF, PDF, PNG, and JPG/JPEG.
+The package owns document detection and decoding through `decodeDoc(file, { page, viewMode })`. Supported input formats are TIFF/TIF, PDF, PNG, and JPG/JPEG.
 
 ## Viewer Config
 
@@ -46,10 +46,10 @@ When switching to a document that does not have matching metadata, call `clear()
 
 ```ts
 await lensRef.current?.loadMetadata(metadata);
-await lensRef.current?.decodeDoc(fileWithMetadata, 0);
+await lensRef.current?.decodeDoc(fileWithMetadata, { page: 0, viewMode: "page" });
 
 lensRef.current?.clear();
-await lensRef.current?.decodeDoc(fileWithoutMetadata, 0);
+await lensRef.current?.decodeDoc(fileWithoutMetadata, { page: 0, viewMode: "page" });
 ```
 
 See [docs/metadata-schema.md](docs/metadata-schema.md).

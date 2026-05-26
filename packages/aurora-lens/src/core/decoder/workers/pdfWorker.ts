@@ -1,5 +1,4 @@
-import "pdfjs-dist/build/pdf.worker.mjs";
-import { getDocument } from "pdfjs-dist";
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import {
   LENS_ERROR_EMPTY_DOCUMENT,
   LENS_ERROR_UNKNOWN,
@@ -10,6 +9,11 @@ import {
 import type { DecodeRequest, DecodeResponse, DecodedPage } from "../types";
 
 const PDF_POINTS_PER_INCH = 72;
+const PDF_WORKER_SRC = new URL("../vendor/pdf.worker.mjs", import.meta.url).toString();
+const PDF_WASM_URL = `${new URL("../vendor/pdfjs-wasm", import.meta.url).toString()}/`;
+const PDF_STANDARD_FONT_DATA_URL = `${new URL("../vendor/pdfjs-standard-fonts", import.meta.url).toString()}/`;
+
+GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
 
 class WorkerCanvasFactory {
   create(width: number, height: number) {
@@ -92,6 +96,11 @@ async function decode(request: DecodeRequest): Promise<void> {
       CanvasFactory: WorkerCanvasFactory,
       FilterFactory: WorkerFilterFactory,
       disableFontFace: true,
+      standardFontDataUrl: PDF_STANDARD_FONT_DATA_URL,
+      useSystemFonts: true,
+      useWasm: false,
+      useWorkerFetch: false,
+      wasmUrl: PDF_WASM_URL,
     }).promise;
     if (pdf.numPages <= 0) {
       throw new LensError(LENS_ERROR_EMPTY_DOCUMENT, "The selected file does not contain readable pages.");

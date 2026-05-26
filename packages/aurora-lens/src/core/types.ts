@@ -4,6 +4,11 @@ import type { ViewerConfig } from "./config/viewerConfig";
 
 export type ViewMode = "page" | "thumbnails";
 
+export interface DecodeDocOptions {
+  page: number;
+  viewMode: ViewMode;
+}
+
 export type ViewerStatus =
   | "idle"
   | "addingPages"
@@ -116,7 +121,7 @@ export interface ViewerOptions {
 
 export interface ViewerReady {
   addPages(files: File[] | FileList, insertIndex: number): Promise<void>;
-  decodeDoc(file: File, pageIndex: number): Promise<void>;
+  decodeDoc(file: File, options: DecodeDocOptions): Promise<void>;
   exportTiff(): Promise<Blob>;
   readPageInfo(): PageInfo | null;
   readViewerConfig(): Promise<ViewerConfig>;

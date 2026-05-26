@@ -171,7 +171,7 @@ export function App() {
         }
       }
 
-      await lens.decodeDoc(input.file, 0);
+      await lens.decodeDoc(input.file, { page: 0, viewMode: "thumbnails" });
       if (!isViewerOperationCurrent(operationId)) {
         return;
       }

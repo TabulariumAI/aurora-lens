@@ -59,6 +59,7 @@ export type {
   ViewerState,
   ViewerStatus,
   ViewMode,
+  DecodeDocOptions,
   CopySelectionResult,
   MetadataIndex,
   PageContext,

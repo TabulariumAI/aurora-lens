@@ -61,14 +61,14 @@ Sample loading uses the intended metadata flow:
 
 ```ts
 await lens.loadMetadata(metadata);
-await lens.decodeDoc(file, 0);
+await lens.decodeDoc(file, { page: 0, viewMode: "thumbnails" });
 ```
 
 User file loading uses:
 
 ```ts
 lens.clear();
-await lens.decodeDoc(file, 0);
+await lens.decodeDoc(file, { page: 0, viewMode: "thumbnails" });
 ```
 
 ## Release Notes

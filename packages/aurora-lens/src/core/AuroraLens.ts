@@ -1,4 +1,4 @@
-import { assertContainer, assertFile, assertPageIndex } from "./input/inputs";
+import { assertContainer, assertDecodeOptions, assertFile, assertPageIndex, assertViewMode } from "./input/inputs";
 import { MetadataRepository } from "./metadata/MetadataRepository";
 import { MetadataHelper } from "./metadata/MetadataHelper";
 import { PageViewer } from "./viewer/PageViewer";
@@ -17,6 +17,7 @@ import type {
   ViewerState,
   ViewerStatus,
   ViewMode,
+  DecodeDocOptions,
   CopySelectionResult,
   DecodedPage,
   MetadataIndex,
@@ -199,8 +200,11 @@ export class AuroraLens {
     }
   }
 
-  async decodeDoc(file: File, pageIndex: number): Promise<void> {
+  async decodeDoc(file: File, options: DecodeDocOptions): Promise<void> {
     assertFile(file);
+    assertDecodeOptions(options);
+    assertViewMode(options.viewMode);
+    const pageIndex = options.page;
     assertPageIndex(pageIndex);
     const openRun = this.runId + 1;
     this.runId = openRun;
@@ -276,13 +280,20 @@ export class AuroraLens {
             }
             this.revokePage();
             this.page = rendered;
-            this.viewMode = "page";
             this.coordinates = null;
             this.displayCoordinates = null;
             this.selection.clear();
-            this.showView("page");
             await this.loadStoredPageMetadata(rendered.pageId, rendered.pageIndex);
-            this.pageViewer.show(rendered);
+            this.viewMode = options.viewMode;
+            if (options.viewMode === "page") {
+              this.showView("page");
+              this.pageViewer.show(rendered);
+            } else {
+              this.thumbnailRun += 1;
+              this.thumbnailKeep = new Set();
+              this.thumbnailViewer.show(this.pageIds(), this.pageCount, rendered.sourceName, rendered, this.thumbnails, rendered.pageIndex, this.thumbnailMetadata());
+              this.showView("thumbnails");
+            }
             await this.saveCurrentPage(rendered.pageId);
             this.metadataPending = false;
             firstReady = true;
@@ -407,7 +418,7 @@ export class AuroraLens {
       if (this.metadataInput !== null) {
         this.metadataPending = true;
       }
-      await this.decodeDoc(file, pageIndex);
+      await this.decodeDoc(file, { page: pageIndex, viewMode: this.viewMode });
     }
     return saved;
   }

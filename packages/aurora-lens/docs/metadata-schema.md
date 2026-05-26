@@ -52,10 +52,10 @@ Use one of these flows:
 
 ```ts
 await lens.loadMetadata(metadataForFile);
-await lens.decodeDoc(file, 0);
+await lens.decodeDoc(file, { page: 0, viewMode: "page" });
 ```
 
 ```ts
 lens.clear();
-await lens.decodeDoc(fileWithoutMetadata, 0);
+await lens.decodeDoc(fileWithoutMetadata, { page: 0, viewMode: "page" });
 ```

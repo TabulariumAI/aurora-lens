@@ -34,6 +34,8 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await expect(page.getByRole("button", { name: "Search", exact: true })).toBeDisabled();
   await expect.poll(() => page.locator(".viewer-footer").evaluate((element) => getComputedStyle(element).borderTopColor)).toBe("rgb(214, 220, 226)");
   await expect(page.locator(".viewer-footer")).toBeInViewport();
+  await expect(page.getByRole("button", { name: "All thumbnails" })).toBeDisabled();
+  await page.getByRole("button", { name: "Page 1" }).click();
   await expect
     .poll(() => page.getByRole("button", { name: "All thumbnails" }).evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe("rgb(255, 255, 255)");
@@ -104,7 +106,7 @@ test("loads a TIFF through Tabularium AI Lens and exercises host controls", asyn
   await expect
     .poll(() => page.locator(".viewer-body > div").first().evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe("rgba(0, 0, 0, 0)");
-  const thumbnailGrid = page.locator(".viewer-body > div > div").nth(1);
+  const thumbnailGrid = page.locator("[data-aurora-thumbnail-card]").first().locator("..");
   await expect.poll(() => thumbnailGrid.evaluate((element) => getComputedStyle(element).overflow)).toBe("auto");
   await expect.poll(() => thumbnailGrid.evaluate((element) => getComputedStyle(element).height)).not.toBe("520px");
   await expect
@@ -142,11 +144,12 @@ test("scrolls thumbnail grid when thumbnail cards exceed the visible area", asyn
 
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
   await page.getByLabel("Load document").setInputFiles(fixture);
-  await expect(page.getByRole("button", { name: "All thumbnails" })).toBeEnabled();
-  await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: /page 2/i })).toBeVisible();
 
-  const thumbnailGrid = page.locator(".viewer-body > div > div").nth(1);
+  const thumbnailGrid = page.locator("[data-aurora-thumbnail-card]").first().locator("..");
+  const watermark = page.locator("[data-aurora-thumbnail-card]").first().locator("../..").getByText("Powered by Tabularium AI");
+  const fixedBox = await watermark.boundingBox();
+  expect(fixedBox).not.toBeNull();
   await thumbnailGrid.evaluate((element) => {
     const cards = Array.from(element.children);
     for (let index = 0; index < 6; index += 1) {
@@ -161,6 +164,10 @@ test("scrolls thumbnail grid when thumbnail cards exceed the visible area", asyn
     element.scrollTop = element.scrollHeight;
   });
   await expect.poll(() => thumbnailGrid.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  const scrolledBox = await watermark.boundingBox();
+  expect(scrolledBox).not.toBeNull();
+  expect(Math.abs(scrolledBox!.x - fixedBox!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(scrolledBox!.y - fixedBox!.y)).toBeLessThanOrEqual(1);
 });
 
 test("loads every bundled sample TIFF", async ({ page }) => {
@@ -194,7 +201,6 @@ test("navigates by reordered thumbnail sequence", async ({ page }) => {
   await page.getByRole("button", { name: "sample-2" }).click();
   const details = page.getByLabel("Page details");
   await expect(details.getByText("1 of 5")).toBeVisible();
-  await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
   await expect(page.locator("[data-thumbnail-media] img")).toHaveCount(5);
   const thumbnailGrid = page.locator("[data-aurora-thumbnail-card]").first().locator("..");
@@ -239,7 +245,6 @@ test("adds TIFF pages from thumbnail add button and stores the inserted pages", 
   await page.getByLabel("Load document").setInputFiles(fixture);
   const details = page.getByLabel("Page details");
   await expect(details.getByText("1 of 2")).toBeVisible();
-  await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
 
   const firstCard = page.locator('[data-page-index="0"]');
@@ -270,7 +275,6 @@ test("removes a thumbnail page and stores the changed pages", async ({ page }) =
   const fixture = path.resolve("tests/fixtures/sample-multipage.tiff");
   await page.getByLabel("Load document").setInputFiles(fixture);
   await expect(page.getByLabel("Page details").getByText("1 of 2")).toBeVisible();
-  await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
 
   const firstCard = page.locator('[data-page-index="0"]');
@@ -295,6 +299,21 @@ test("loads a PDF through the package document decoder", async ({ page }) => {
   await expect(details.getByText("sample-multipage.tiff")).toBeVisible();
   await expect(details.getByText("1 of 2")).toBeVisible();
 
+  const pdfWorkerResponses: Array<{ status: number; url: string }> = [];
+  page.on("response", (response) => {
+    const url = response.url();
+    if (url.includes("pdf.worker.mjs") || url.includes("pdfjs-dist_build_pdf__worker__mjs")) {
+      pdfWorkerResponses.push({ status: response.status(), url });
+    }
+  });
+
+  const warnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning") {
+      warnings.push(message.text());
+    }
+  });
+
   await page.getByLabel("Load document").setInputFiles({
     name: "letter.pdf",
     mimeType: "application/pdf",
@@ -306,6 +325,13 @@ test("loads a PDF through the package document decoder", async ({ page }) => {
   await expect(details.getByText("letter.pdf")).toBeVisible();
   await expect.poll(async () => (await storedPages(page)).length).toBeGreaterThan(0);
   await expect.poll(() => storedBlobCount(page)).toBeGreaterThan(0);
+  expect(pdfWorkerResponses).toContainEqual(expect.objectContaining({
+    status: 200,
+    url: expect.stringContaining("dist/core/decoder/vendor/pdf.worker.mjs"),
+  }));
+  expect(pdfWorkerResponses.some((response) => response.url.includes("pdfjs-dist_build_pdf__worker__mjs"))).toBe(false);
+  expect(warnings).not.toContainEqual(expect.stringContaining("standardFontDataUrl"));
+  expect(warnings).not.toContainEqual(expect.stringContaining("Unable to load font data"));
 });
 
 test("loads a PNG through the package document decoder with parsed DPI", async ({ page }) => {
@@ -355,6 +381,20 @@ test("downloads TIFF export from the right panel", async ({ page }) => {
 });
 
 test("caps an oversized PDF to configured view raster limits", async ({ page }) => {
+  const warnings: string[] = [];
+  const pdfAssetResponses: Array<{ status: number; url: string }> = [];
+  page.on("console", (message) => {
+    if (message.type() === "warning") {
+      warnings.push(message.text());
+    }
+  });
+  page.on("response", (response) => {
+    const url = response.url();
+    if (url.includes("pdfjs-wasm")) {
+      pdfAssetResponses.push({ status: response.status(), url });
+    }
+  });
+
   await page.goto("/");
 
   const pdf = path.resolve("public/samples/sample-pdf/document_1.pdf");
@@ -369,6 +409,13 @@ test("caps an oversized PDF to configured view raster limits", async ({ page }) 
     const [record] = await storedPageBlobs(page);
     return record ? record.width <= 10_000 && record.height <= 10_000 && record.width * record.height <= 40_000_000 : false;
   }).toBe(true);
+  expect(warnings).not.toContainEqual(expect.stringContaining("JBig2 failed to initialize"));
+  expect(warnings).not.toContainEqual(expect.stringContaining("Unable to load wasm data"));
+  expect(warnings).not.toContainEqual(expect.stringContaining("Unable to decode image"));
+  expect(pdfAssetResponses).toContainEqual(expect.objectContaining({
+    status: 200,
+    url: expect.stringContaining("pdfjs-wasm/jbig2_nowasm_fallback.js"),
+  }));
 });
 
 test("clears sample metadata when a user-selected TIFF is loaded", async ({ page }) => {
@@ -416,6 +463,7 @@ test("clears sample metadata when a user-selected TIFF is loaded", async ({ page
   await page.goto("/");
 
   await page.getByRole("button", { name: "sample-1" }).click();
+  await page.getByRole("button", { name: "Page 1" }).click();
   await expect(page.locator('.viewer-body img[alt="sample.tiff page 1"]').first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Search", exact: true })).toBeEnabled();
   const details = page.getByLabel("Page details");
@@ -446,7 +494,6 @@ test("clears sample metadata when a user-selected TIFF is loaded", async ({ page
   await expect(page.locator('.viewer-body img[alt="sample-multipage.tiff page 1"]').first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Search", exact: true })).toBeDisabled();
 
-  await page.getByRole("button", { name: "All thumbnails" }).click();
   await expect(page.getByRole("button", { name: /page 1/i })).toBeVisible();
   await expect(page.getByLabel(/has intelligence metadata/)).toHaveCount(0);
 });

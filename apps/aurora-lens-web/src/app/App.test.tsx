@@ -245,7 +245,7 @@ describe("App", () => {
     await waitFor(() => expect(lensMock.instance.decodeDoc).toHaveBeenCalledTimes(1));
     expect(lensMock.instance.clear).toHaveBeenCalledTimes(1);
     expect(lensMock.instance.loadMetadata).not.toHaveBeenCalled();
-    expect(lensMock.instance.decodeDoc).toHaveBeenCalledWith(file, 0);
+    expect(lensMock.instance.decodeDoc).toHaveBeenCalledWith(file, { page: 0, viewMode: "thumbnails" });
     expect(lensMock.instance.clear.mock.invocationCallOrder[0]).toBeLessThan(lensMock.instance.decodeDoc.mock.invocationCallOrder[0]);
   });
 
@@ -463,7 +463,7 @@ describe("App", () => {
     const file = lensMock.instance.decodeDoc.mock.calls[0][0] as File;
     expect(file.name).toBe("sample.tiff");
     expect(file.type).toBe("image/tiff");
-    expect(lensMock.instance.decodeDoc).toHaveBeenCalledWith(file, 0);
+    expect(lensMock.instance.decodeDoc).toHaveBeenCalledWith(file, { page: 0, viewMode: "thumbnails" });
   });
 
   it("starts sample decode after metadata and TIFF load successfully", async () => {
@@ -512,7 +512,7 @@ describe("App", () => {
       },
     });
 
-    await waitFor(() => expect(lensMock.instance.decodeDoc).toHaveBeenCalledWith(file, 0));
+    await waitFor(() => expect(lensMock.instance.decodeDoc).toHaveBeenCalledWith(file, { page: 0, viewMode: "thumbnails" }));
     finishDecode();
     expect(lensMock.instance.decodeDoc).toHaveBeenCalledTimes(1);
   });
@@ -538,7 +538,7 @@ describe("App", () => {
     await waitFor(() => expect(lensMock.instance.decodeDoc).toHaveBeenCalledTimes(2));
     expect(lensMock.instance.clear).toHaveBeenCalledTimes(2);
     expect(lensMock.instance.loadMetadata).not.toHaveBeenCalled();
-    expect(lensMock.instance.decodeDoc.mock.calls[1]).toEqual([second, 0]);
+    expect(lensMock.instance.decodeDoc.mock.calls[1]).toEqual([second, { page: 0, viewMode: "thumbnails" }]);
     expect(lensMock.instance.clear.mock.invocationCallOrder[1]).toBeLessThan(lensMock.instance.decodeDoc.mock.invocationCallOrder[1]);
   });
 
@@ -585,7 +585,7 @@ describe("App", () => {
     });
 
     await waitFor(() => expect(lensMock.instance.decodeDoc).toHaveBeenCalledTimes(2));
-    expect(lensMock.instance.decodeDoc.mock.calls[1]).toEqual([pdf, 0]);
+    expect(lensMock.instance.decodeDoc.mock.calls[1]).toEqual([pdf, { page: 0, viewMode: "thumbnails" }]);
     expect(lensMock.instance.clear).toHaveBeenCalledTimes(2);
   });
 

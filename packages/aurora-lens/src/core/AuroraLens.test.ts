@@ -280,7 +280,7 @@ describe("AuroraLens", () => {
     });
 
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     expect(statuses).toContain("loadingPage");
     expect(statuses.at(-1)).toBe("ready");
@@ -296,6 +296,28 @@ describe("AuroraLens", () => {
     });
   });
 
+  it("opens decoded document in thumbnails view when requested", async () => {
+    const states: ViewerState[] = [];
+    const container = document.createElement("div");
+    const lens = new AuroraLens(container, {
+      allowEdit: true,
+      onStateChange: (state) => states.push(state),
+    });
+
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "thumbnails" });
+    await flush();
+
+    expect(states.at(-1)).toMatchObject({
+      viewMode: "thumbnails",
+      status: "ready",
+      sourceName: "sample.raster",
+      pageIndex: 0,
+      pageCount: 2,
+    });
+    expect(container.querySelectorAll("button[data-page-select='true']")).toHaveLength(2);
+  });
+
   it("saves loaded document sessions from package-owned storage", async () => {
     const metadataValue = metadata();
     const store = new MemorySessionStore();
@@ -306,7 +328,7 @@ describe("AuroraLens", () => {
     const file = new File(["raster"], "stored.raster", { type: "image/tiff" });
 
     lens.loadMetadata(metadataValue);
-    await lens.decodeDoc(file, 0);
+    await lens.decodeDoc(file, { page: 0, viewMode: "page" });
     await flush();
 
     expect(store.session?.document).toMatchObject({
@@ -337,7 +359,7 @@ describe("AuroraLens", () => {
     const file = new File(["raster"], "stored.raster", { type: "image/tiff" });
 
     lens.loadMetadata(metadataValue);
-    await lens.decodeDoc(file, 0);
+    await lens.decodeDoc(file, { page: 0, viewMode: "page" });
 
     expect(statuses.at(-1)).toBe("ready");
     expect(store.blobs.map((blob) => blob.pageId)).toEqual(["page-1"]);
@@ -362,7 +384,7 @@ describe("AuroraLens", () => {
     });
 
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await flush();
 
     expect(store.deleted).toBe(true);
@@ -384,7 +406,7 @@ describe("AuroraLens", () => {
       sessionStore: store,
       onError: (error) => errors.push(error),
     });
-    const error = await lens.decodeDoc(new File(["bad"], "bad.tiff", { type: "image/tiff" }), 0).catch((reason: unknown) => reason);
+    const error = await lens.decodeDoc(new File(["bad"], "bad.tiff", { type: "image/tiff" }), { page: 0, viewMode: "page" }).catch((reason: unknown) => reason);
 
     expect(error).toMatchObject({ code: LENS_ERROR_UNKNOWN, message: "Decode failed." });
     expect(store.session).toBeNull();
@@ -400,7 +422,7 @@ describe("AuroraLens", () => {
       sessionStore: store,
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await flush();
     await lens.nextPage();
 
@@ -477,7 +499,7 @@ describe("AuroraLens", () => {
       sessionStore: store,
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
 
     expect(decoderMock.state.lastRaster).toEqual(store.viewerConfig.view);
   });
@@ -511,7 +533,7 @@ describe("AuroraLens", () => {
       },
     };
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await flush();
     await lens.nextPage();
     await flush();
@@ -543,7 +565,7 @@ describe("AuroraLens", () => {
       sessionStore: store,
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await flush();
     const blob = await lens.exportTiff();
 
@@ -578,7 +600,7 @@ describe("AuroraLens", () => {
       sessionStore: store,
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
     drag(handle(container, 1), card(container, 0));
     await flush();
@@ -602,7 +624,7 @@ describe("AuroraLens", () => {
       onStatusChange: (status) => statuses.push(status),
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await flush();
     await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1);
 
@@ -632,7 +654,7 @@ describe("AuroraLens", () => {
       onAddError: (error) => errors.push(error),
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await flush();
     await lens.showThumbnails();
     const error = await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1).catch((reason: unknown) => reason);
@@ -662,7 +684,7 @@ describe("AuroraLens", () => {
     });
 
     lens.loadMetadata(firstPageMetadata());
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     expect(intelligenceLabels(container)).toEqual(["Page 1 has intelligence metadata"]);
@@ -684,20 +706,20 @@ describe("AuroraLens", () => {
       sessionStore: store,
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
     runFrames();
     await flush();
 
-    const root = thumbnailRoot(container);
-    root.scrollTop = 128;
+    const grid = thumbnailGrid(container);
+    grid.scrollTop = 128;
     const images = Array.from(container.querySelectorAll("[data-thumbnail-media] img"));
     images.forEach((image, index) => image.setAttribute("data-probe-id", `image-${index}`));
 
     drag(handle(container, 1), card(container, 0));
     await flush();
 
-    expect(root.scrollTop).toBe(128);
+    expect(grid.scrollTop).toBe(128);
     expect(Array.from(container.querySelectorAll("[data-thumbnail-media] img")).map((image) => image.getAttribute("data-probe-id"))).toEqual(["image-1", "image-0"]);
   });
 
@@ -712,7 +734,7 @@ describe("AuroraLens", () => {
       onStateChange: (state) => states.push(state),
     });
 
-    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), 0);
+    await lens.decodeDoc(new File(["raster"], "stored.raster", { type: "image/tiff" }), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
     drag(handle(container, 1), card(container, 0));
     await flush();
@@ -794,7 +816,7 @@ describe("AuroraLens", () => {
   it("copies selected tokens in grouped JSON shape", async () => {
     const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     lens.search("Alpha");
     const result = await lens.copySelection();
@@ -829,7 +851,7 @@ describe("AuroraLens", () => {
   it("provides current page metadata info through the public API", async () => {
     const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     expect(lens.readPageInfo()).toEqual({
       pageNumber: 1,
@@ -849,7 +871,7 @@ describe("AuroraLens", () => {
   it("restricts token search to the matched context", async () => {
     const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     const hits = lens.search("Source", { context: "The opening source URLs from the PDF are clean." });
 
@@ -860,7 +882,7 @@ describe("AuroraLens", () => {
   it("matches search context by explicit AND token terms", async () => {
     const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     const hits = lens.search("Source", { context: "opening AND clean" });
 
@@ -871,7 +893,7 @@ describe("AuroraLens", () => {
   it("matches search context by explicit OR token terms", async () => {
     const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     const hits = lens.search("Source", { context: "actual OR clean" });
 
@@ -889,7 +911,7 @@ describe("AuroraLens", () => {
       onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     const hits = lens.search("MissingToken", { context: "The opening source URLs from the PDF are clean." });
 
@@ -901,7 +923,7 @@ describe("AuroraLens", () => {
   it("falls back to token search when context search has no match", async () => {
     const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     const hits = lens.search("Alpha", { context: "MissingContext" });
 
@@ -912,7 +934,7 @@ describe("AuroraLens", () => {
   it("searches indexes through the package API", async () => {
     const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
 
     const hits = lens.searchIndex(1, {
       label: "Recording Number",
@@ -932,7 +954,7 @@ describe("AuroraLens", () => {
       onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await flush();
 
     lens.search("Alpha");
@@ -958,7 +980,7 @@ describe("AuroraLens", () => {
       onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await flush();
     await lens.showThumbnails();
 
@@ -976,7 +998,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await flush();
 
     await lens.showThumbnails();
@@ -987,13 +1009,31 @@ describe("AuroraLens", () => {
     lens.close();
   });
 
+  it("keeps the thumbnail watermark outside the scrolling grid", async () => {
+    const container = document.createElement("div");
+    const lens = new AuroraLens(container, {});
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
+    await flush();
+
+    await lens.showThumbnails();
+
+    const root = thumbnailRoot(container);
+    const grid = thumbnailGrid(container);
+    const watermark = Array.from(root.querySelectorAll("span")).find((span) => span.textContent === "Powered by Tabularium AI");
+    expect(root.style.overflow).toBe("hidden");
+    expect(grid.style.overflow).toBe("auto");
+    expect(watermark?.parentElement).toBe(root);
+    expect(grid.contains(watermark ?? null)).toBe(false);
+  });
+
   it("adds a decoded TIFF page to the left of the selected card", async () => {
     const store = new MemorySessionStore();
     const container = document.createElement("div");
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
     const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     action(container, 1, "Add before").click();
@@ -1011,7 +1051,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     action(container, 0, "Add after").click();
@@ -1032,7 +1072,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     const page = card(container, 1);
@@ -1059,7 +1099,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     const remove = action(container, 0, "Remove");
@@ -1100,7 +1140,7 @@ describe("AuroraLens", () => {
       allowEdit: false,      onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await flush();
     await lens.showThumbnails();
 
@@ -1126,7 +1166,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
     runFrames();
     await flush();
@@ -1155,7 +1195,7 @@ describe("AuroraLens", () => {
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
     const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     action(container, 0, "Add after").click();
@@ -1170,7 +1210,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     const confirm = action(container, 0, "Remove");
@@ -1207,7 +1247,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     action(container, 0, "Remove").click();
@@ -1222,7 +1262,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     drag(handle(container, 0), card(container, 1));
@@ -1236,7 +1276,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     const source = card(container, 0);
@@ -1270,7 +1310,7 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     drag(handle(container, 1), card(container, 0));
@@ -1290,23 +1330,23 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
-    const root = thumbnailRoot(container);
-    Object.defineProperty(root, "getBoundingClientRect", {
+    const grid = thumbnailGrid(container);
+    Object.defineProperty(grid, "getBoundingClientRect", {
       value: () => ({ bottom: 200, height: 200, left: 0, right: 200, top: 0, width: 200, x: 0, y: 0, toJSON: () => ({}) }),
     });
-    root.scrollTop = 500;
+    grid.scrollTop = 500;
 
     dragStart(handle(container, 19));
-    dragOver(root, 4);
+    dragOver(grid, 4);
     runFrames();
 
-    expect(root.scrollTop).toBeLessThan(500);
+    expect(grid.scrollTop).toBeLessThan(500);
     card(container, 19).dispatchEvent(new Event("dragend", { bubbles: true }));
-    const scrollTop = root.scrollTop;
+    const scrollTop = grid.scrollTop;
     runFrames();
-    expect(root.scrollTop).toBe(scrollTop);
+    expect(grid.scrollTop).toBe(scrollTop);
   });
 
   it("auto-scrolls thumbnail grid downward during thumbnail drag", async () => {
@@ -1314,18 +1354,18 @@ describe("AuroraLens", () => {
     const container = document.createElement("div");
     const lens = new AuroraLens(container, { allowEdit: true });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
-    const root = thumbnailRoot(container);
-    Object.defineProperty(root, "getBoundingClientRect", {
+    const grid = thumbnailGrid(container);
+    Object.defineProperty(grid, "getBoundingClientRect", {
       value: () => ({ bottom: 200, height: 200, left: 0, right: 200, top: 0, width: 200, x: 0, y: 0, toJSON: () => ({}) }),
     });
 
     dragStart(handle(container, 0));
-    dragOver(root, 196);
+    dragOver(grid, 196);
     runFrames();
 
-    expect(root.scrollTop).toBeGreaterThan(0);
+    expect(grid.scrollTop).toBeGreaterThan(0);
   });
 
   it("adds decoded TIFF pages at the end for dropped files", async () => {
@@ -1334,7 +1374,7 @@ describe("AuroraLens", () => {
     const file = new File(["insert"], "insert.tiff", { type: "image/tiff" });
     const lens = new AuroraLens(container, { allowEdit: true, sessionStore: store });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await lens.showThumbnails();
 
     dropFile(container, file);
@@ -1351,7 +1391,7 @@ describe("AuroraLens", () => {
       onStateChange: (state) => states.push(state),
     });
     lens.loadMetadata(metadata());
-    await lens.decodeDoc(new File(["raster"], "sample.raster"), 0);
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
     await flush();
 
     await lens.goToPage(1);
@@ -1524,6 +1564,14 @@ function thumbnailRoot(container: HTMLElement) {
   return root;
 }
 
+function thumbnailGrid(container: HTMLElement) {
+  const grid = Array.from(thumbnailRoot(container).children).find((child) => child instanceof HTMLDivElement);
+  if (!(grid instanceof HTMLElement)) {
+    throw new Error("Missing thumbnail grid.");
+  }
+  return grid;
+}
+
 function cardLabels(container: HTMLElement) {
   return Array.from(container.querySelectorAll("[data-item-id]")).map((element) => {
     const page = element.querySelector("button[data-page-select='true']");
@@ -1585,7 +1633,7 @@ function dragOver(target: HTMLElement, clientY?: number) {
 }
 
 function dropFile(container: HTMLElement, file: File) {
-  const root = thumbnailRoot(container);
+  const grid = thumbnailGrid(container);
   const event = new Event("drop", { bubbles: true, cancelable: true });
   Object.defineProperty(event, "dataTransfer", {
     value: {
@@ -1593,7 +1641,7 @@ function dropFile(container: HTMLElement, file: File) {
       types: ["Files"],
     },
   });
-  root.dispatchEvent(event);
+  grid.dispatchEvent(event);
 }
 
 function liveText(container: HTMLElement) {

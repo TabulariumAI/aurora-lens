@@ -118,6 +118,21 @@ const glyphs = {
 
 const styles = {
   root: {
+    position: "absolute",
+    inset: "0",
+    width: "100%",
+    height: "100%",
+    minWidth: "0",
+    minHeight: "0",
+    margin: "0",
+    border: "0",
+    borderRadius: "0.5rem",
+    boxShadow: "none",
+    background: "transparent",
+    overflow: "hidden",
+    boxSizing: "border-box",
+  },
+  grid: {
     display: "grid",
     position: "absolute",
     inset: "0",
@@ -132,12 +147,7 @@ const styles = {
     height: "100%",
     minWidth: "0",
     minHeight: "0",
-    margin: "0",
     padding: "0.875rem",
-    border: "0",
-    borderRadius: "0.5rem",
-    boxShadow: "none",
-    background: "transparent",
     overflow: "auto",
     overflowAnchor: "none",
     boxSizing: "border-box",
@@ -340,6 +350,7 @@ const styleText = `
 
 export class ThumbnailViewer {
   private readonly root = document.createElement("div");
+  private readonly grid = document.createElement("div");
   private readonly fileInput = document.createElement("input");
   private readonly live = document.createElement("span");
   private readonly watermark = createViewerWatermark();
@@ -370,9 +381,11 @@ export class ThumbnailViewer {
     Object.assign(this.fileInput.style, { display: "none" });
     this.live.setAttribute("aria-live", "polite");
     Object.assign(this.live.style, styles.hidden);
-    this.root.append(this.watermark);
-    this.root.addEventListener("scroll", () => this.emitRange());
-    this.root.addEventListener("dragover", (event) => {
+    Object.assign(this.root.style, styles.root);
+    Object.assign(this.grid.style, styles.grid);
+    this.root.append(this.grid, this.fileInput, this.live, this.watermark);
+    this.grid.addEventListener("scroll", () => this.emitRange());
+    this.grid.addEventListener("dragover", (event) => {
       if (this.allowEdit && event.dataTransfer?.types.includes("Files")) {
         event.preventDefault();
         return;
@@ -382,7 +395,7 @@ export class ThumbnailViewer {
         this.updateAutoScroll(event);
       }
     });
-    this.root.addEventListener("drop", (event) => this.handleDrop(event));
+    this.grid.addEventListener("drop", (event) => this.handleDrop(event));
   }
 
   element() {
@@ -439,7 +452,7 @@ export class ThumbnailViewer {
       this.frame = 0;
     }
     this.stopAutoScroll();
-    this.root.innerHTML = "";
+    this.grid.innerHTML = "";
     this.pages = [];
     this.pageIds = [];
     this.items = [];
@@ -465,13 +478,14 @@ export class ThumbnailViewer {
   }
 
   private render(focusActive: boolean, emitRange: boolean) {
-    const scrollTop = this.root.scrollTop;
-    this.root.innerHTML = "";
+    const scrollTop = this.grid.scrollTop;
     Object.assign(this.root.style, styles.root);
+    Object.assign(this.grid.style, styles.grid);
+    this.grid.innerHTML = "";
     this.items.forEach((item) => {
-      this.root.appendChild(this.card(item));
+      this.grid.appendChild(this.card(item));
     });
-    this.root.append(this.fileInput, this.live, this.watermark);
+    this.root.append(this.grid, this.fileInput, this.live, this.watermark);
     if (focusActive) {
       const active = this.root.querySelector(`[data-page-index="${this.activeIndex}"] button[data-page-select="true"]`);
       if (active instanceof HTMLElement) {
@@ -479,7 +493,7 @@ export class ThumbnailViewer {
         active.scrollIntoView({ block: "nearest", inline: "nearest" });
       }
     } else {
-      this.root.scrollTop = scrollTop;
+      this.grid.scrollTop = scrollTop;
     }
     if (emitRange) {
       if (this.frame) {
@@ -784,7 +798,7 @@ export class ThumbnailViewer {
       this.clearDrag();
       return;
     }
-    const scrollTop = this.root.scrollTop;
+    const scrollTop = this.grid.scrollTop;
     const [item] = this.items.splice(from, 1);
     const fromPageIndex = item.pageIndex;
     const toPageIndex = target.pageIndex;
@@ -796,10 +810,10 @@ export class ThumbnailViewer {
     const sourceCard = this.root.querySelector(`[data-item-id="${this.dragItemId}"]`);
     if (sourceCard instanceof HTMLElement) {
       const reference = from < to ? targetCard.nextSibling : targetCard;
-      this.root.insertBefore(sourceCard, reference);
+      this.grid.insertBefore(sourceCard, reference);
     }
     this.refreshCards();
-    this.root.scrollTop = scrollTop;
+    this.grid.scrollTop = scrollTop;
     this.clearDrag();
     void Promise.resolve(this.options.onReorder({
       fromPageIndex,
@@ -808,7 +822,7 @@ export class ThumbnailViewer {
   }
 
   refresh(pageIds: string[], pages: Array<ThumbnailPage | undefined>, activeIndex: number, metadataPages: Set<string>) {
-    const scrollTop = this.root.scrollTop;
+    const scrollTop = this.grid.scrollTop;
     this.pageIds = pageIds;
     this.pageCount = pageIds.length;
     this.pages = pages;
@@ -816,7 +830,7 @@ export class ThumbnailViewer {
     this.activeIndex = activeIndex;
     this.syncItems();
     this.refreshCards();
-    this.root.scrollTop = scrollTop;
+    this.grid.scrollTop = scrollTop;
   }
 
   private refreshCards() {
@@ -906,9 +920,9 @@ export class ThumbnailViewer {
 
   private visibleIndexes() {
     const visible: number[] = [];
-    const top = this.root.scrollTop;
-    const bottom = top + this.root.clientHeight;
-    Array.from(this.root.children).forEach((child, index) => {
+    const top = this.grid.scrollTop;
+    const bottom = top + this.grid.clientHeight;
+    Array.from(this.grid.children).forEach((child, index) => {
       const item = this.items[index];
       if (!(child instanceof HTMLElement) || !item) {
         return;
@@ -962,7 +976,7 @@ export class ThumbnailViewer {
   }
 
   private updateAutoScroll(event: DragEvent) {
-    const rect = this.root.getBoundingClientRect();
+    const rect = this.grid.getBoundingClientRect();
     const top = event.clientY - rect.top;
     const bottom = rect.bottom - event.clientY;
     if (top < layout.scrollEdge) {
@@ -990,9 +1004,9 @@ export class ThumbnailViewer {
     if (!this.dragItemId || !this.scrollStep) {
       return;
     }
-    const scrollTop = this.root.scrollTop;
-    this.root.scrollTop += this.scrollStep;
-    if (this.root.scrollTop === scrollTop) {
+    const scrollTop = this.grid.scrollTop;
+    this.grid.scrollTop += this.scrollStep;
+    if (this.grid.scrollTop === scrollTop) {
       this.scrollStep = 0;
       return;
     }
