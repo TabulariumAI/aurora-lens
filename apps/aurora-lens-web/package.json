@@ -17,6 +17,7 @@
   "scripts": {
     "dev": "node ./scripts/dev.mjs",
     "build": "tsc --noEmit && vite build",
+    "lint": "npm run build --workspace @tabulariumai/aurora-lens && tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest run",
     "test:browser": "playwright test"

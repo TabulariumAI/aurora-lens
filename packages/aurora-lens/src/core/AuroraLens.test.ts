@@ -546,6 +546,148 @@ describe("AuroraLens", () => {
     expect(store.session?.currentPage.sourcePageIndex).toBe(1);
   });
 
+  it("returns false for a new viewer with no document", () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+
+    expect(lens.isDirty()).toBe(false);
+  });
+
+  it("returns false after opening a document", async () => {
+    const lens = new AuroraLens(document.createElement("div"), { allowEdit: true });
+
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 0, viewMode: "page" });
+
+    expect(lens.isDirty()).toBe(false);
+  });
+
+  it("returns true after adding pages", async () => {
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: new MemorySessionStore(),
+    });
+
+    await lens.decodeDoc(new File(["stored"], "stored.raster"), { page: 0, viewMode: "page" });
+    await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1);
+
+    expect(lens.isDirty()).toBe(true);
+  });
+
+  it("returns true after removing an original page", async () => {
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: new MemorySessionStore(),
+    });
+
+    await lens.decodeDoc(new File(["stored"], "stored.raster"), { page: 0, viewMode: "page" });
+    await flush();
+    await (lens as unknown as { removePage: (pageId: string) => Promise<void> }).removePage("page-1");
+
+    expect(lens.isDirty()).toBe(true);
+  });
+
+  it("returns true after reordering pages", async () => {
+    const container = document.createElement("div");
+    const lens = new AuroraLens(container, {
+      allowEdit: true,
+      sessionStore: new MemorySessionStore(),
+    });
+
+    await lens.decodeDoc(new File(["stored"], "stored.raster"), { page: 0, viewMode: "page" });
+    await lens.showThumbnails();
+    drag(handle(container, 1), card(container, 0));
+    await flush();
+
+    expect(lens.isDirty()).toBe(true);
+  });
+
+  it("returns false when pages are reordered back to baseline", async () => {
+    const container = document.createElement("div");
+    const lens = new AuroraLens(container, {
+      allowEdit: true,
+      sessionStore: new MemorySessionStore(),
+    });
+
+    await lens.decodeDoc(new File(["stored"], "stored.raster"), { page: 0, viewMode: "page" });
+    await lens.showThumbnails();
+    drag(handle(container, 1), card(container, 0));
+    await flush();
+    drag(handle(container, 0), card(container, 1));
+    await flush();
+
+    expect(lens.isDirty()).toBe(false);
+  });
+
+  it("returns false after adding then removing added pages", async () => {
+    const store = new MemorySessionStore();
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: store,
+    });
+
+    await lens.decodeDoc(new File(["stored"], "stored.raster"), { page: 0, viewMode: "page" });
+    const baselinePageIds = store.session?.pages.map((page) => page.pageId) ?? [];
+    await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 1);
+    const addedPageIds = store.session?.pages
+      .map((page) => page.pageId)
+      .filter((pageId) => !baselinePageIds.includes(pageId)) ?? [];
+
+    for (const pageId of addedPageIds) {
+      await (lens as unknown as { removePage: (pageId: string) => Promise<void> }).removePage(pageId);
+    }
+
+    expect(lens.isDirty()).toBe(false);
+  });
+
+  it("returns true when an original page is removed and replaced with different pages", async () => {
+    const store = new MemorySessionStore();
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: store,
+    });
+
+    await lens.decodeDoc(new File(["stored"], "stored.raster"), { page: 0, viewMode: "page" });
+    await flush();
+    await (lens as unknown as { removePage: (pageId: string) => Promise<void> }).removePage("page-1");
+    await flush();
+    await lens.addPages([new File(["insert"], "insert.tiff", { type: "image/tiff" })], 0);
+
+    expect(lens.isDirty()).toBe(true);
+  });
+
+  it("returns false immediately after restoring a session", async () => {
+    const metadataValue = metadata();
+    const fileBlob = new Blob(["raster"], { type: "image/tiff" });
+    const pages = pageRecords(2);
+    const store = new MemorySessionStore({
+      document: {
+        id: ACTIVE_VIEWER_SESSION_ID,
+        fileName: "restored.raster",
+        fileType: "image/tiff",
+        fileBlob,
+        currentPageId: "page-2",
+        updatedAt: 1,
+      },
+      pages,
+      currentPage: pages[1],
+    });
+    store.metadata = [
+      { pageId: "page-1", metadata: metadataValue.pages[0], updatedAt: 1 },
+      { pageId: "page-2", metadata: metadataValue.pages[1], updatedAt: 1 },
+    ];
+    store.blobs = [
+      pageBlob("page-1"),
+      pageBlob("page-2"),
+    ];
+    const lens = new AuroraLens(document.createElement("div"), {
+      allowEdit: true,
+      sessionStore: store,
+    });
+
+    await lens.restoreSession();
+
+    expect(lens.isDirty()).toBe(false);
+  });
+
   it("exports stored pages as TIFF using package export config", async () => {
     decoderMock.state.pageCount = 1;
     const store = new MemorySessionStore();

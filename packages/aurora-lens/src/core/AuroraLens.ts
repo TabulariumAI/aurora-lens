@@ -79,6 +79,7 @@ export class AuroraLens {
   private thumbnailJobs = new Set<number>();
   private thumbnailKeep = new Set<number>();
   private storedPageIds = new Set<string>();
+  private baselinePageIds: string[] = [];
   private thumbnailRun = 0;
   private persistenceRun = 0;
   private viewMode: ViewMode = "page";
@@ -137,6 +138,7 @@ export class AuroraLens {
     this.revokePage();
     this.revokeThumbnails();
     this.file = null;
+    this.baselinePageIds = [];
     this.pageCount = 0;
     this.viewMode = "page";
     this.status = "idle";
@@ -185,6 +187,7 @@ export class AuroraLens {
       this.sessionPages = session.pages;
       this.metadataPageIds = await this.sessionStore.readPageMetadataIds();
       this.storedPageIds = new Set(session.pages.map((page) => page.pageId));
+      this.baselinePageIds = this.pageIds();
       this.file = new File([session.document.fileBlob], session.document.fileName, { type: session.document.fileType || TIFF_FILE_TYPE });
       await this.loadPage(this.pagePosition(session.currentPage.pageId), {
         loadMetadata: true,
@@ -253,6 +256,7 @@ export class AuroraLens {
               updatedAt,
             });
           }
+          this.baselinePageIds = this.pageIds();
         },
         pageReady: async (page) => {
           if (openRun !== this.runId) {
@@ -318,6 +322,20 @@ export class AuroraLens {
       this.clearView();
       throw error;
     }
+  }
+
+  isDirty(): boolean {
+    const currentPageIds = this.pageIds();
+
+    if (!this.baselinePageIds.length || !currentPageIds.length) {
+      return false;
+    }
+
+    if (currentPageIds.length !== this.baselinePageIds.length) {
+      return true;
+    }
+
+    return currentPageIds.some((pageId, index) => pageId !== this.baselinePageIds[index]);
   }
 
   async addPages(files: File[] | FileList, insertIndex: number): Promise<void> {

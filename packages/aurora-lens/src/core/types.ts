@@ -128,6 +128,7 @@ export interface ViewerReady {
   restoreSession(): Promise<boolean>;
   saveViewerConfig(config: ViewerConfig): Promise<ViewerConfig>;
   searchIndex(pageNumber: number, index: MetadataIndex, options?: { additive?: boolean }): PageMetadataHits | null;
+  isDirty(): boolean;
 }
 
 export interface SelectedGroup {

@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "build": "node ./scripts/clean-dist.mjs && tsc -p tsconfig.json && node ./scripts/fix-esm-imports.mjs && node ./scripts/copy-assets.mjs",
+    "lint": "tsc -p tsconfig.json --noEmit",
     "prepack": "npm run build",
     "test": "vitest run"
   },
