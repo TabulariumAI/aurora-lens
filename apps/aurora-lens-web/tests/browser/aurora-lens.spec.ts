@@ -175,7 +175,7 @@ test("loads every bundled sample TIFF", async ({ page }) => {
 
   const expected = new Map([
     ["sample-1", { pages: "1 of 2", size: "2540 x 3312" }],
-    ["sample-2", { pages: "1 of 5", size: "2550 x 3300" }],
+    ["sample-2", { pages: "1 of 7", size: "2550 x 3300" }],
     ["sample-3", { pages: "1 of 3", size: "2550 x 3300" }],
   ]);
 
@@ -200,9 +200,9 @@ test("navigates by reordered thumbnail sequence", async ({ page }) => {
 
   await page.getByRole("button", { name: "sample-2" }).click();
   const details = page.getByLabel("Page details");
-  await expect(details.getByText("1 of 5")).toBeVisible();
+  await expect(details.getByText("1 of 7")).toBeVisible();
   await expect(page.getByRole("button", { name: "Page 2" })).toBeVisible();
-  await expect(page.locator("[data-thumbnail-media] img")).toHaveCount(5);
+  await expect(page.locator("[data-thumbnail-media] img")).toHaveCount(7);
   const thumbnailGrid = page.locator("[data-aurora-thumbnail-card]").first().locator("..");
   await thumbnailGrid.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
@@ -219,6 +219,8 @@ test("navigates by reordered thumbnail sequence", async ({ page }) => {
     "image-2",
     "image-3",
     "image-4",
+    "image-5",
+    "image-6",
   ]);
   await expect.poll(() => storedPages(page), { timeout: 45000 }).toEqual([
     { sequenceNumber: 1, sourcePageIndex: 1 },
@@ -226,14 +228,16 @@ test("navigates by reordered thumbnail sequence", async ({ page }) => {
     { sequenceNumber: 3, sourcePageIndex: 2 },
     { sequenceNumber: 4, sourcePageIndex: 3 },
     { sequenceNumber: 5, sourcePageIndex: 4 },
+    { sequenceNumber: 6, sourcePageIndex: 5 },
+    { sequenceNumber: 7, sourcePageIndex: 6 },
   ]);
   await page.locator("[data-page-select='true']").first().click();
-  await expect(details.getByText("1 of 5")).toBeVisible();
+  await expect(details.getByText("1 of 7")).toBeVisible();
   await expect.poll(() => storedPageIndex(page)).toBe(1);
 
   await page.getByRole("button", { name: "Next page" }).click();
 
-  await expect(details.getByText("2 of 5")).toBeVisible();
+  await expect(details.getByText("2 of 7")).toBeVisible();
   await expect.poll(() => storedPageIndex(page)).toBe(0);
 });
 
