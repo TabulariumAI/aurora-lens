@@ -1,6 +1,6 @@
 {
   "name": "@tabulariumai/aurora-lens",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Framework-agnostic document viewer with package-owned document decoding, metadata overlays, selection, search, and thumbnails.",
   "type": "module",
   "license": "Apache-2.0",
@@ -39,7 +39,7 @@
   "author": "Tabularium AI",
   "repository": {
     "type": "git",
-    "url": "https://github.com/tabulariumai/aurora-lens.git",
+    "url": "git+https://github.com/tabulariumai/aurora-lens.git",
     "directory": "packages/aurora-lens"
   },
   "bugs": {
@@ -51,7 +51,7 @@
     "access": "public"
   },
   "dependencies": {
-    "fuse.js": "6.6.2",
+    "fuse.js": "7.5.0",
     "pdfjs-dist": "^5.7.284"
   },
   "peerDependencies": {

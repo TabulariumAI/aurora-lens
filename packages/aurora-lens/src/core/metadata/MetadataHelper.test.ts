@@ -30,6 +30,46 @@ describe("MetadataHelper", () => {
     expect(helper.search(1, "Gamma").tokens.map((token) => token.token)).toEqual(["Gamma"]);
   });
 
+  it("returns only extended exact token matches before token search", () => {
+    const helper = new MetadataHelper();
+    helper.load(cascadeMetadata());
+
+    const hits = helper.search(0, "Record");
+
+    expect(hits.tokens.map((token) => token.token)).toEqual(["Record"]);
+    expect(hits.contexts.map((context) => context.content)).toEqual(["Record opening primary"]);
+  });
+
+  it("falls back to token search when extended search has no token matches", () => {
+    const helper = new MetadataHelper();
+    helper.load(cascadeMetadata());
+
+    const hits = helper.search(0, "Sourxe");
+
+    expect(hits.tokens.map((token) => token.token)).toEqual(["Source", "Source"]);
+    expect(hits.contexts.map((context) => context.content)).toEqual(["Source opening", "Source openings"]);
+  });
+
+  it("returns only extended exact context matches before token search", () => {
+    const helper = new MetadataHelper();
+    helper.load(cascadeMetadata());
+
+    const hits = helper.search(0, "Source", "opening");
+
+    expect(hits.tokens.map((token) => token.token)).toEqual(["Source"]);
+    expect(hits.contexts.map((context) => context.content)).toEqual(["Record opening primary", "Source opening"]);
+  });
+
+  it("falls back to token search when extended search has no context matches", () => {
+    const helper = new MetadataHelper();
+    helper.load(cascadeMetadata());
+
+    const hits = helper.search(0, "Record", "primry");
+
+    expect(hits.tokens.map((token) => token.token)).toEqual(["Record"]);
+    expect(hits.contexts.map((context) => context.content)).toEqual(["Record opening primary"]);
+  });
+
   it("searches index values as token AND terms", () => {
     const helper = new MetadataHelper();
     helper.load(metadata());
@@ -221,6 +261,63 @@ function overlapMetadata() {
             content: "Document Number:",
             role: "body",
             polygon: [30, 5, 95, 5, 95, 40, 30, 40],
+          },
+        ],
+        figures: [],
+      },
+    ],
+  };
+}
+
+function cascadeMetadata() {
+  return {
+    pages: [
+      {
+        pageNumber: 1,
+        width: 100,
+        height: 100,
+        tokens: [
+          {
+            content: "Record",
+            confidence: 0.98,
+            polygon: [10, 10, 30, 10, 30, 20, 10, 20],
+          },
+          {
+            content: "Recorder",
+            confidence: 0.98,
+            polygon: [10, 30, 40, 30, 40, 40, 10, 40],
+          },
+          {
+            content: "Source",
+            confidence: 0.98,
+            polygon: [50, 10, 70, 10, 70, 20, 50, 20],
+          },
+          {
+            content: "Source",
+            confidence: 0.98,
+            polygon: [50, 30, 70, 30, 70, 40, 50, 40],
+          },
+        ],
+        contexts: [
+          {
+            content: "Record opening primary",
+            role: "body",
+            polygon: [5, 5, 45, 5, 45, 25, 5, 25],
+          },
+          {
+            content: "Recorder openings",
+            role: "body",
+            polygon: [5, 25, 45, 25, 45, 45, 5, 45],
+          },
+          {
+            content: "Source opening",
+            role: "body",
+            polygon: [45, 5, 75, 5, 75, 25, 45, 25],
+          },
+          {
+            content: "Source openings",
+            role: "body",
+            polygon: [45, 25, 75, 25, 75, 45, 45, 45],
           },
         ],
         figures: [],

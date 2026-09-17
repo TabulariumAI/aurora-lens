@@ -412,15 +412,22 @@ export class MetadataHelper {
   }
 
   private searchItems<T extends { token: string | null }>(items: T[], text: string): Array<T & { score: number }> {
-    return new Fuse(
-      items.filter((item) => item.token),
-      {
-        keys: ["token"],
-        threshold: 0.3,
-        isCaseSensitive: false,
-        includeScore: true,
-      }
-    ).search(text).map((match) => ({
+    const values = items.filter((item) => item.token);
+    const options = {
+      keys: ["token"],
+      threshold: 0.3,
+      isCaseSensitive: false,
+      includeScore: true,
+    };
+    const exact = new Fuse(values, {
+      ...options,
+      useExtendedSearch: true,
+    }).search(`=${text}`);
+    const matches = exact.length ? exact : new Fuse(values, {
+      ...options,
+      useTokenSearch: true,
+    }).search(text);
+    return matches.map((match) => ({
       ...match.item,
       score: match.score!,
     }));
