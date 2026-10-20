@@ -1,0 +1,6122 @@
+{
+  "indexes": [
+    {
+      "label": "borrower",
+      "value": "SALINAS JOSE L",
+      "source": "\"Borrower\" is Jose L. Salinas, a single person, currently residing at (Jose L. Salinas) 2620 Pinn Road, San Antonio, TX 78227. Borrower is the grantor under this Security Instrument.",
+      "ambiguous": "NO"
+    },
+    {
+      "label": "trustee",
+      "value": "GARNER RUTH W",
+      "source": "\"Trustee\" is Ruth W. Garner. Trustee's address is 10850 Richmond Avenue, Suite 350, Houston, TX 77042. The term \"Trustee\" includes any substitute/successor Trustee.",
+      "ambiguous": "NO"
+    }
+  ],
+  "metadata": {
+    "pageMap": {
+      "1": 0
+    },
+    "pages": [
+      {
+        "angle": 0.07888918370008469,
+        "class": "Title",
+        "contexts": [
+          {
+            "content": "Doc# 20230058159 04/04/2023 01:02 PM Page 1 of 21 Lucy Adame-Clark, Bexar County Clerk",
+            "polygon": [
+              65,
+              62,
+              2342,
+              62,
+              2342,
+              118,
+              65,
+              118
+            ],
+            "role": "pageHeader"
+          },
+          {
+            "content": "After Recording Mail To:",
+            "polygon": [
+              279,
+              430,
+              732,
+              431,
+              732,
+              477,
+              279,
+              476
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Security Service Federal Credit Union",
+            "polygon": [
+              277,
+              475,
+              998,
+              476,
+              998,
+              522,
+              277,
+              521
+            ],
+            "role": "body"
+          },
+          {
+            "content": "ATTN: Mortgage Services",
+            "polygon": [
+              277,
+              520,
+              790,
+              521,
+              790,
+              566,
+              277,
+              565
+            ],
+            "role": "body"
+          },
+          {
+            "content": "15000 IH 10 West",
+            "polygon": [
+              279,
+              563,
+              617,
+              564,
+              617,
+              607,
+              279,
+              606
+            ],
+            "role": "body"
+          },
+          {
+            "content": "San Antonio, TX 78249",
+            "polygon": [
+              277,
+              607,
+              730,
+              606,
+              730,
+              651,
+              277,
+              653
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Prepared By:",
+            "polygon": [
+              277,
+              695,
+              511,
+              696,
+              510,
+              742,
+              276,
+              741
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Robertson Anschutz Vetters, LLC",
+            "polygon": [
+              277,
+              739,
+              925,
+              737,
+              925,
+              782,
+              277,
+              783
+            ],
+            "role": "body"
+          },
+          {
+            "content": "10850 Richmond Avenue, Suite 350",
+            "polygon": [
+              279,
+              781,
+              945,
+              781,
+              945,
+              827,
+              279,
+              826
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Houston, TX 77042",
+            "polygon": [
+              277,
+              825,
+              646,
+              825,
+              646,
+              870,
+              278,
+              870
+            ],
+            "role": "body"
+          },
+          {
+            "content": "DEED OF TRUST",
+            "polygon": [
+              1016,
+              907,
+              1491,
+              907,
+              1491,
+              962,
+              1016,
+              961
+            ],
+            "role": "sectionHeading"
+          },
+          {
+            "content": "NOTICE OF CONFIDENTIALITY RIGHTS: IF YOU ARE A NATURAL PERSON, YOU MAY REMOVE OR STRIKE ANY OR ALL OF THE FOLLOWING INFORMATION FROM ANY INSTRUMENT THAT TRANSFERS AN INTEREST IN REAL PROPERTY BEFORE IT IS FILED FOR RECORD IN THE PUBLIC RECORDS: YOUR SOCIAL SECURITY NUMBER OR YOUR DRIVER'S LICENSE NUMBER.",
+            "polygon": [
+              426,
+              1012,
+              2081,
+              1014,
+              2081,
+              1315,
+              426,
+              1313
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Loan No. 0177817269",
+            "polygon": [
+              1912,
+              1366,
+              2232,
+              1365,
+              2232,
+              1402,
+              1912,
+              1404
+            ],
+            "role": "body"
+          },
+          {
+            "content": "DEFINITIONS",
+            "polygon": [
+              277,
+              1402,
+              555,
+              1401,
+              555,
+              1446,
+              278,
+              1446
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Words used in multiple sections of this document are defined below and other words are defined under the caption TRANSFER OF RIGHTS IN THE PROPERTY and in Sections 3, 4, 10, 11, 12, 16, 19, 24, and 25. Certain rules regarding the usage of words used in this document are also provided in Section 17.",
+            "polygon": [
+              278,
+              1476,
+              2233,
+              1480,
+              2233,
+              1632,
+              277,
+              1629
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Parties",
+            "polygon": [
+              278,
+              1678,
+              416,
+              1679,
+              416,
+              1722,
+              278,
+              1721
+            ],
+            "role": "body"
+          },
+          {
+            "content": "(A) \"Borrower\" is Jose L. Salinas, a single person, currently residing at (Jose L. Salinas) 2620 Pinn Road, San Antonio, TX 78227. Borrower is the grantor under this Security Instrument.",
+            "polygon": [
+              281,
+              1752,
+              2231,
+              1754,
+              2231,
+              1854,
+              281,
+              1851
+            ],
+            "role": "body"
+          },
+          {
+            "content": "(B) \"Lender\" is Security Service Federal Credit Union. Lender is a Federal Credit Union organized and existing under the laws of United States of America. Lender's address is 15000 IH 10 West, San Antonio, TX 78249. Lender is the beneficiary under this Security Instrument. The term \"Lender\" includes any successors and assigns of Lender.",
+            "polygon": [
+              279,
+              1853,
+              2234,
+              1843,
+              2235,
+              2043,
+              280,
+              2053
+            ],
+            "role": "body"
+          },
+          {
+            "content": "(C) \"Trustee\" is Ruth W. Garner. Trustee's address is 10850 Richmond Avenue, Suite 350, Houston, TX 77042. The term \"Trustee\" includes any substitute/successor Trustee.",
+            "polygon": [
+              281,
+              2052,
+              2231,
+              2056,
+              2231,
+              2156,
+              281,
+              2151
+            ],
+            "role": "body"
+          },
+          {
+            "content": "Documents",
+            "polygon": [
+              279,
+              2205,
+              496,
+              2206,
+              495,
+              2249,
+              279,
+              2248
+            ],
+            "role": "sectionHeading"
+          },
+          {
+            "content": "(D) \"Note\" means the promissory note dated April 01, 2023, and signed by each Borrower who is legally obligated for the debt under that promissory note, that is in either (i) paper form, using Borrower's written pen and ink signature, or (ii) electronic form, using Borrower's adopted Electronic Signature in accordance with the UETA or E-SIGN, as applicable. The Note evidences the legal obligation of each Borrower who signed the Note to pay Lender One Hundred Seventy-Five Thousand Seven Hundred Dollars (U.S. $175,700.00) plus interest. Each Borrower who signed the Note has promised to pay this debt in regular monthly payments and to pay the debt in full not later than May 01, 2053.",
+            "polygon": [
+              279,
+              2278,
+              2234,
+              2280,
+              2234,
+              2630,
+              279,
+              2628
+            ],
+            "role": "body"
+          },
+          {
+            "content": "TEXAS -- Single Family -- Fannie Mae/Freddie Mac UNIFORM INSTRUMENT Form 3044 07/2021 (Page 1 of 20) (DoD) RA0990526 - SIC2021.tx - Rev. 01/23/2023",
+            "polygon": [
+              281,
+              2832,
+              991,
+              2832,
+              991,
+              2970,
+              281,
+              2969
+            ],
+            "role": "body"
+          },
+          {
+            "content": "* MCMORTDOT*",
+            "polygon": [
+              1461,
+              2955,
+              2204,
+              2956,
+              2204,
+              2990,
+              1461,
+              2989
+            ],
+            "role": "body"
+          }
+        ],
+        "figures": [],
+        "height": 3300,
+        "indexes": [],
+        "pageNumber": 1,
+        "segments": [
+          "property",
+          "reference",
+          "transaction",
+          "party",
+          "monetary",
+          "secrets",
+          "acknowledgment"
+        ],
+        "tokens": [
+          {
+            "confidence": 0.991,
+            "content": "Doc#",
+            "polygon": [
+              65,
+              63,
+              193,
+              62,
+              193,
+              114,
+              65,
+              115
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "20230058159",
+            "polygon": [
+              210,
+              62,
+              538,
+              62,
+              538,
+              115,
+              210,
+              114
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "04/04/2023",
+            "polygon": [
+              555,
+              62,
+              822,
+              62,
+              822,
+              116,
+              555,
+              115
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "01:02",
+            "polygon": [
+              840,
+              62,
+              971,
+              62,
+              971,
+              116,
+              840,
+              116
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "PM",
+            "polygon": [
+              991,
+              62,
+              1064,
+              62,
+              1064,
+              117,
+              991,
+              116
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Page",
+            "polygon": [
+              1087,
+              62,
+              1206,
+              62,
+              1206,
+              118,
+              1087,
+              117
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "1",
+            "polygon": [
+              1226,
+              62,
+              1244,
+              62,
+              1244,
+              118,
+              1226,
+              118
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "of",
+            "polygon": [
+              1267,
+              62,
+              1316,
+              62,
+              1316,
+              118,
+              1267,
+              118
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "21",
+            "polygon": [
+              1326,
+              62,
+              1379,
+              63,
+              1379,
+              118,
+              1326,
+              118
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Lucy",
+            "polygon": [
+              1409,
+              63,
+              1519,
+              62,
+              1519,
+              118,
+              1409,
+              118
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Adame-Clark,",
+            "polygon": [
+              1533,
+              62,
+              1856,
+              64,
+              1856,
+              118,
+              1533,
+              118
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Bexar",
+            "polygon": [
+              1877,
+              64,
+              2016,
+              63,
+              2016,
+              118,
+              1878,
+              118
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "County",
+            "polygon": [
+              2030,
+              63,
+              2199,
+              63,
+              2199,
+              119,
+              2030,
+              118
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Clerk",
+            "polygon": [
+              2215,
+              63,
+              2343,
+              62,
+              2343,
+              117,
+              2215,
+              119
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "After",
+            "polygon": [
+              279,
+              431,
+              374,
+              431,
+              373,
+              477,
+              279,
+              476
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Recording",
+            "polygon": [
+              382,
+              431,
+              566,
+              432,
+              566,
+              477,
+              382,
+              477
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Mail",
+            "polygon": [
+              578,
+              431,
+              666,
+              431,
+              666,
+              477,
+              578,
+              477
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "To:",
+            "polygon": [
+              675,
+              431,
+              733,
+              432,
+              733,
+              477,
+              675,
+              477
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Security",
+            "polygon": [
+              277,
+              476,
+              436,
+              476,
+              436,
+              522,
+              277,
+              521
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Service",
+            "polygon": [
+              448,
+              476,
+              583,
+              476,
+              583,
+              522,
+              448,
+              522
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Federal",
+            "polygon": [
+              595,
+              476,
+              739,
+              476,
+              739,
+              522,
+              595,
+              522
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "Credit",
+            "polygon": [
+              750,
+              476,
+              872,
+              476,
+              872,
+              522,
+              751,
+              522
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "Union",
+            "polygon": [
+              882,
+              476,
+              999,
+              477,
+              999,
+              522,
+              882,
+              522
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "ATTN:",
+            "polygon": [
+              277,
+              521,
+              414,
+              520,
+              414,
+              566,
+              277,
+              564
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Mortgage",
+            "polygon": [
+              440,
+              521,
+              622,
+              521,
+              622,
+              566,
+              440,
+              566
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Services",
+            "polygon": [
+              634,
+              521,
+              791,
+              522,
+              791,
+              566,
+              634,
+              566
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "15000",
+            "polygon": [
+              279,
+              564,
+              389,
+              564,
+              389,
+              607,
+              279,
+              607
+            ]
+          },
+          {
+            "confidence": 0.889,
+            "content": "IH",
+            "polygon": [
+              400,
+              564,
+              452,
+              564,
+              452,
+              607,
+              400,
+              607
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "10",
+            "polygon": [
+              465,
+              564,
+              506,
+              564,
+              506,
+              607,
+              465,
+              607
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "West",
+            "polygon": [
+              518,
+              564,
+              617,
+              564,
+              617,
+              607,
+              518,
+              607
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "San",
+            "polygon": [
+              277,
+              607,
+              351,
+              607,
+              351,
+              653,
+              277,
+              653
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Antonio,",
+            "polygon": [
+              361,
+              607,
+              531,
+              607,
+              532,
+              652,
+              361,
+              653
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "TX",
+            "polygon": [
+              541,
+              607,
+              597,
+              606,
+              597,
+              652,
+              541,
+              652
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "78249",
+            "polygon": [
+              618,
+              606,
+              730,
+              606,
+              730,
+              652,
+              618,
+              652
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Prepared",
+            "polygon": [
+              277,
+              695,
+              437,
+              696,
+              437,
+              742,
+              276,
+              741
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "By:",
+            "polygon": [
+              448,
+              696,
+              511,
+              696,
+              511,
+              742,
+              448,
+              742
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Robertson",
+            "polygon": [
+              277,
+              739,
+              476,
+              739,
+              476,
+              783,
+              277,
+              782
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "Anschutz",
+            "polygon": [
+              487,
+              739,
+              663,
+              738,
+              663,
+              783,
+              487,
+              783
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Vetters,",
+            "polygon": [
+              675,
+              738,
+              821,
+              738,
+              821,
+              783,
+              675,
+              783
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "LLC",
+            "polygon": [
+              832,
+              738,
+              925,
+              737,
+              925,
+              782,
+              832,
+              783
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "10850",
+            "polygon": [
+              279,
+              782,
+              389,
+              782,
+              389,
+              826,
+              279,
+              825
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Richmond",
+            "polygon": [
+              402,
+              782,
+              596,
+              782,
+              596,
+              827,
+              402,
+              826
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "Avenue,",
+            "polygon": [
+              607,
+              782,
+              760,
+              783,
+              760,
+              827,
+              607,
+              827
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "Suite",
+            "polygon": [
+              773,
+              782,
+              866,
+              782,
+              866,
+              827,
+              773,
+              827
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "350",
+            "polygon": [
+              878,
+              782,
+              946,
+              781,
+              946,
+              827,
+              878,
+              827
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Houston,",
+            "polygon": [
+              278,
+              825,
+              450,
+              826,
+              450,
+              870,
+              278,
+              870
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "TX",
+            "polygon": [
+              462,
+              826,
+              522,
+              826,
+              522,
+              870,
+              462,
+              870
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "77042",
+            "polygon": [
+              533,
+              826,
+              647,
+              825,
+              647,
+              870,
+              533,
+              870
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "DEED",
+            "polygon": [
+              1016,
+              908,
+              1183,
+              908,
+              1183,
+              963,
+              1016,
+              962
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "OF",
+            "polygon": [
+              1199,
+              908,
+              1277,
+              908,
+              1277,
+              962,
+              1199,
+              963
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "TRUST",
+            "polygon": [
+              1294,
+              908,
+              1491,
+              908,
+              1491,
+              963,
+              1294,
+              963
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "NOTICE",
+            "polygon": [
+              426,
+              1012,
+              628,
+              1012,
+              628,
+              1064,
+              426,
+              1063
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "OF",
+            "polygon": [
+              646,
+              1012,
+              714,
+              1013,
+              714,
+              1064,
+              646,
+              1064
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "CONFIDENTIALITY",
+            "polygon": [
+              732,
+              1013,
+              1204,
+              1013,
+              1204,
+              1064,
+              732,
+              1064
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "RIGHTS:",
+            "polygon": [
+              1220,
+              1013,
+              1429,
+              1014,
+              1429,
+              1065,
+              1220,
+              1064
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "IF",
+            "polygon": [
+              1465,
+              1014,
+              1515,
+              1014,
+              1515,
+              1065,
+              1465,
+              1065
+            ]
+          },
+          {
+            "confidence": 0.985,
+            "content": "YOU",
+            "polygon": [
+              1531,
+              1014,
+              1642,
+              1014,
+              1642,
+              1065,
+              1531,
+              1065
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "ARE",
+            "polygon": [
+              1659,
+              1014,
+              1764,
+              1015,
+              1764,
+              1065,
+              1659,
+              1065
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "A",
+            "polygon": [
+              1780,
+              1015,
+              1816,
+              1015,
+              1816,
+              1065,
+              1780,
+              1065
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "NATURAL",
+            "polygon": [
+              1832,
+              1015,
+              2080,
+              1015,
+              2080,
+              1065,
+              1832,
+              1065
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "PERSON,",
+            "polygon": [
+              427,
+              1063,
+              646,
+              1063,
+              646,
+              1114,
+              427,
+              1113
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "YOU",
+            "polygon": [
+              672,
+              1064,
+              783,
+              1064,
+              783,
+              1114,
+              672,
+              1114
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "MAY",
+            "polygon": [
+              809,
+              1064,
+              926,
+              1064,
+              926,
+              1114,
+              809,
+              1114
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "REMOVE",
+            "polygon": [
+              953,
+              1064,
+              1174,
+              1064,
+              1174,
+              1115,
+              953,
+              1114
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "OR",
+            "polygon": [
+              1201,
+              1064,
+              1276,
+              1064,
+              1276,
+              1115,
+              1201,
+              1115
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "STRIKE",
+            "polygon": [
+              1303,
+              1064,
+              1491,
+              1065,
+              1491,
+              1115,
+              1303,
+              1115
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "ANY",
+            "polygon": [
+              1517,
+              1065,
+              1626,
+              1065,
+              1626,
+              1115,
+              1517,
+              1115
+            ]
+          },
+          {
+            "confidence": 0.99,
+            "content": "OR",
+            "polygon": [
+              1653,
+              1065,
+              1728,
+              1065,
+              1728,
+              1115,
+              1653,
+              1115
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "ALL",
+            "polygon": [
+              1751,
+              1065,
+              1854,
+              1065,
+              1854,
+              1115,
+              1751,
+              1115
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "OF",
+            "polygon": [
+              1882,
+              1065,
+              1949,
+              1065,
+              1949,
+              1114,
+              1882,
+              1115
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "THE",
+            "polygon": [
+              1975,
+              1065,
+              2081,
+              1066,
+              2081,
+              1115,
+              1975,
+              1114
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "FOLLOWING",
+            "polygon": [
+              427,
+              1113,
+              751,
+              1113,
+              751,
+              1163,
+              427,
+              1163
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "INFORMATION",
+            "polygon": [
+              794,
+              1113,
+              1162,
+              1114,
+              1162,
+              1164,
+              794,
+              1164
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "FROM",
+            "polygon": [
+              1206,
+              1114,
+              1358,
+              1115,
+              1358,
+              1165,
+              1206,
+              1164
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "ANY",
+            "polygon": [
+              1404,
+              1115,
+              1513,
+              1115,
+              1513,
+              1165,
+              1404,
+              1165
+            ]
+          },
+          {
+            "confidence": 0.976,
+            "content": "INSTRUMENT",
+            "polygon": [
+              1557,
+              1115,
+              1894,
+              1115,
+              1894,
+              1165,
+              1557,
+              1165
+            ]
+          },
+          {
+            "confidence": 0.985,
+            "content": "THAT",
+            "polygon": [
+              1939,
+              1116,
+              2081,
+              1116,
+              2081,
+              1165,
+              1939,
+              1165
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "TRANSFERS",
+            "polygon": [
+              429,
+              1163,
+              727,
+              1164,
+              727,
+              1213,
+              429,
+              1212
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "AN",
+            "polygon": [
+              740,
+              1164,
+              812,
+              1164,
+              812,
+              1213,
+              740,
+              1213
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "INTEREST",
+            "polygon": [
+              823,
+              1164,
+              1074,
+              1164,
+              1074,
+              1213,
+              823,
+              1213
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "IN",
+            "polygon": [
+              1085,
+              1164,
+              1140,
+              1164,
+              1140,
+              1213,
+              1085,
+              1213
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "REAL",
+            "polygon": [
+              1152,
+              1164,
+              1289,
+              1164,
+              1289,
+              1214,
+              1152,
+              1213
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "PROPERTY",
+            "polygon": [
+              1301,
+              1164,
+              1578,
+              1165,
+              1578,
+              1214,
+              1301,
+              1214
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "BEFORE",
+            "polygon": [
+              1590,
+              1165,
+              1795,
+              1165,
+              1795,
+              1214,
+              1590,
+              1214
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "IT",
+            "polygon": [
+              1806,
+              1165,
+              1858,
+              1165,
+              1858,
+              1214,
+              1806,
+              1214
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "IS",
+            "polygon": [
+              1869,
+              1165,
+              1915,
+              1165,
+              1915,
+              1214,
+              1869,
+              1214
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "FILED",
+            "polygon": [
+              1928,
+              1166,
+              2081,
+              1166,
+              2081,
+              1214,
+              1928,
+              1214
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "FOR",
+            "polygon": [
+              427,
+              1213,
+              537,
+              1213,
+              537,
+              1263,
+              427,
+              1263
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "RECORD",
+            "polygon": [
+              550,
+              1214,
+              765,
+              1214,
+              765,
+              1264,
+              550,
+              1263
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "IN",
+            "polygon": [
+              780,
+              1214,
+              834,
+              1214,
+              834,
+              1264,
+              780,
+              1264
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "THE",
+            "polygon": [
+              848,
+              1214,
+              952,
+              1214,
+              952,
+              1264,
+              848,
+              1264
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "PUBLIC",
+            "polygon": [
+              966,
+              1214,
+              1151,
+              1214,
+              1151,
+              1264,
+              966,
+              1264
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "RECORDS:",
+            "polygon": [
+              1166,
+              1214,
+              1424,
+              1215,
+              1424,
+              1265,
+              1165,
+              1264
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "YOUR",
+            "polygon": [
+              1454,
+              1215,
+              1605,
+              1215,
+              1604,
+              1265,
+              1453,
+              1265
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "SOCIAL",
+            "polygon": [
+              1619,
+              1215,
+              1809,
+              1215,
+              1809,
+              1265,
+              1618,
+              1265
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "SECURITY",
+            "polygon": [
+              1823,
+              1215,
+              2081,
+              1216,
+              2081,
+              1265,
+              1823,
+              1265
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "NUMBER",
+            "polygon": [
+              426,
+              1264,
+              655,
+              1265,
+              655,
+              1313,
+              426,
+              1313
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "OR",
+            "polygon": [
+              668,
+              1265,
+              742,
+              1265,
+              742,
+              1314,
+              668,
+              1313
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "YOUR",
+            "polygon": [
+              753,
+              1265,
+              901,
+              1265,
+              901,
+              1313,
+              753,
+              1314
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "DRIVER'S",
+            "polygon": [
+              913,
+              1265,
+              1148,
+              1265,
+              1148,
+              1314,
+              913,
+              1313
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "LICENSE",
+            "polygon": [
+              1162,
+              1265,
+              1382,
+              1266,
+              1382,
+              1314,
+              1162,
+              1314
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "NUMBER.",
+            "polygon": [
+              1395,
+              1266,
+              1634,
+              1267,
+              1634,
+              1315,
+              1395,
+              1315
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Loan",
+            "polygon": [
+              1912,
+              1366,
+              1981,
+              1366,
+              1981,
+              1403,
+              1913,
+              1403
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "No.",
+            "polygon": [
+              1988,
+              1366,
+              2041,
+              1366,
+              2041,
+              1403,
+              1989,
+              1403
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "0177817269",
+            "polygon": [
+              2060,
+              1366,
+              2233,
+              1365,
+              2233,
+              1402,
+              2060,
+              1403
+            ]
+          },
+          {
+            "confidence": 0.99,
+            "content": "DEFINITIONS",
+            "polygon": [
+              277,
+              1402,
+              556,
+              1401,
+              556,
+              1446,
+              278,
+              1446
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "Words",
+            "polygon": [
+              280,
+              1477,
+              391,
+              1477,
+              391,
+              1525,
+              280,
+              1524
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "used",
+            "polygon": [
+              401,
+              1477,
+              480,
+              1477,
+              480,
+              1526,
+              401,
+              1525
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "in",
+            "polygon": [
+              490,
+              1477,
+              522,
+              1477,
+              522,
+              1526,
+              490,
+              1526
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "multiple",
+            "polygon": [
+              531,
+              1477,
+              677,
+              1477,
+              677,
+              1527,
+              531,
+              1526
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "sections",
+            "polygon": [
+              687,
+              1477,
+              831,
+              1478,
+              831,
+              1526,
+              687,
+              1527
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "of",
+            "polygon": [
+              840,
+              1478,
+              868,
+              1478,
+              868,
+              1526,
+              840,
+              1526
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "this",
+            "polygon": [
+              878,
+              1478,
+              945,
+              1478,
+              945,
+              1527,
+              878,
+              1526
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "document",
+            "polygon": [
+              955,
+              1478,
+              1120,
+              1479,
+              1120,
+              1527,
+              955,
+              1527
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "are",
+            "polygon": [
+              1129,
+              1479,
+              1180,
+              1478,
+              1180,
+              1527,
+              1129,
+              1527
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "defined",
+            "polygon": [
+              1190,
+              1478,
+              1320,
+              1478,
+              1320,
+              1527,
+              1190,
+              1527
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "below",
+            "polygon": [
+              1330,
+              1478,
+              1440,
+              1479,
+              1440,
+              1527,
+              1329,
+              1527
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "and",
+            "polygon": [
+              1450,
+              1479,
+              1508,
+              1479,
+              1508,
+              1528,
+              1450,
+              1527
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "other",
+            "polygon": [
+              1517,
+              1479,
+              1606,
+              1479,
+              1606,
+              1528,
+              1517,
+              1528
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "words",
+            "polygon": [
+              1616,
+              1479,
+              1724,
+              1480,
+              1724,
+              1528,
+              1616,
+              1528
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "are",
+            "polygon": [
+              1733,
+              1480,
+              1781,
+              1480,
+              1781,
+              1528,
+              1733,
+              1528
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "defined",
+            "polygon": [
+              1791,
+              1480,
+              1918,
+              1479,
+              1918,
+              1528,
+              1791,
+              1528
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "under",
+            "polygon": [
+              1927,
+              1479,
+              2026,
+              1480,
+              2026,
+              1528,
+              1927,
+              1528
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "the",
+            "polygon": [
+              2036,
+              1480,
+              2087,
+              1480,
+              2086,
+              1529,
+              2036,
+              1528
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "caption",
+            "polygon": [
+              2096,
+              1480,
+              2234,
+              1481,
+              2234,
+              1529,
+              2096,
+              1529
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "TRANSFER",
+            "polygon": [
+              278,
+              1526,
+              499,
+              1526,
+              499,
+              1575,
+              278,
+              1574
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "OF",
+            "polygon": [
+              513,
+              1526,
+              564,
+              1526,
+              564,
+              1575,
+              513,
+              1575
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "RIGHTS",
+            "polygon": [
+              574,
+              1526,
+              737,
+              1526,
+              737,
+              1576,
+              574,
+              1575
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "IN",
+            "polygon": [
+              747,
+              1526,
+              782,
+              1527,
+              782,
+              1576,
+              747,
+              1576
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "THE",
+            "polygon": [
+              802,
+              1527,
+              879,
+              1527,
+              880,
+              1576,
+              802,
+              1576
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "PROPERTY",
+            "polygon": [
+              889,
+              1527,
+              1119,
+              1528,
+              1119,
+              1577,
+              889,
+              1576
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "and",
+            "polygon": [
+              1129,
+              1528,
+              1185,
+              1528,
+              1185,
+              1577,
+              1129,
+              1577
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "in",
+            "polygon": [
+              1194,
+              1528,
+              1230,
+              1528,
+              1230,
+              1577,
+              1195,
+              1577
+            ]
+          },
+          {
+            "confidence": 0.986,
+            "content": "Sections",
+            "polygon": [
+              1239,
+              1528,
+              1391,
+              1528,
+              1391,
+              1578,
+              1239,
+              1577
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "3,",
+            "polygon": [
+              1400,
+              1528,
+              1429,
+              1528,
+              1429,
+              1578,
+              1400,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "4,",
+            "polygon": [
+              1439,
+              1528,
+              1473,
+              1528,
+              1473,
+              1578,
+              1439,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "10,",
+            "polygon": [
+              1488,
+              1528,
+              1537,
+              1528,
+              1537,
+              1578,
+              1488,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "11,",
+            "polygon": [
+              1551,
+              1528,
+              1601,
+              1529,
+              1601,
+              1578,
+              1551,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "12,",
+            "polygon": [
+              1616,
+              1529,
+              1665,
+              1529,
+              1665,
+              1578,
+              1616,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "16,",
+            "polygon": [
+              1680,
+              1529,
+              1728,
+              1529,
+              1728,
+              1578,
+              1680,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.986,
+            "content": "19,",
+            "polygon": [
+              1743,
+              1529,
+              1792,
+              1529,
+              1792,
+              1578,
+              1743,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "24,",
+            "polygon": [
+              1803,
+              1529,
+              1855,
+              1529,
+              1855,
+              1578,
+              1803,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "and",
+            "polygon": [
+              1865,
+              1529,
+              1927,
+              1529,
+              1927,
+              1579,
+              1866,
+              1578
+            ]
+          },
+          {
+            "confidence": 0.988,
+            "content": "25.",
+            "polygon": [
+              1937,
+              1529,
+              1988,
+              1529,
+              1988,
+              1579,
+              1937,
+              1579
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Certain",
+            "polygon": [
+              2008,
+              1529,
+              2130,
+              1530,
+              2130,
+              1579,
+              2008,
+              1579
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "rules",
+            "polygon": [
+              2140,
+              1530,
+              2234,
+              1530,
+              2234,
+              1579,
+              2140,
+              1579
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "regarding",
+            "polygon": [
+              277,
+              1578,
+              445,
+              1578,
+              445,
+              1629,
+              278,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "the",
+            "polygon": [
+              455,
+              1578,
+              514,
+              1578,
+              514,
+              1629,
+              455,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "usage",
+            "polygon": [
+              525,
+              1578,
+              626,
+              1578,
+              626,
+              1629,
+              525,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "of",
+            "polygon": [
+              638,
+              1578,
+              672,
+              1578,
+              672,
+              1629,
+              638,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "words",
+            "polygon": [
+              682,
+              1578,
+              791,
+              1578,
+              791,
+              1628,
+              682,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.988,
+            "content": "used",
+            "polygon": [
+              803,
+              1578,
+              876,
+              1578,
+              876,
+              1628,
+              803,
+              1628
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "in",
+            "polygon": [
+              886,
+              1578,
+              927,
+              1578,
+              927,
+              1628,
+              886,
+              1628
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "this",
+            "polygon": [
+              938,
+              1578,
+              999,
+              1578,
+              999,
+              1628,
+              938,
+              1628
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "document",
+            "polygon": [
+              1012,
+              1578,
+              1184,
+              1579,
+              1184,
+              1629,
+              1012,
+              1628
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "are",
+            "polygon": [
+              1195,
+              1579,
+              1248,
+              1579,
+              1248,
+              1629,
+              1195,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "also",
+            "polygon": [
+              1259,
+              1579,
+              1328,
+              1579,
+              1328,
+              1628,
+              1259,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "provided",
+            "polygon": [
+              1339,
+              1579,
+              1497,
+              1579,
+              1497,
+              1629,
+              1339,
+              1628
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "in",
+            "polygon": [
+              1507,
+              1579,
+              1542,
+              1579,
+              1542,
+              1628,
+              1507,
+              1629
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Section",
+            "polygon": [
+              1553,
+              1579,
+              1685,
+              1579,
+              1685,
+              1628,
+              1553,
+              1628
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "17.",
+            "polygon": [
+              1700,
+              1579,
+              1752,
+              1579,
+              1752,
+              1628,
+              1700,
+              1628
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Parties",
+            "polygon": [
+              278,
+              1678,
+              416,
+              1679,
+              416,
+              1722,
+              278,
+              1721
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "(A)",
+            "polygon": [
+              282,
+              1755,
+              344,
+              1756,
+              344,
+              1802,
+              283,
+              1800
+            ]
+          },
+          {
+            "confidence": 0.859,
+            "content": "\"Borrower\"",
+            "polygon": [
+              432,
+              1752,
+              655,
+              1753,
+              655,
+              1802,
+              432,
+              1801
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "is",
+            "polygon": [
+              665,
+              1753,
+              695,
+              1753,
+              695,
+              1802,
+              665,
+              1802
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Jose",
+            "polygon": [
+              705,
+              1753,
+              782,
+              1752,
+              782,
+              1803,
+              705,
+              1802
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "L.",
+            "polygon": [
+              792,
+              1752,
+              829,
+              1752,
+              829,
+              1803,
+              792,
+              1803
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Salinas,",
+            "polygon": [
+              839,
+              1752,
+              978,
+              1753,
+              979,
+              1804,
+              839,
+              1803
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "a",
+            "polygon": [
+              988,
+              1753,
+              1005,
+              1753,
+              1005,
+              1804,
+              989,
+              1804
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "single",
+            "polygon": [
+              1015,
+              1753,
+              1118,
+              1753,
+              1119,
+              1805,
+              1015,
+              1804
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "person,",
+            "polygon": [
+              1128,
+              1753,
+              1262,
+              1754,
+              1262,
+              1805,
+              1129,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "currently",
+            "polygon": [
+              1272,
+              1754,
+              1425,
+              1755,
+              1425,
+              1805,
+              1272,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "residing",
+            "polygon": [
+              1435,
+              1755,
+              1578,
+              1754,
+              1578,
+              1805,
+              1435,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "at",
+            "polygon": [
+              1588,
+              1754,
+              1615,
+              1754,
+              1615,
+              1806,
+              1588,
+              1806
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "(Jose",
+            "polygon": [
+              1625,
+              1754,
+              1718,
+              1754,
+              1718,
+              1805,
+              1625,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "L.",
+            "polygon": [
+              1728,
+              1754,
+              1765,
+              1754,
+              1765,
+              1805,
+              1728,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Salinas)",
+            "polygon": [
+              1775,
+              1754,
+              1921,
+              1754,
+              1921,
+              1805,
+              1775,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "2620",
+            "polygon": [
+              1931,
+              1754,
+              2011,
+              1754,
+              2011,
+              1805,
+              1931,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.984,
+            "content": "Pinn",
+            "polygon": [
+              2021,
+              1754,
+              2104,
+              1754,
+              2104,
+              1805,
+              2021,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Road,",
+            "polygon": [
+              2114,
+              1754,
+              2232,
+              1754,
+              2232,
+              1806,
+              2114,
+              1805
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "San",
+            "polygon": [
+              281,
+              1803,
+              354,
+              1803,
+              354,
+              1850,
+              281,
+              1850
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Antonio,",
+            "polygon": [
+              363,
+              1803,
+              533,
+              1803,
+              533,
+              1851,
+              363,
+              1850
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "TX",
+            "polygon": [
+              542,
+              1803,
+              599,
+              1803,
+              599,
+              1851,
+              542,
+              1851
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "78227.",
+            "polygon": [
+              610,
+              1803,
+              728,
+              1803,
+              728,
+              1852,
+              610,
+              1851
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Borrower",
+            "polygon": [
+              752,
+              1803,
+              921,
+              1804,
+              921,
+              1853,
+              752,
+              1852
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "is",
+            "polygon": [
+              931,
+              1804,
+              959,
+              1804,
+              959,
+              1852,
+              931,
+              1853
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "the",
+            "polygon": [
+              970,
+              1804,
+              1023,
+              1804,
+              1023,
+              1852,
+              970,
+              1852
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "grantor",
+            "polygon": [
+              1036,
+              1804,
+              1161,
+              1805,
+              1161,
+              1853,
+              1036,
+              1852
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "under",
+            "polygon": [
+              1170,
+              1805,
+              1267,
+              1805,
+              1267,
+              1853,
+              1171,
+              1853
+            ]
+          },
+          {
+            "confidence": 0.988,
+            "content": "this",
+            "polygon": [
+              1276,
+              1805,
+              1344,
+              1805,
+              1344,
+              1853,
+              1276,
+              1853
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Security",
+            "polygon": [
+              1358,
+              1805,
+              1503,
+              1805,
+              1503,
+              1853,
+              1358,
+              1853
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Instrument.",
+            "polygon": [
+              1514,
+              1805,
+              1715,
+              1806,
+              1715,
+              1852,
+              1514,
+              1853
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "(B)",
+            "polygon": [
+              283,
+              1856,
+              341,
+              1856,
+              341,
+              1902,
+              283,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.881,
+            "content": "\"Lender\"",
+            "polygon": [
+              431,
+              1852,
+              609,
+              1853,
+              609,
+              1901,
+              431,
+              1900
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "is",
+            "polygon": [
+              618,
+              1853,
+              654,
+              1853,
+              654,
+              1901,
+              618,
+              1901
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Security",
+            "polygon": [
+              663,
+              1853,
+              815,
+              1853,
+              815,
+              1902,
+              664,
+              1901
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Service",
+            "polygon": [
+              825,
+              1853,
+              955,
+              1854,
+              955,
+              1902,
+              825,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Federal",
+            "polygon": [
+              964,
+              1854,
+              1107,
+              1854,
+              1108,
+              1902,
+              965,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Credit",
+            "polygon": [
+              1117,
+              1854,
+              1235,
+              1854,
+              1235,
+              1902,
+              1117,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Union.",
+            "polygon": [
+              1244,
+              1854,
+              1370,
+              1854,
+              1370,
+              1902,
+              1244,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Lender",
+            "polygon": [
+              1387,
+              1854,
+              1505,
+              1854,
+              1505,
+              1902,
+              1387,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "is",
+            "polygon": [
+              1514,
+              1854,
+              1548,
+              1854,
+              1548,
+              1902,
+              1514,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "a",
+            "polygon": [
+              1559,
+              1854,
+              1571,
+              1854,
+              1571,
+              1902,
+              1559,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Federal",
+            "polygon": [
+              1581,
+              1854,
+              1727,
+              1854,
+              1727,
+              1903,
+              1581,
+              1902
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Credit",
+            "polygon": [
+              1737,
+              1854,
+              1854,
+              1854,
+              1854,
+              1903,
+              1737,
+              1903
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Union",
+            "polygon": [
+              1864,
+              1854,
+              1974,
+              1855,
+              1974,
+              1904,
+              1864,
+              1903
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "organized",
+            "polygon": [
+              1984,
+              1855,
+              2153,
+              1855,
+              2153,
+              1904,
+              1984,
+              1904
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "and",
+            "polygon": [
+              2162,
+              1855,
+              2234,
+              1855,
+              2234,
+              1905,
+              2162,
+              1905
+            ]
+          },
+          {
+            "confidence": 0.99,
+            "content": "existing",
+            "polygon": [
+              280,
+              1904,
+              414,
+              1905,
+              414,
+              1953,
+              280,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "under",
+            "polygon": [
+              424,
+              1905,
+              526,
+              1904,
+              526,
+              1952,
+              424,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "the",
+            "polygon": [
+              535,
+              1904,
+              586,
+              1904,
+              586,
+              1952,
+              535,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.988,
+            "content": "laws",
+            "polygon": [
+              596,
+              1904,
+              682,
+              1904,
+              682,
+              1952,
+              596,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "of",
+            "polygon": [
+              694,
+              1904,
+              727,
+              1904,
+              727,
+              1952,
+              694,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "United",
+            "polygon": [
+              736,
+              1904,
+              865,
+              1904,
+              865,
+              1952,
+              736,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "States",
+            "polygon": [
+              876,
+              1904,
+              985,
+              1904,
+              985,
+              1952,
+              876,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "of",
+            "polygon": [
+              996,
+              1904,
+              1029,
+              1904,
+              1029,
+              1952,
+              996,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "America.",
+            "polygon": [
+              1039,
+              1904,
+              1210,
+              1904,
+              1210,
+              1952,
+              1039,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Lender's",
+            "polygon": [
+              1230,
+              1904,
+              1379,
+              1904,
+              1379,
+              1952,
+              1230,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "address",
+            "polygon": [
+              1390,
+              1904,
+              1520,
+              1904,
+              1520,
+              1952,
+              1390,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "is",
+            "polygon": [
+              1531,
+              1904,
+              1559,
+              1904,
+              1559,
+              1952,
+              1531,
+              1952
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "15000",
+            "polygon": [
+              1571,
+              1904,
+              1679,
+              1904,
+              1679,
+              1953,
+              1571,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.888,
+            "content": "IH",
+            "polygon": [
+              1689,
+              1904,
+              1740,
+              1904,
+              1740,
+              1953,
+              1689,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "10",
+            "polygon": [
+              1752,
+              1904,
+              1793,
+              1904,
+              1793,
+              1953,
+              1752,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "West,",
+            "polygon": [
+              1803,
+              1904,
+              1907,
+              1904,
+              1907,
+              1953,
+              1803,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "San",
+            "polygon": [
+              1917,
+              1904,
+              1987,
+              1904,
+              1987,
+              1953,
+              1917,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Antonio,",
+            "polygon": [
+              1997,
+              1904,
+              2164,
+              1904,
+              2164,
+              1954,
+              1997,
+              1953
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "TX",
+            "polygon": [
+              2174,
+              1904,
+              2234,
+              1904,
+              2234,
+              1954,
+              2174,
+              1954
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "78249.",
+            "polygon": [
+              281,
+              1952,
+              401,
+              1953,
+              401,
+              2001,
+              281,
+              2001
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Lender",
+            "polygon": [
+              423,
+              1953,
+              538,
+              1953,
+              538,
+              2002,
+              423,
+              2001
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "is",
+            "polygon": [
+              547,
+              1953,
+              584,
+              1953,
+              584,
+              2002,
+              547,
+              2002
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "the",
+            "polygon": [
+              595,
+              1953,
+              644,
+              1953,
+              644,
+              2002,
+              595,
+              2002
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "beneficiary",
+            "polygon": [
+              653,
+              1953,
+              849,
+              1954,
+              849,
+              2003,
+              653,
+              2003
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "under",
+            "polygon": [
+              859,
+              1954,
+              955,
+              1954,
+              955,
+              2003,
+              859,
+              2003
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "this",
+            "polygon": [
+              965,
+              1954,
+              1031,
+              1954,
+              1031,
+              2004,
+              965,
+              2003
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Security",
+            "polygon": [
+              1043,
+              1954,
+              1180,
+              1954,
+              1180,
+              2004,
+              1043,
+              2004
+            ]
+          },
+          {
+            "confidence": 0.977,
+            "content": "Instrument.",
+            "polygon": [
+              1190,
+              1954,
+              1404,
+              1955,
+              1404,
+              2004,
+              1190,
+              2004
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "The",
+            "polygon": [
+              1414,
+              1955,
+              1475,
+              1955,
+              1475,
+              2004,
+              1414,
+              2004
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "term",
+            "polygon": [
+              1485,
+              1955,
+              1558,
+              1955,
+              1558,
+              2004,
+              1485,
+              2004
+            ]
+          },
+          {
+            "confidence": 0.957,
+            "content": "\"Lender\"",
+            "polygon": [
+              1575,
+              1955,
+              1736,
+              1955,
+              1736,
+              2005,
+              1575,
+              2004
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "includes",
+            "polygon": [
+              1747,
+              1955,
+              1891,
+              1956,
+              1891,
+              2005,
+              1747,
+              2005
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "any",
+            "polygon": [
+              1902,
+              1956,
+              1964,
+              1956,
+              1964,
+              2005,
+              1902,
+              2005
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "successors",
+            "polygon": [
+              1974,
+              1956,
+              2155,
+              1956,
+              2155,
+              2005,
+              1974,
+              2005
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "and",
+            "polygon": [
+              2167,
+              1956,
+              2235,
+              1956,
+              2235,
+              2005,
+              2167,
+              2005
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "assigns",
+            "polygon": [
+              280,
+              2006,
+              408,
+              2006,
+              408,
+              2053,
+              280,
+              2053
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "of",
+            "polygon": [
+              420,
+              2006,
+              456,
+              2006,
+              456,
+              2052,
+              421,
+              2053
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Lender.",
+            "polygon": [
+              465,
+              2006,
+              603,
+              2005,
+              603,
+              2051,
+              465,
+              2052
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "(C)",
+            "polygon": [
+              283,
+              2058,
+              344,
+              2059,
+              344,
+              2102,
+              283,
+              2102
+            ]
+          },
+          {
+            "confidence": 0.877,
+            "content": "\"Trustee\"",
+            "polygon": [
+              432,
+              2053,
+              623,
+              2053,
+              623,
+              2101,
+              432,
+              2100
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "is",
+            "polygon": [
+              638,
+              2053,
+              666,
+              2053,
+              666,
+              2101,
+              638,
+              2101
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Ruth",
+            "polygon": [
+              678,
+              2053,
+              773,
+              2053,
+              773,
+              2101,
+              678,
+              2101
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "W.",
+            "polygon": [
+              786,
+              2053,
+              839,
+              2053,
+              839,
+              2102,
+              786,
+              2101
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Garner.",
+            "polygon": [
+              853,
+              2053,
+              997,
+              2054,
+              997,
+              2102,
+              853,
+              2102
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Trustee's",
+            "polygon": [
+              1023,
+              2054,
+              1176,
+              2054,
+              1176,
+              2103,
+              1023,
+              2102
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "address",
+            "polygon": [
+              1190,
+              2054,
+              1319,
+              2054,
+              1320,
+              2103,
+              1190,
+              2103
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "is",
+            "polygon": [
+              1331,
+              2054,
+              1359,
+              2054,
+              1360,
+              2103,
+              1331,
+              2103
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "10850",
+            "polygon": [
+              1374,
+              2055,
+              1482,
+              2055,
+              1482,
+              2104,
+              1374,
+              2103
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Richmond",
+            "polygon": [
+              1495,
+              2055,
+              1690,
+              2055,
+              1690,
+              2105,
+              1495,
+              2104
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Avenue,",
+            "polygon": [
+              1701,
+              2055,
+              1855,
+              2056,
+              1855,
+              2105,
+              1701,
+              2105
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "Suite",
+            "polygon": [
+              1868,
+              2056,
+              1961,
+              2055,
+              1961,
+              2105,
+              1868,
+              2105
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "350,",
+            "polygon": [
+              1972,
+              2055,
+              2049,
+              2056,
+              2049,
+              2106,
+              1972,
+              2106
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Houston,",
+            "polygon": [
+              2060,
+              2056,
+              2232,
+              2058,
+              2232,
+              2108,
+              2060,
+              2106
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "TX",
+            "polygon": [
+              281,
+              2104,
+              344,
+              2103,
+              344,
+              2152,
+              281,
+              2152
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "77042.",
+            "polygon": [
+              356,
+              2103,
+              474,
+              2104,
+              474,
+              2152,
+              356,
+              2152
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "The",
+            "polygon": [
+              498,
+              2104,
+              566,
+              2104,
+              566,
+              2152,
+              498,
+              2152
+            ]
+          },
+          {
+            "confidence": 0.988,
+            "content": "term",
+            "polygon": [
+              577,
+              2104,
+              644,
+              2104,
+              644,
+              2153,
+              577,
+              2152
+            ]
+          },
+          {
+            "confidence": 0.922,
+            "content": "\"Trustee\"",
+            "polygon": [
+              664,
+              2104,
+              828,
+              2105,
+              828,
+              2153,
+              664,
+              2153
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "includes",
+            "polygon": [
+              838,
+              2105,
+              989,
+              2105,
+              989,
+              2154,
+              838,
+              2153
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "any",
+            "polygon": [
+              1001,
+              2105,
+              1063,
+              2105,
+              1063,
+              2154,
+              1001,
+              2154
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "substitute/successor",
+            "polygon": [
+              1075,
+              2105,
+              1422,
+              2106,
+              1422,
+              2154,
+              1075,
+              2154
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Trustee.",
+            "polygon": [
+              1431,
+              2106,
+              1577,
+              2106,
+              1577,
+              2154,
+              1431,
+              2154
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Documents",
+            "polygon": [
+              279,
+              2205,
+              496,
+              2206,
+              496,
+              2249,
+              279,
+              2249
+            ]
+          },
+          {
+            "confidence": 0.981,
+            "content": "(D)",
+            "polygon": [
+              280,
+              2279,
+              343,
+              2279,
+              343,
+              2329,
+              280,
+              2329
+            ]
+          },
+          {
+            "confidence": 0.886,
+            "content": "\"Note\"",
+            "polygon": [
+              437,
+              2280,
+              568,
+              2280,
+              568,
+              2329,
+              437,
+              2329
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "means",
+            "polygon": [
+              582,
+              2280,
+              688,
+              2280,
+              688,
+              2329,
+              582,
+              2329
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "the",
+            "polygon": [
+              698,
+              2280,
+              758,
+              2279,
+              758,
+              2329,
+              698,
+              2329
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "promissory",
+            "polygon": [
+              769,
+              2279,
+              961,
+              2280,
+              961,
+              2330,
+              769,
+              2329
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "note",
+            "polygon": [
+              971,
+              2280,
+              1052,
+              2281,
+              1053,
+              2330,
+              971,
+              2330
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "dated",
+            "polygon": [
+              1064,
+              2281,
+              1158,
+              2281,
+              1158,
+              2330,
+              1064,
+              2330
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "April",
+            "polygon": [
+              1168,
+              2280,
+              1269,
+              2280,
+              1269,
+              2331,
+              1169,
+              2330
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "01,",
+            "polygon": [
+              1280,
+              2280,
+              1335,
+              2280,
+              1335,
+              2331,
+              1281,
+              2331
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "2023,",
+            "polygon": [
+              1346,
+              2280,
+              1445,
+              2281,
+              1445,
+              2332,
+              1346,
+              2331
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "and",
+            "polygon": [
+              1460,
+              2281,
+              1523,
+              2281,
+              1523,
+              2332,
+              1460,
+              2332
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "signed",
+            "polygon": [
+              1536,
+              2281,
+              1649,
+              2280,
+              1649,
+              2331,
+              1536,
+              2332
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "by",
+            "polygon": [
+              1660,
+              2280,
+              1704,
+              2280,
+              1704,
+              2331,
+              1660,
+              2331
+            ]
+          },
+          {
+            "confidence": 0.988,
+            "content": "each",
+            "polygon": [
+              1716,
+              2281,
+              1795,
+              2282,
+              1795,
+              2331,
+              1716,
+              2331
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Borrower",
+            "polygon": [
+              1806,
+              2282,
+              1974,
+              2283,
+              1974,
+              2332,
+              1807,
+              2331
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "who",
+            "polygon": [
+              1984,
+              2283,
+              2059,
+              2282,
+              2059,
+              2333,
+              1984,
+              2332
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "is",
+            "polygon": [
+              2070,
+              2282,
+              2098,
+              2282,
+              2098,
+              2333,
+              2070,
+              2333
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "legally",
+            "polygon": [
+              2109,
+              2282,
+              2232,
+              2281,
+              2232,
+              2335,
+              2109,
+              2333
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "obligated",
+            "polygon": [
+              282,
+              2331,
+              439,
+              2331,
+              440,
+              2380,
+              282,
+              2379
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "for",
+            "polygon": [
+              449,
+              2331,
+              497,
+              2331,
+              498,
+              2380,
+              449,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "the",
+            "polygon": [
+              507,
+              2331,
+              562,
+              2331,
+              562,
+              2380,
+              507,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "debt",
+            "polygon": [
+              572,
+              2331,
+              646,
+              2331,
+              646,
+              2380,
+              572,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "under",
+            "polygon": [
+              655,
+              2331,
+              752,
+              2331,
+              752,
+              2380,
+              655,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "that",
+            "polygon": [
+              762,
+              2331,
+              826,
+              2331,
+              826,
+              2380,
+              762,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "promissory",
+            "polygon": [
+              836,
+              2331,
+              1026,
+              2332,
+              1026,
+              2380,
+              836,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "note,",
+            "polygon": [
+              1036,
+              2332,
+              1127,
+              2332,
+              1127,
+              2380,
+              1036,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "that",
+            "polygon": [
+              1137,
+              2332,
+              1194,
+              2332,
+              1194,
+              2381,
+              1137,
+              2380
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "is",
+            "polygon": [
+              1203,
+              2332,
+              1232,
+              2332,
+              1232,
+              2381,
+              1203,
+              2381
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "in",
+            "polygon": [
+              1242,
+              2332,
+              1282,
+              2332,
+              1282,
+              2381,
+              1242,
+              2381
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "either",
+            "polygon": [
+              1292,
+              2332,
+              1387,
+              2332,
+              1387,
+              2381,
+              1292,
+              2381
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "(i)",
+            "polygon": [
+              1397,
+              2332,
+              1432,
+              2332,
+              1432,
+              2382,
+              1397,
+              2381
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "paper",
+            "polygon": [
+              1442,
+              2332,
+              1542,
+              2332,
+              1542,
+              2382,
+              1442,
+              2382
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "form,",
+            "polygon": [
+              1551,
+              2332,
+              1645,
+              2332,
+              1645,
+              2382,
+              1551,
+              2382
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "using",
+            "polygon": [
+              1655,
+              2332,
+              1751,
+              2333,
+              1751,
+              2382,
+              1655,
+              2382
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Borrower's",
+            "polygon": [
+              1761,
+              2333,
+              1948,
+              2332,
+              1948,
+              2382,
+              1761,
+              2382
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "written",
+            "polygon": [
+              1958,
+              2332,
+              2077,
+              2333,
+              2077,
+              2382,
+              1957,
+              2382
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "pen",
+            "polygon": [
+              2086,
+              2333,
+              2151,
+              2333,
+              2151,
+              2382,
+              2086,
+              2382
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "and",
+            "polygon": [
+              2161,
+              2333,
+              2234,
+              2333,
+              2234,
+              2382,
+              2161,
+              2382
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "ink",
+            "polygon": [
+              280,
+              2380,
+              335,
+              2381,
+              335,
+              2429,
+              280,
+              2429
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "signature,",
+            "polygon": [
+              344,
+              2381,
+              517,
+              2381,
+              517,
+              2430,
+              345,
+              2429
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "or",
+            "polygon": [
+              527,
+              2381,
+              557,
+              2381,
+              558,
+              2430,
+              527,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "(ii)",
+            "polygon": [
+              567,
+              2381,
+              616,
+              2381,
+              616,
+              2430,
+              567,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "electronic",
+            "polygon": [
+              625,
+              2381,
+              793,
+              2380,
+              793,
+              2430,
+              625,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "form,",
+            "polygon": [
+              803,
+              2380,
+              896,
+              2381,
+              896,
+              2430,
+              803,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "using",
+            "polygon": [
+              906,
+              2381,
+              996,
+              2381,
+              996,
+              2430,
+              906,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "Borrower's",
+            "polygon": [
+              1006,
+              2381,
+              1201,
+              2381,
+              1201,
+              2430,
+              1006,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "adopted",
+            "polygon": [
+              1211,
+              2381,
+              1342,
+              2381,
+              1342,
+              2431,
+              1211,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Electronic",
+            "polygon": [
+              1351,
+              2381,
+              1535,
+              2381,
+              1535,
+              2431,
+              1351,
+              2431
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Signature",
+            "polygon": [
+              1545,
+              2381,
+              1706,
+              2382,
+              1706,
+              2431,
+              1545,
+              2431
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "in",
+            "polygon": [
+              1716,
+              2382,
+              1751,
+              2382,
+              1751,
+              2431,
+              1716,
+              2431
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "accordance",
+            "polygon": [
+              1761,
+              2382,
+              1951,
+              2381,
+              1951,
+              2431,
+              1761,
+              2431
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "with",
+            "polygon": [
+              1961,
+              2381,
+              2035,
+              2381,
+              2035,
+              2430,
+              1961,
+              2431
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "the",
+            "polygon": [
+              2045,
+              2381,
+              2097,
+              2381,
+              2097,
+              2430,
+              2045,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "UETA",
+            "polygon": [
+              2106,
+              2381,
+              2232,
+              2382,
+              2232,
+              2430,
+              2106,
+              2430
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "or",
+            "polygon": [
+              280,
+              2431,
+              316,
+              2431,
+              315,
+              2479,
+              280,
+              2479
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "E-SIGN,",
+            "polygon": [
+              325,
+              2431,
+              482,
+              2431,
+              482,
+              2479,
+              325,
+              2479
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "as",
+            "polygon": [
+              494,
+              2431,
+              530,
+              2431,
+              529,
+              2479,
+              494,
+              2479
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "applicable.",
+            "polygon": [
+              541,
+              2431,
+              740,
+              2431,
+              739,
+              2479,
+              541,
+              2479
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "The",
+            "polygon": [
+              750,
+              2431,
+              814,
+              2431,
+              814,
+              2480,
+              750,
+              2479
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Note",
+            "polygon": [
+              823,
+              2431,
+              912,
+              2431,
+              912,
+              2480,
+              823,
+              2480
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "evidences",
+            "polygon": [
+              922,
+              2431,
+              1092,
+              2431,
+              1091,
+              2480,
+              921,
+              2480
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "the",
+            "polygon": [
+              1102,
+              2431,
+              1154,
+              2431,
+              1154,
+              2480,
+              1102,
+              2480
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "legal",
+            "polygon": [
+              1164,
+              2431,
+              1249,
+              2431,
+              1249,
+              2480,
+              1163,
+              2480
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "obligation",
+            "polygon": [
+              1259,
+              2431,
+              1437,
+              2432,
+              1437,
+              2481,
+              1258,
+              2480
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "of",
+            "polygon": [
+              1447,
+              2432,
+              1481,
+              2432,
+              1481,
+              2481,
+              1447,
+              2481
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "each",
+            "polygon": [
+              1491,
+              2432,
+              1571,
+              2433,
+              1571,
+              2481,
+              1491,
+              2481
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "Borrower",
+            "polygon": [
+              1580,
+              2433,
+              1750,
+              2433,
+              1749,
+              2482,
+              1580,
+              2481
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "who",
+            "polygon": [
+              1759,
+              2433,
+              1835,
+              2433,
+              1835,
+              2482,
+              1759,
+              2482
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "signed",
+            "polygon": [
+              1846,
+              2433,
+              1954,
+              2433,
+              1954,
+              2482,
+              1845,
+              2482
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "the",
+            "polygon": [
+              1964,
+              2433,
+              2015,
+              2434,
+              2015,
+              2483,
+              1964,
+              2482
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Note",
+            "polygon": [
+              2024,
+              2434,
+              2107,
+              2434,
+              2107,
+              2484,
+              2024,
+              2483
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "to",
+            "polygon": [
+              2117,
+              2435,
+              2156,
+              2435,
+              2156,
+              2485,
+              2117,
+              2484
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "pay",
+            "polygon": [
+              2166,
+              2435,
+              2233,
+              2436,
+              2233,
+              2486,
+              2166,
+              2485
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Lender",
+            "polygon": [
+              280,
+              2480,
+              405,
+              2480,
+              405,
+              2528,
+              280,
+              2528
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "One",
+            "polygon": [
+              415,
+              2480,
+              488,
+              2480,
+              488,
+              2528,
+              415,
+              2528
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Hundred",
+            "polygon": [
+              498,
+              2480,
+              667,
+              2480,
+              667,
+              2529,
+              498,
+              2528
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "Seventy-Five",
+            "polygon": [
+              677,
+              2480,
+              920,
+              2481,
+              920,
+              2529,
+              677,
+              2529
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Thousand",
+            "polygon": [
+              930,
+              2481,
+              1112,
+              2481,
+              1112,
+              2530,
+              930,
+              2529
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Seven",
+            "polygon": [
+              1121,
+              2481,
+              1226,
+              2481,
+              1226,
+              2530,
+              1121,
+              2530
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Hundred",
+            "polygon": [
+              1236,
+              2481,
+              1411,
+              2481,
+              1411,
+              2530,
+              1237,
+              2530
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Dollars",
+            "polygon": [
+              1427,
+              2481,
+              1556,
+              2481,
+              1556,
+              2531,
+              1427,
+              2530
+            ]
+          },
+          {
+            "confidence": 0.988,
+            "content": "(U.S.",
+            "polygon": [
+              1567,
+              2481,
+              1655,
+              2481,
+              1655,
+              2531,
+              1567,
+              2531
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "$175,700.00)",
+            "polygon": [
+              1666,
+              2481,
+              1892,
+              2482,
+              1892,
+              2531,
+              1666,
+              2531
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "plus",
+            "polygon": [
+              1902,
+              2482,
+              1972,
+              2482,
+              1972,
+              2531,
+              1902,
+              2531
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "interest.",
+            "polygon": [
+              1982,
+              2482,
+              2122,
+              2483,
+              2122,
+              2531,
+              1982,
+              2531
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Each",
+            "polygon": [
+              2141,
+              2483,
+              2233,
+              2483,
+              2233,
+              2531,
+              2141,
+              2531
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "Borrower",
+            "polygon": [
+              280,
+              2530,
+              448,
+              2531,
+              448,
+              2580,
+              280,
+              2578
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "who",
+            "polygon": [
+              457,
+              2531,
+              533,
+              2531,
+              533,
+              2580,
+              457,
+              2580
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "signed",
+            "polygon": [
+              543,
+              2531,
+              657,
+              2531,
+              657,
+              2581,
+              543,
+              2580
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "the",
+            "polygon": [
+              667,
+              2531,
+              720,
+              2531,
+              720,
+              2581,
+              667,
+              2581
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Note",
+            "polygon": [
+              729,
+              2531,
+              815,
+              2531,
+              815,
+              2581,
+              729,
+              2581
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "has",
+            "polygon": [
+              824,
+              2531,
+              888,
+              2531,
+              888,
+              2582,
+              824,
+              2581
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "promised",
+            "polygon": [
+              899,
+              2531,
+              1054,
+              2532,
+              1054,
+              2582,
+              899,
+              2582
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "to",
+            "polygon": [
+              1064,
+              2532,
+              1096,
+              2532,
+              1096,
+              2582,
+              1064,
+              2582
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "pay",
+            "polygon": [
+              1106,
+              2532,
+              1169,
+              2532,
+              1169,
+              2582,
+              1106,
+              2582
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "this",
+            "polygon": [
+              1178,
+              2532,
+              1247,
+              2532,
+              1247,
+              2583,
+              1178,
+              2582
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "debt",
+            "polygon": [
+              1259,
+              2532,
+              1326,
+              2532,
+              1326,
+              2583,
+              1259,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.985,
+            "content": "in",
+            "polygon": [
+              1336,
+              2532,
+              1372,
+              2533,
+              1372,
+              2583,
+              1336,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "regular",
+            "polygon": [
+              1382,
+              2533,
+              1506,
+              2533,
+              1506,
+              2583,
+              1382,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "monthly",
+            "polygon": [
+              1516,
+              2533,
+              1663,
+              2533,
+              1663,
+              2583,
+              1516,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "payments",
+            "polygon": [
+              1673,
+              2533,
+              1844,
+              2533,
+              1844,
+              2583,
+              1673,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "and",
+            "polygon": [
+              1857,
+              2534,
+              1912,
+              2534,
+              1912,
+              2583,
+              1857,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "to",
+            "polygon": [
+              1922,
+              2534,
+              1958,
+              2534,
+              1958,
+              2583,
+              1922,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "pay",
+            "polygon": [
+              1968,
+              2534,
+              2035,
+              2534,
+              2035,
+              2583,
+              1968,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "the",
+            "polygon": [
+              2046,
+              2534,
+              2098,
+              2534,
+              2098,
+              2583,
+              2046,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "debt",
+            "polygon": [
+              2108,
+              2534,
+              2178,
+              2534,
+              2178,
+              2583,
+              2108,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "in",
+            "polygon": [
+              2188,
+              2534,
+              2233,
+              2534,
+              2233,
+              2583,
+              2188,
+              2583
+            ]
+          },
+          {
+            "confidence": 0.991,
+            "content": "full",
+            "polygon": [
+              280,
+              2581,
+              344,
+              2582,
+              344,
+              2628,
+              280,
+              2628
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "not",
+            "polygon": [
+              356,
+              2582,
+              407,
+              2581,
+              407,
+              2628,
+              356,
+              2628
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "later",
+            "polygon": [
+              416,
+              2581,
+              500,
+              2581,
+              500,
+              2629,
+              416,
+              2628
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "than",
+            "polygon": [
+              511,
+              2581,
+              586,
+              2582,
+              586,
+              2629,
+              511,
+              2629
+            ]
+          },
+          {
+            "confidence": 0.999,
+            "content": "May",
+            "polygon": [
+              598,
+              2582,
+              683,
+              2582,
+              683,
+              2629,
+              598,
+              2629
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "01,",
+            "polygon": [
+              695,
+              2582,
+              748,
+              2582,
+              748,
+              2629,
+              695,
+              2629
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "2053.",
+            "polygon": [
+              759,
+              2582,
+              859,
+              2582,
+              859,
+              2629,
+              759,
+              2629
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "TEXAS",
+            "polygon": [
+              281,
+              2832,
+              383,
+              2832,
+              383,
+              2867,
+              281,
+              2867
+            ]
+          },
+          {
+            "confidence": 0.968,
+            "content": "--",
+            "polygon": [
+              390,
+              2832,
+              409,
+              2832,
+              409,
+              2868,
+              390,
+              2868
+            ]
+          },
+          {
+            "confidence": 0.996,
+            "content": "Single",
+            "polygon": [
+              416,
+              2832,
+              502,
+              2832,
+              502,
+              2868,
+              416,
+              2868
+            ]
+          },
+          {
+            "confidence": 0.993,
+            "content": "Family",
+            "polygon": [
+              509,
+              2832,
+              593,
+              2833,
+              592,
+              2868,
+              509,
+              2868
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "--",
+            "polygon": [
+              600,
+              2833,
+              616,
+              2833,
+              616,
+              2868,
+              599,
+              2868
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "Fannie",
+            "polygon": [
+              623,
+              2833,
+              724,
+              2833,
+              724,
+              2868,
+              623,
+              2868
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "Mae/Freddie",
+            "polygon": [
+              733,
+              2833,
+              917,
+              2832,
+              917,
+              2868,
+              733,
+              2868
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "Mac",
+            "polygon": [
+              925,
+              2832,
+              992,
+              2832,
+              992,
+              2868,
+              924,
+              2868
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "UNIFORM",
+            "polygon": [
+              281,
+              2866,
+              447,
+              2866,
+              447,
+              2900,
+              282,
+              2900
+            ]
+          },
+          {
+            "confidence": 0.963,
+            "content": "INSTRUMENT",
+            "polygon": [
+              456,
+              2866,
+              684,
+              2867,
+              684,
+              2900,
+              456,
+              2900
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "Form",
+            "polygon": [
+              282,
+              2901,
+              364,
+              2900,
+              364,
+              2932,
+              282,
+              2932
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "3044",
+            "polygon": [
+              372,
+              2901,
+              439,
+              2901,
+              439,
+              2932,
+              372,
+              2932
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "07/2021",
+            "polygon": [
+              456,
+              2901,
+              569,
+              2901,
+              569,
+              2932,
+              456,
+              2932
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "(Page",
+            "polygon": [
+              660,
+              2903,
+              737,
+              2902,
+              737,
+              2934,
+              660,
+              2935
+            ]
+          },
+          {
+            "confidence": 0.963,
+            "content": "1",
+            "polygon": [
+              748,
+              2902,
+              760,
+              2902,
+              760,
+              2934,
+              748,
+              2934
+            ]
+          },
+          {
+            "confidence": 0.997,
+            "content": "of",
+            "polygon": [
+              771,
+              2902,
+              801,
+              2902,
+              801,
+              2933,
+              771,
+              2934
+            ]
+          },
+          {
+            "confidence": 0.998,
+            "content": "20)",
+            "polygon": [
+              808,
+              2902,
+              853,
+              2902,
+              853,
+              2933,
+              808,
+              2933
+            ]
+          },
+          {
+            "confidence": 0.977,
+            "content": "(DoD)",
+            "polygon": [
+              283,
+              2934,
+              370,
+              2933,
+              370,
+              2969,
+              283,
+              2970
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "RA0990526",
+            "polygon": [
+              378,
+              2933,
+              541,
+              2933,
+              541,
+              2969,
+              379,
+              2969
+            ]
+          },
+          {
+            "confidence": 0.989,
+            "content": "-",
+            "polygon": [
+              548,
+              2933,
+              563,
+              2933,
+              563,
+              2969,
+              548,
+              2969
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "SIC2021.tx",
+            "polygon": [
+              573,
+              2933,
+              726,
+              2933,
+              726,
+              2968,
+              573,
+              2969
+            ]
+          },
+          {
+            "confidence": 0.995,
+            "content": "-",
+            "polygon": [
+              734,
+              2933,
+              744,
+              2933,
+              744,
+              2968,
+              734,
+              2968
+            ]
+          },
+          {
+            "confidence": 0.985,
+            "content": "Rev.",
+            "polygon": [
+              753,
+              2933,
+              813,
+              2933,
+              813,
+              2968,
+              753,
+              2968
+            ]
+          },
+          {
+            "confidence": 0.994,
+            "content": "01/23/2023",
+            "polygon": [
+              824,
+              2933,
+              978,
+              2932,
+              978,
+              2968,
+              824,
+              2968
+            ]
+          },
+          {
+            "confidence": 0.992,
+            "content": "*",
+            "polygon": [
+              1462,
+              2956,
+              1484,
+              2956,
+              1484,
+              2988,
+              1461,
+              2988
+            ]
+          },
+          {
+            "confidence": 0.79,
+            "content": "MCMORTDOT*",
+            "polygon": [
+              1538,
+              2955,
+              2205,
+              2957,
+              2205,
+              2989,
+              1537,
+              2989
+            ]
+          }
+        ],
+        "unit": "pixel",
+        "width": 2550
+      }
+    ]
+  }
+}
