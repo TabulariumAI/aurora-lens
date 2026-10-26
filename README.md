@@ -73,6 +73,12 @@ await lensRef.current?.decodeDoc(fileWithoutMetadata, { page: 1, viewMode: "page
 
 See [docs/metadata-schema.md](docs/metadata-schema.md).
 
+### Keyboard selection
+
+Pages with selectable metadata have one tab stop. Arrow keys move focus through OCR tokens in source order, followed by figures. Space selects or deselects the focused item without clearing other selections. Shift+Arrow replaces the selection with the range from its anchor to the focused item; reversing direction shrinks that range. Tab and Shift+Tab leave the document. Visible instructions remain below the page, and navigation pans zoomed content to keep the focused item visible.
+
+The page exposes named options and their selected state to assistive technologies. The focus outline is separate from selection highlighting. Pointer selection and keyboard selection share the same selection state, contexts, clipboard and export results; existing pointer drawing, Ctrl deselection, zoom and pan remain available.
+
 Navigation methods return promises. Failures are reported through `onError` and reject the returned promise; UI event handlers must consume the rejection. `close()` releases window listeners, animation frames and workers while preserving stored session data. `clear()` clears the view immediately; opening or restoring a document waits for its pending storage deletion.
 
 From a source checkout, `npm test` verifies package behavior. `npm run test:browser` runs the selection tests in Edge at desktop and narrow widths. `npm run test:production` builds a production consumer and verifies emitted decoding workers and both public PDF helpers in Edge. See [verification results](docs/verification.md) for the complete review and consumer checks.

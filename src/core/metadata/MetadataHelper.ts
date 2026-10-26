@@ -130,6 +130,16 @@ export class MetadataHelper {
     };
   }
 
+  selectionItems(pageIndex: number): PageMetadataHits[] {
+    const page = this.page(pageIndex);
+    return [
+      ...this.tokenItems(pageIndex).map(token => ({
+        tokens: [token.value], contexts: this.contexts(page, [token]), figures: [],
+      })),
+      ...page.figures.map(figure => ({ tokens: [], contexts: [], figures: [this.figure(figure)] })),
+    ];
+  }
+
   search(pageIndex: number, text: string, context?: string | null): PageMetadataHits {
     const value = text.trim();
     const contextValue = context?.trim();

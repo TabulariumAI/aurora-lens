@@ -1,8 +1,8 @@
-import { pageRect, screenToDisplay, screenToPage } from "./coordinates";
+import { clamp, pageRect, screenToDisplay, screenToPage } from "./coordinates";
 import { MetadataHelper } from "../metadata/MetadataHelper";
 import { SelectionManager } from "../selection/SelectionManager";
 import { createViewerWatermark } from "./watermark";
-import type { DecodedPage, PagePoint } from "../types";
+import type { DecodedPage, PageMetadataHits, PagePoint } from "../types";
 
 interface PageViewerOptions {
   metadata: MetadataHelper;
@@ -13,12 +13,20 @@ interface PageViewerOptions {
 
 type PointerMode = "click" | "draw" | "pan" | null;
 
+let viewerCount = 0;
+
 export class PageViewer {
   private readonly root = document.createElement("div");
   private readonly frame = document.createElement("div");
   private readonly image = document.createElement("img");
   private readonly canvas = document.createElement("canvas");
   private readonly watermark = createViewerWatermark();
+  private readonly itemLayer = document.createElement("div");
+  private readonly instructions = document.createElement("p");
+  private readonly id = `aurora-lens-selection-${++viewerCount}`;
+  private items: Array<{ hits: PageMetadataHits; element: HTMLDivElement }> = [];
+  private active = 0;
+  private anchor = 0;
   private page: DecodedPage | null = null;
   private zoom = 1;
   private move = { x: 0, y: 0 };
@@ -34,12 +42,32 @@ export class PageViewer {
   private renderRequested = false;
   private renderFrame: number | null = null;
   private readonly onResize = () => {
-    if (this.page) this.applyTransform();
+    if (this.page) {
+      this.frame.style.bottom = `${this.instructions.offsetHeight}px`;
+      this.applyTransform();
+    }
   };
 
   constructor(private readonly options: PageViewerOptions) {
-    this.root.appendChild(this.frame);
-    this.frame.append(this.image, this.canvas, this.watermark);
+    this.root.append(this.frame, this.instructions);
+    this.frame.append(this.image, this.canvas, this.itemLayer, this.watermark);
+    this.frame.dataset.lensSelection = "";
+    this.frame.setAttribute("role", "listbox");
+    this.frame.setAttribute("aria-multiselectable", "true");
+    this.frame.setAttribute("aria-describedby", `${this.id}-help`);
+    this.frame.tabIndex = -1;
+    this.instructions.id = `${this.id}-help`;
+    this.instructions.textContent = "Arrows: move · Space: select or deselect · Shift+Arrow: select range · Tab: leave";
+    this.instructions.hidden = true;
+    if (!document.getElementById("aurora-lens-selection-style")) {
+      const style = document.createElement("style");
+      style.id = "aurora-lens-selection-style";
+      style.textContent = `
+        [data-lens-selection]:focus-visible { outline: 2px solid #005168; outline-offset: -3px; }
+        [data-lens-selection]:focus-visible [data-active="true"] { outline: 2px solid #005168; outline-offset: 2px; }
+      `;
+      document.head.append(style);
+    }
     this.style();
     this.bind();
   }
@@ -73,6 +101,7 @@ export class PageViewer {
     this.image.alt = `${page.sourceName} page ${page.pageNumber}`;
     this.image.hidden = false;
     this.canvas.hidden = false;
+    this.buildItems();
     this.fitPage();
     this.options.onCoordinates(null, null);
   }
@@ -85,6 +114,7 @@ export class PageViewer {
     this.image.alt = "";
     this.image.hidden = true;
     this.canvas.hidden = true;
+    this.buildItems();
     this.options.selection.clear();
     this.options.onCoordinates(null, null);
     this.options.onChange();
@@ -186,6 +216,12 @@ export class PageViewer {
     });
     this.image.draggable = false;
     this.image.hidden = true;
+    Object.assign(this.itemLayer.style, { position: "absolute", pointerEvents: "none" });
+    Object.assign(this.instructions.style, {
+      position: "absolute", bottom: "0", left: "0", right: "0", margin: "0",
+      padding: "0.375rem 0.5rem", fontSize: "0.75rem", lineHeight: "1.4",
+      color: "#1f2937", background: "#ffffff", borderTop: "1px solid #d6dce2",
+    });
     Object.assign(this.canvas.style, {
       position: "absolute",
       inset: "0",
@@ -197,6 +233,10 @@ export class PageViewer {
   }
 
   private bind() {
+    this.frame.addEventListener("keydown", event => this.onKeyDown(event));
+    this.frame.addEventListener("focus", () => {
+      if (this.frame.matches(":focus-visible")) this.revealActive();
+    });
     this.frame.addEventListener("contextmenu", (event) => event.preventDefault());
     this.frame.addEventListener(
       "wheel",
@@ -250,6 +290,10 @@ export class PageViewer {
       this.image.style.height = `${height}px`;
     }
     this.image.style.transform = "none";
+    Object.assign(this.itemLayer.style, {
+      left: this.image.style.left, top: this.image.style.top,
+      width: this.image.style.width, height: this.image.style.height,
+    });
     this.syncCursor();
     this.options.onChange();
     this.schedule();
@@ -361,11 +405,7 @@ export class PageViewer {
       if (rect.width > 1 && rect.height > 1 && this.hasMetadataPage()) {
         const hits = this.options.metadata.getElements(this.page.pageIndex, rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
         if (hits.tokens.length || hits.figures.length) {
-          if (event.ctrlKey) {
-            this.options.selection.showElements(hits);
-          } else {
-            this.options.selection.showElement(hits);
-          }
+          this.selectHits(hits, event.ctrlKey);
         }
         this.rectangles = [];
       } else {
@@ -428,6 +468,10 @@ export class PageViewer {
   }
 
   private renderAnnotations() {
+    this.items.forEach(({ hits, element }, index) => {
+      element.setAttribute("aria-selected", String(this.options.selection.isSelected(hits)));
+      element.dataset.active = String(index === this.active);
+    });
     const context = this.canvas.getContext("2d");
     if (!context) {
       return;
@@ -468,8 +512,97 @@ export class PageViewer {
     this.options.selection.draw(context, size, image, frame);
   }
 
+  private buildItems() {
+    this.active = 0;
+    this.anchor = 0;
+    let figure = 0;
+    this.items = this.hasMetadataPage() ? this.options.metadata.selectionItems(this.page!.pageIndex).map((hits, index) => {
+      const element = document.createElement("div");
+      const polygon = (hits.tokens.length ? hits.tokens[0] : hits.figures[0]).polygon;
+      const xs = polygon.filter((_value, position) => position % 2 === 0);
+      const ys = polygon.filter((_value, position) => position % 2 === 1);
+      const left = Math.min(...xs);
+      const top = Math.min(...ys);
+      const size = this.pageSize(this.page!);
+      element.id = `${this.id}-item-${index}`;
+      element.setAttribute("role", "option");
+      if (hits.tokens.length) {
+        element.setAttribute("aria-label", hits.tokens[0].token === null ? `Text ${index + 1}` : hits.tokens[0].token);
+      } else element.setAttribute("aria-label", `Figure ${++figure}`);
+      element.setAttribute("aria-selected", String(this.options.selection.isSelected(hits)));
+      Object.assign(element.style, {
+        position: "absolute", left: `${left / size.width * 100}%`, top: `${top / size.height * 100}%`,
+        width: `${(Math.max(...xs) - left) / size.width * 100}%`, height: `${(Math.max(...ys) - top) / size.height * 100}%`,
+      });
+      return { hits, element };
+    }) : [];
+    this.itemLayer.replaceChildren(...this.items.map(item => item.element));
+    this.frame.setAttribute("aria-label", this.page ? `Document selection, page ${this.page.pageNumber}` : "Document selection");
+    this.frame.tabIndex = this.items.length ? 0 : -1;
+    this.instructions.hidden = !this.items.length;
+    this.frame.style.bottom = `${this.instructions.offsetHeight}px`;
+    if (this.items.length) this.frame.setAttribute("aria-activedescendant", this.items[0].element.id);
+    else this.frame.removeAttribute("aria-activedescendant");
+  }
+
+  private onKeyDown(event: KeyboardEvent) {
+    if (!this.items.length || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)) {
+      event.preventDefault();
+      const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1;
+      this.active = clamp(this.active + direction, 0, this.items.length - 1);
+      if (event.shiftKey) {
+        this.options.selection.clear();
+        this.items.slice(Math.min(this.anchor, this.active), Math.max(this.anchor, this.active) + 1)
+          .forEach(item => this.options.selection.showElements(item.hits));
+      } else this.anchor = this.active;
+      this.revealActive();
+    } else if (event.key === " ") {
+      event.preventDefault();
+      if (event.repeat) return;
+      this.options.selection.toggle(this.items[this.active].hits);
+      this.anchor = this.active;
+    } else if (event.key === "Escape") {
+      this.anchor = this.active;
+      return;
+    } else return;
+    this.options.onChange();
+    this.schedule();
+  }
+
+  private revealActive() {
+    if (!this.items.length) return;
+    this.frame.setAttribute("aria-activedescendant", this.items[this.active].element.id);
+    const item = this.items[this.active].element.getBoundingClientRect();
+    const frame = this.frame.getBoundingClientRect();
+    const dx = item.width > frame.width - 8 || item.left < frame.left + 4 ? frame.left + 4 - item.left
+      : item.right > frame.right - 4 ? frame.right - 4 - item.right : 0;
+    const dy = item.height > frame.height - 8 || item.top < frame.top + 4 ? frame.top + 4 - item.top
+      : item.bottom > frame.bottom - 4 ? frame.bottom - 4 - item.bottom : 0;
+    if (dx || dy) {
+      this.move.x += dx;
+      this.move.y += dy;
+      this.applyTransform();
+    }
+    this.schedule();
+  }
+
   private updateCoordinates(clientX: number, clientY: number) {
     this.options.onCoordinates(this.screenPoint(clientX, clientY, true), this.displayPoint(clientX, clientY, true));
+  }
+
+  private selectHits(hits: PageMetadataHits, additive: boolean) {
+    if (additive) this.options.selection.showElements(hits);
+    else this.options.selection.showElement(hits);
+    const active = this.items.findIndex(item =>
+      hits.tokens.some(token => item.hits.tokens.some(value => value.polygon === token.polygon)) ||
+      hits.figures.some(figure => item.hits.figures.some(value => value.polygon === figure.polygon)),
+    );
+    if (active !== -1) {
+      this.active = active;
+      this.anchor = active;
+      this.frame.setAttribute("aria-activedescendant", this.items[active].element.id);
+    }
   }
 
   private onDoubleClick(event: MouseEvent) {
@@ -489,11 +622,7 @@ export class PageViewer {
         if (this.hasMetadataPage()) {
           const hits = this.options.metadata.getElement(this.page.pageIndex, command.point.x, command.point.y);
           if (hits.tokens.length || hits.figures.length) {
-            if (event.ctrlKey) {
-              this.options.selection.showElements(hits);
-            } else {
-              this.options.selection.showElement(hits);
-            }
+            this.selectHits(hits, event.ctrlKey);
           }
         }
       }

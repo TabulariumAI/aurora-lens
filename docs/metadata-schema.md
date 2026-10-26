@@ -79,7 +79,7 @@ Search returns all complete exact and fuzzy occurrences. For ordinary multi-term
 `lens.highlightIndex(page, index, options)` uses this flow:
 
 1. Find complete `index.value` matches within page context regions, allowing the value terms in any order and requiring distinct normalized token positions for repeated terms. `OR` accepts one alternative. Each candidate contains one value occurrence.
-2. Rank complete value candidates ahead of source-only regions, then by the number of matching source terms, then by the lowest combined Fuse score. Equal scores retain the first occurrence in metadata order. Return only the winning occurrence.
+2. Rank complete value candidates ahead of source-only regions, then by the number of matching source terms, then by the lowest combined Fuse score. Equal scores retain the first occurrence in metadata order. Output only the winning occurrence.
 3. Highlight the winning context region only if it also matches the complete `index.source` in query order. If no value candidate exists, retain the single best complete source region. Source-only matches do not highlight value tokens.
 4. If neither a complete value region nor a complete source region matches, retain the existing page-wide value search. Highlight one value occurrence without context highlights; this also works when `contexts` is empty.
 

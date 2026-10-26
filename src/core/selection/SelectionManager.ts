@@ -57,6 +57,20 @@ export class SelectionManager {
     this.addHits(hits);
   }
 
+  isSelected(hits: PageMetadataHits) {
+    return hits.tokens.every(token => this.selectedTokens.has(this.tokenKey(token))) &&
+      hits.figures.every(figure => this.selectedFigures.has(this.figureKey(figure)));
+  }
+
+  toggle(hits: PageMetadataHits) {
+    if (this.isSelected(hits)) {
+      hits.tokens.forEach(token => this.removeHit(this.selectedTokens.get(this.tokenKey(token))!));
+      hits.figures.forEach(figure => this.selectedFigures.delete(this.figureKey(figure)));
+    } else {
+      this.addHits(hits);
+    }
+  }
+
   clear() {
     this.selectedTokens = new Map();
     this.selectedFigures = new Map();

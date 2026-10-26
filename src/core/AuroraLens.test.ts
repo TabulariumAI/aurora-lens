@@ -1444,6 +1444,24 @@ describe("AuroraLens", () => {
     expect(navigator.clipboard.writeText).not.toHaveBeenCalled();
   });
 
+  it("exports and copies keyboard selections through the same public results as search", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const lens = createViewer(container, { allowEdit: true, pageSize });
+    lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 1, viewMode: "page" });
+    lens.search("Alpha");
+    const groups = lens.exportSelection();
+    lens.clearSelection();
+    const surface = container.querySelector<HTMLElement>('[role="listbox"]')!;
+    surface.focus();
+    surface.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
+    expect(lens.exportSelection()).toEqual(groups);
+    expect(await lens.copySelection()).toEqual({ copied: true, text: "ALPHA", groups });
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("ALPHA");
+    container.remove();
+  });
+
   it("copies only selected value text", async () => {
     const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize });
     lens.loadMetadata(metadata());
