@@ -75,7 +75,7 @@ describe("ranked index highlighting", () => {
     helper.load(data);
     const hits = helper.highlightIndex(0, index("bravo", "alpha alphx"));
     expect(hits.tokens.map(token => token.polygon)).toEqual([data.pages[0].tokens[1].polygon]);
-    expect(hits.contexts).toEqual([]);
+    expect(hits.contexts.map(context => context.polygon)).toEqual([data.pages[0].contexts[0].polygon]);
   });
 
   it.each(["absent", "alpha bravo"])("scores only valid ordered source occurrences for value %s", value => {
@@ -120,13 +120,13 @@ describe("ranked index highlighting", () => {
       .toEqual(["seller recorder alpha bravo"]);
   });
 
-  it.each(["", " ", "---", "unmatched source", "recorder seller"])("retains value-only highlights for empty or unmatched source: %s", source => {
+  it.each(["", " ", "---", "unmatched source", "recorder seller"])("highlights the winning value paragraph for empty or unmatched source: %s", source => {
     const data = textMetadata("seller recorder alpha", "bravo alpha", "alpha bravo");
     const helper = new MetadataHelper();
     helper.load(data);
     const hits = helper.highlightIndex(0, index("bravo alpha", source));
     expect(hits.tokens.map(token => token.polygon)).toEqual([3, 4].map(position => data.pages[0].tokens[position].polygon));
-    expect(hits.contexts).toEqual([]);
+    expect(hits.contexts.map(context => context.polygon)).toEqual([data.pages[0].contexts[1].polygon]);
   });
 
   it.each(["", "unmatched source"])("returns no hits when neither source nor value matches: %s", source => {
@@ -135,6 +135,40 @@ describe("ranked index highlighting", () => {
     for (const value of ["absent", "", "alpha missing"]) {
       expect(helper.highlightIndex(0, index(value, source))).toEqual({ tokens: [], contexts: [], figures: [] });
     }
+  });
+
+  it.each([
+    ["$50.00", ["Total Fees: $50.00", "Other Fees: $50.00"], 0, ["$50.00"]],
+    ["alpha", ["alphx", "alpha"], 1, ["alpha"]],
+    ["alpha alpha", ["alpha", "alpha alpha alpha"], 1, ["alpha", "alpha"]],
+    ["missing OR bravo", ["alpha", "bravo"], 1, ["bravo"]],
+  ] as const)("selects one value paragraph without a source match: %s", (value, paragraphs, winner, tokens) => {
+    const data = textMetadata(...paragraphs);
+    const original = structuredClone(data);
+    const helper = new MetadataHelper();
+    helper.load(data);
+    const hits = helper.highlightIndex(0, index(value, "unmatched source"));
+    expect(hits.tokens.map(token => token.token)).toEqual(tokens);
+    expect(hits.contexts.map(context => context.polygon)).toEqual([data.pages[0].contexts[winner].polygon]);
+    expect(helper.highlightIndex(0, index(value, "unmatched source"))).toEqual(hits);
+    expect(data).toEqual(original);
+  });
+
+  it("retains page-wide value tokens without inventing a paragraph across separate regions", () => {
+    const helper = new MetadataHelper();
+    helper.load(textMetadata("alpha", "bravo"));
+    const hits = helper.highlightIndex(0, index("bravo alpha", "unmatched source"));
+    expect(hits.tokens.map(token => token.token)).toEqual(["alpha", "bravo"]);
+    expect(hits.contexts).toEqual([]);
+  });
+
+  it("returns one winning value paragraph when regions overlap and source is absent", () => {
+    const data = textMetadata("alpha bravo");
+    data.pages[0].contexts.push({ ...data.pages[0].contexts[0], polygon: [0, 0, 10000, 0, 10000, 31, 0, 31] });
+    const helper = new MetadataHelper();
+    helper.load(data);
+    expect(helper.highlightIndex(0, index("bravo alpha")).contexts.map(context => context.polygon))
+      .toEqual([data.pages[0].contexts[0].polygon]);
   });
 
   it("highlights one value occurrence when contexts are absent", () => {

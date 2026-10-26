@@ -78,7 +78,7 @@ for (const [bank, query] of [
     await page.screenshot({ path: testInfo.outputPath("bank-index.png") });
     await page.getByRole("button", { name: "Page highlight", exact: true }).click();
     await expect(page.locator("#result")).toHaveText("Highlighted");
-    await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 4, context: 0, figures: 0 });
+    await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 4, context: 1, figures: 0 });
     await page.getByRole("button", { name: "Clear", exact: true }).click();
     await expect(page.locator("#result")).toHaveText("0 tokens");
     await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 0, context: 0, figures: 0 });

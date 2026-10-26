@@ -220,7 +220,7 @@ export class MetadataHelper {
     }
     return {
       tokens: winner ? winner.tokens.map(token => token.value) : [],
-      contexts: winner?.context && contexts.includes(winner.context) ? [this.context(winner.context)] : [],
+      contexts: winner?.context && (!contexts.length || contexts.includes(winner.context)) ? [this.context(winner.context)] : [],
       figures: [],
     };
   }

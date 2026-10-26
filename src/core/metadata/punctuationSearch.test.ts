@@ -65,7 +65,7 @@ describe("period and comma matching", () => {
 
     const hits = helper.highlightIndex(0, { value: "NA BANK FARGO WELLS", source, label: "Name", ambiguous: "NO" });
     expect(hits.tokens.map(token => token.token)).toEqual(["Wells", "Fargo", "Bank,", "N.A."]);
-    expect(hits.contexts).toEqual([]);
+    expect(hits.contexts.map(context => context.content)).toEqual(["Wells Fargo Bank, N.A."]);
   });
 
   it("keeps slash separation, contractions and original token deduplication", () => {

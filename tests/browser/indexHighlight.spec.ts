@@ -51,7 +51,7 @@ test("matches the original beneficiary text through value-only page fallback in 
   await page.getByRole("button", { name: "Highlight index", exact: true }).click();
   await expect(page.locator("#result")).toHaveText("Highlighted");
   expect(await page.evaluate(() => window.highlighted)).toBe(true);
-  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 2, context: 0, figures: 0 });
+  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 2, context: 1, figures: 0 });
   await page.getByRole("button", { name: "Missing index", exact: true }).click();
   await expect(page.locator("#result")).toHaveText("No match");
   expect(await page.evaluate(() => window.highlighted)).toBe(false);
@@ -126,7 +126,7 @@ test("renders top-one Index Highlight, all exact and fuzzy Search results, sourc
   await page.screenshot({ path: testInfo.outputPath("source-only.png") });
   await page.getByRole("button", { name: "Page fallback", exact: true }).click();
   await expect(page.locator("#result")).toHaveText("Highlighted");
-  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 2, context: 0, figures: 0 });
+  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 2, context: 1, figures: 0 });
   await page.screenshot({ path: testInfo.outputPath("fallback-values.png") });
   await page.getByRole("button", { name: "Search all", exact: true }).click();
   await expect(page.locator("#result")).toHaveText("8 name tokens");

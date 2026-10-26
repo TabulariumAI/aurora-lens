@@ -1653,6 +1653,22 @@ describe("AuroraLens", () => {
     lens.close();
   });
 
+  it.each([false, true])("Index Highlight selects the value paragraph with additive=%s and clears it", async additive => {
+    const states: ViewerState[] = [];
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, onStateChange: state => states.push(state) });
+    lens.loadMetadata(textMetadata("seller recorder alpha", "Total Fees: $50.00"));
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 1, viewMode: "page" });
+    expect(lens.highlightIndex(1, { label: "Name", value: "alpha", source: "seller recorder", ambiguous: "NO" })).toBe(true);
+    expect(lens.highlightIndex(1, { label: "Recording Fee", value: "$50.00", source: "unmatched source", ambiguous: "NO" }, { additive })).toBe(true);
+    expect(states.at(-1)?.selectionCounts).toEqual({ tokens: additive ? 2 : 1, context: additive ? 2 : 1, figures: 0 });
+    expect(states.at(-1)?.canCopy).toBe(true);
+    expect(lens.exportSelection().at(-1)).toEqual({ value: { token: ["$50.00"], context: ["TOTAL FEES: $50.00"], kind: ["BODY"] } });
+    expect((await lens.copySelection()).text).toBe(additive ? "ALPHA $50.00" : "$50.00");
+    lens.clearSelection();
+    expect(states.at(-1)?.selectionCounts).toEqual({ tokens: 0, context: 0, figures: 0 });
+    lens.close();
+  });
+
   it("Index Highlight enforces the active page and named page mapping without navigation", async () => {
     const states: ViewerState[] = [];
     const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, onStateChange: state => states.push(state) });
