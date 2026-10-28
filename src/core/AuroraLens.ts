@@ -443,7 +443,7 @@ export class AuroraLens {
       if (documentRun === this.documentRun) {
         await this.removeImportedPages(records);
         this.setStatus("ready");
-        this.options.onAddError?.(error instanceof Error ? error : new Error(String(error)));
+        this.options.onAddError?.(error instanceof Error ? error : new Error(error instanceof ErrorEvent ? error.message : String(error), { cause: error }));
       }
       throw error;
     }
@@ -817,7 +817,7 @@ export class AuroraLens {
   }
 
   private fail(error: unknown) {
-    const value = error instanceof Error ? error : new Error(String(error));
+    const value = error instanceof Error ? error : new Error(error instanceof ErrorEvent ? error.message : String(error), { cause: error });
     this.status = "error";
     this.emitStatus();
     this.emitState();
@@ -1180,6 +1180,7 @@ export class AuroraLens {
       status: this.status,
       sourceName: this.page?.sourceName ?? null,
       pageIndex,
+      pageName: this.readPageName(),
       pageCount: this.pageCount,
       metadataPageCount: this.metadataPageIds.size,
       pageInfo: hasPage && this.metadata.hasPage(pageIndex) ? this.metadata.pageInfo(pageIndex) : null,

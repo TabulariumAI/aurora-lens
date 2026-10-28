@@ -18,7 +18,7 @@ import {
 type Pending = {
   queue: Promise<void>;
   resolve: () => void;
-  reject: (error: Error) => void;
+  reject: (error: unknown) => void;
   sink: DecodeSink;
   worker: Worker;
   acknowledge: boolean;
@@ -175,7 +175,7 @@ export class DocumentDecoder {
         throw new LensError(LENS_ERROR_UNKNOWN, "Document decoder received an unknown format.");
     }
     worker.onmessage = (event: MessageEvent<DecodeResponse>) => this.receive(event.data);
-    worker.onerror = (event) => this.failWorker(new LensError(LENS_ERROR_UNKNOWN, event.message || "Document decoder worker failed."));
+    worker.onerror = (event) => this.failWorker(event);
     worker.onmessageerror = () => this.failWorker(new LensError(LENS_ERROR_UNKNOWN, "Document decoder worker returned an unreadable response."));
     this.workers.set(type, worker);
     return worker;
@@ -214,12 +214,12 @@ export class DocumentDecoder {
     });
   }
 
-  private failWorker(error: Error) {
+  private failWorker(error: unknown) {
     this.rejectAll(error);
     this.close();
   }
 
-  private rejectAll(error: Error) {
+  private rejectAll(error: unknown) {
     for (const request of this.pending.values()) {
       request.reject(error);
     }

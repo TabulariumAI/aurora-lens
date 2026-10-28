@@ -4,7 +4,7 @@ import type { ViewerPageBlobRecord } from "../session/viewerSessionStore";
 import type { ExportProgress, ExportResponse } from "./types";
 
 export class TiffExporter {
-  private readonly pending = new Map<Worker, (error: Error) => void>();
+  private readonly pending = new Map<Worker, (error: unknown) => void>();
 
   async export(pages: ViewerPageBlobRecord[], config: ExportConfig, onProgress?: (progress: ExportProgress) => void): Promise<Blob> {
     const worker = new Worker(new URL("./workers/tiffExportWorker.js", import.meta.url), { type: "module" });
@@ -21,7 +21,7 @@ export class TiffExporter {
             reject(error);
           }
         };
-        worker.onerror = (event) => reject(new LensError(LENS_ERROR_UNKNOWN, event.message));
+        worker.onerror = reject;
         worker.onmessageerror = () => reject(new LensError(LENS_ERROR_UNKNOWN, "TIFF export worker returned an unreadable response."));
         worker.postMessage({ pages, config });
       });

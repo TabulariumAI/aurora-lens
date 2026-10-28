@@ -78,6 +78,7 @@ export interface ViewerState {
   status: ViewerStatus;
   sourceName: string | null;
   pageIndex: number;
+  pageName: string | null;
   pageCount: number;
   metadataPageCount: number;
   pageInfo: PageInfo | null;

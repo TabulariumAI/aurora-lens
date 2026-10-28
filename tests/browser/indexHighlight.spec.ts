@@ -145,3 +145,68 @@ test("renders top-one Index Highlight, all exact and fuzzy Search results, sourc
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   expect(errors).toEqual([]);
 });
+
+test("renders every paragraph of a split address and preserves additive selection and clearing", async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  const metadata = textMetadata("Recorded by Clerk", "Mailing Address: 13963 Antler Hill Road", "Purchase Price: $362,288.00", "Spanish Fort, AL 36527");
+  metadata.pages[0].width = 850;
+  metadata.pages[0].height = 1100;
+  metadata.pages[0].tokens.forEach(token => { token.polygon = token.polygon.map(value => value * 4); });
+  metadata.pages[0].contexts.forEach(context => { context.polygon = context.polygon.map(value => value === 10000 ? 800 : value * 4); });
+  await page.route("**/test-split-address", route => route.fulfill({
+    contentType: "text/html",
+    body: `<!doctype html><html><head><title>Split address highlighting</title></head><body style="margin:0;font:16px sans-serif">
+      <nav style="height:96px;display:flex;flex-wrap:wrap;gap:8px;align-content:center;padding:0 8px">
+        <button id="address">Select address</button><button id="add">Add address</button><button id="clerk">Select clerk</button><button id="clear">Clear</button><button id="missing">No match</button>
+      </nav><section style="height:calc(100vh - 96px)"><main id="viewer"></main></section>
+      <script type="module">
+        import { AuroraLens } from '/dist/index.js';
+        const metadata = ${JSON.stringify(metadata)};
+        const raster = document.createElement('canvas');
+        raster.width = 850; raster.height = 1100;
+        const context = raster.getContext('2d');
+        context.fillStyle = 'white'; context.fillRect(0, 0, 850, 1100);
+        context.fillStyle = 'black'; context.font = '20px sans-serif';
+        metadata.pages[0].tokens.forEach(token => context.fillText(token.content, token.polygon[0], token.polygon[1] + 30, 72));
+        const lens = new AuroraLens(document.querySelector('#viewer'), { pageSize: { formats: [{ name: 'letter', width: 8.5, height: 11 }], tolerance: 0.02 }, allowEdit: false, onStateChange: state => { window.state = state; } });
+        lens.loadMetadata(metadata);
+        await lens.decodeDoc(new File([await new Promise(resolve => raster.toBlob(resolve))], 'address.png', { type: 'image/png' }), { page: 1, viewMode: 'page' });
+        const index = { label: 'Property Address', value: '13963 Antler Hill Road, Spanish Fort, AL 36527', source: 'unmatched source', ambiguous: 'NO' };
+        for (const id of ['address', 'add', 'clerk', 'missing']) document.querySelector('#' + id).onclick = () => {
+          window.highlighted = lens.highlightIndex(1, id === 'clerk' ? { ...index, value: 'Clerk', source: 'Recorded by Clerk' } : id === 'missing' ? { ...index, value: 'absent address' } : index, { additive: id === 'add' });
+          window.groups = lens.exportSelection();
+        };
+        document.querySelector('#clear').onclick = () => lens.clearSelection();
+        window.ready = true;
+      </script></body></html>`,
+  }));
+  await page.goto("/test-split-address");
+  await page.waitForFunction(() => window.ready === true);
+  await expect.poll(() => page.locator("#viewer img").first().evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+  await page.getByRole("button", { name: "Select address", exact: true }).click();
+  expect(await page.evaluate(() => window.highlighted)).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 8, context: 2, figures: 0 });
+  expect(await page.evaluate(() => (window as Window & { groups: { value: { token: string[]; context: string[]; kind: string[] } }[] }).groups)).toEqual([
+    { value: { token: ["13963", "ANTLER", "HILL", "ROAD"], context: ["MAILING ADDRESS: 13963 ANTLER HILL ROAD"], kind: ["BODY"] } },
+    { value: { token: ["SPANISH", "FORT,", "AL", "36527"], context: ["SPANISH FORT, AL 36527"], kind: ["BODY"] } },
+  ]);
+  await page.screenshot({ path: testInfo.outputPath("split-address.png") });
+  await page.getByRole("button", { name: "Select clerk", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 1, context: 1, figures: 0 });
+  for (let count = 0; count < 2; count += 1) {
+    await page.getByRole("button", { name: "Add address", exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 9, context: 3, figures: 0 });
+  }
+  await page.screenshot({ path: testInfo.outputPath("split-address-additive.png") });
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 0, context: 0, figures: 0 });
+  await page.getByRole("button", { name: "Select address", exact: true }).click();
+  await page.getByRole("button", { name: "No match", exact: true }).click();
+  expect(await page.evaluate(() => window.highlighted)).toBe(false);
+  await expect.poll(() => page.evaluate(() => window.state.selectionCounts)).toEqual({ tokens: 0, context: 0, figures: 0 });
+  await expect.poll(() => page.locator("#viewer canvas").first().evaluate((canvas: HTMLCanvasElement) => canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data.every((value, index) => index % 4 !== 3 || value === 0))).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("split-address-cleared.png") });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(errors).toEqual([]);
+});

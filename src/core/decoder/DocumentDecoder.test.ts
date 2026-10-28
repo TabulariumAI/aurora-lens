@@ -29,6 +29,14 @@ function ready(id: number, pageIndex: number) {
 }
 
 describe("DocumentDecoder bounded TIFF requests", () => {
+  it("bubbles the original runtime event and cause", async () => {
+    const result = decoder.decodeDoc(tiff(), { pageCount: vi.fn(), pageReady: vi.fn() });
+    await vi.waitFor(() => expect(TestWorker.instances).toHaveLength(1));
+    const event = new ErrorEvent("error", { message: "Decode failed", error: new Error("Decode failed", { cause: new Error("Decoder module unavailable") }) });
+    TestWorker.instances[0].onerror!(event);
+    await expect(result).rejects.toBe(event);
+    expect(TestWorker.instances[0].terminate).toHaveBeenCalledOnce();
+  });
   let decoder: DocumentDecoder;
   beforeEach(() => {
     TestWorker.instances = [];
@@ -113,7 +121,7 @@ describe("DocumentDecoder bounded TIFF requests", () => {
 
   it.each(["onerror", "onmessageerror"] as const)("releases a failed worker after %s and starts fresh on retry", async event => {
     const done = decoder.decodeDoc(tiff(), { pageCount() {}, pageReady() {} }, raster, () => 0);
-    const rejected = expect(done).rejects.toMatchObject({ code: "unknown" });
+    const rejected = expect(done).rejects.toMatchObject(event === "onerror" ? { message: "worker failed" } : { code: "unknown" });
     await tick();
     const failed = TestWorker.instances[0];
     if (event === "onerror") failed.onerror!({ message: "worker failed" });

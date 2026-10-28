@@ -179,6 +179,28 @@ function createViewer(...args: ConstructorParameters<typeof AuroraLens>) {
 }
 
 describe("AuroraLens", () => {
+  it("retains a worker event and its cause when reporting an add-pages failure", async () => {
+    const onAddError = vi.fn();
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: new MemorySessionStore(), onAddError });
+    await lens.decodeDoc(new File(["raster"], "stored.tiff"), { page: 1, viewMode: "page" });
+    await flush();
+    const event = new ErrorEvent("error", { message: "Import failed", error: new Error("Import failed", { cause: new Error("Decoder module unavailable") }) });
+    vi.spyOn(decoderMock.DocumentDecoder.prototype, "decodeDocs").mockRejectedValueOnce(event);
+    await expect(lens.addPages([new File(["insert"], "insert.tiff")], 1)).rejects.toBe(event);
+    expect(onAddError).toHaveBeenCalledWith(expect.objectContaining({ message: event.message, cause: event }));
+  });
+
+  it("retains the original event when reporting a viewer failure", async () => {
+    const store = new MemorySessionStore();
+    const onError = vi.fn();
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store, onError });
+    await lens.decodeDoc(new File(["raster"], "stored.tiff"), { page: 1, viewMode: "page" });
+    await flush();
+    const event = new ErrorEvent("error", { message: "Page failed", error: new Error("Page failed", { cause: new Error("Decoder module unavailable") }) });
+    vi.spyOn(store, "readPageMetadata").mockRejectedValueOnce(event);
+    await expect(lens.nextPage()).rejects.toBe(event);
+    expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: event.message, cause: event }));
+  });
   afterEach(() => {
     for (const viewer of viewers.splice(0)) viewer.close();
     vi.restoreAllMocks();
@@ -1486,6 +1508,84 @@ describe("AuroraLens", () => {
     expect(lens.readPageName()).toBeNull();
   });
 
+  it.each([false, true])("does not invent names for a document without a names schema (metadata=%s)", async hasMetadata => {
+    const store = new MemorySessionStore();
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store });
+    expect(lens.readPageName()).toBeNull();
+    if (hasMetadata) lens.loadMetadata(metadata());
+    await lens.decodeDoc(new File(["raster"], "numbered.tiff"), { page: 1, viewMode: "page" });
+    expect(lens.readPageName()).toBeNull();
+    await lens.nextPage();
+    expect(lens.readPageName()).toBeNull();
+    lens.close();
+
+    const restored = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store });
+    expect(await restored.restoreSession()).toBe(true);
+    expect(restored.readPageName()).toBeNull();
+    await restored.firstPage();
+    expect(restored.readPageName()).toBeNull();
+  });
+
+  it.each([{}, { "Exhibit-A": 0 }])("does not substitute positions for missing names, including after restore (%j)", async pageMap => {
+    const store = new MemorySessionStore();
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store });
+    lens.loadMetadata({ ...metadata(), pageMap });
+    await lens.decodeDoc(new File(["raster"], "named.tiff"), { page: 2, viewMode: "page" });
+    expect(lens.readPageName()).toBeNull();
+    lens.close();
+
+    const restored = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store });
+    expect(await restored.restoreSession()).toBe(true);
+    expect(restored.readPageName()).toBeNull();
+    await restored.firstPage();
+    expect(restored.readPageName()).toBe("Exhibit-A" in pageMap ? "Exhibit-A" : null);
+    await restored.nextPage();
+    expect(restored.readPageName()).toBeNull();
+  });
+
+  it("clears page names when opening another document", async () => {
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize });
+    lens.loadMetadata({ ...metadata(), pageMap: { "Exhibit-A": 0 } });
+    await lens.decodeDoc(new File(["raster"], "named.tiff"), { page: 1, viewMode: "page" });
+    expect(lens.readPageName()).toBe("Exhibit-A");
+    await lens.decodeDoc(new File(["raster"], "numbered.tiff"), { page: 1, viewMode: "page" });
+    expect(lens.readPageName()).toBeNull();
+    lens.loadMetadata({ ...metadata(), pageMap: {} });
+    expect(lens.readPageName()).toBeNull();
+    lens.loadMetadata(metadata());
+    expect(lens.readPageName()).toBeNull();
+    lens.clear();
+    expect(lens.readPageName()).toBeNull();
+  });
+
+  it.each([
+    { pageMap: {}, name: null },
+    { pageMap: { "Exhibit-A": 1 }, name: "Exhibit-A" },
+  ])("returns no name when restored page metadata is unavailable (%j)", async ({ pageMap, name }) => {
+    const store = new MemorySessionStore();
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store });
+    lens.loadMetadata({ pages: [], pageMap });
+    await lens.decodeDoc(new File(["raster"], "named.tiff"), { page: 2, viewMode: "page" });
+    expect(lens.readPageName()).toBe(name);
+    lens.close();
+
+    const restored = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store });
+    expect(await restored.restoreSession()).toBe(true);
+    expect(restored.readPageName()).toBeNull();
+  });
+
+  it("emits the page position and mapped name together", async () => {
+    const onStateChange = vi.fn();
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, onStateChange });
+    lens.loadMetadata({ ...metadata(), pageMap: { "26": 0, "Exhibit-A": 1 } });
+    await lens.decodeDoc(new File(["raster"], "named.tiff"), { page: "26", viewMode: "page" });
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ pageIndex: 0, pageName: "26", pageCount: 2 }));
+    await lens.nextPage();
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ pageIndex: 1, pageName: "Exhibit-A", pageCount: 2 }));
+    lens.loadMetadata(metadata());
+    expect(onStateChange).toHaveBeenLastCalledWith(expect.objectContaining({ pageIndex: 1, pageName: null, pageCount: 2 }));
+  });
+
   it("returns the mapped page name for export, including after restore", async () => {
     const store = new MemorySessionStore();
     const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, sessionStore: store });
@@ -1625,8 +1725,8 @@ describe("AuroraLens", () => {
     ["alpha", "seller recorder", true, 1, 1],
     ["absent", "seller recorder", true, 0, 1],
     ["", "seller recorder", true, 0, 1],
-    ["bravo alpha", "", true, 2, 0],
-    ["bravo alpha", "unmatched source", true, 2, 0],
+    ["bravo alpha", "", true, 2, 2],
+    ["bravo alpha", "unmatched source", true, 2, 2],
     ["absent", "unmatched source", false, 0, 0],
   ] as const)("Index Highlight reports source or value matches: value=%s source=%s", async (value, source, found, tokens, context) => {
     const states: ViewerState[] = [];
@@ -1666,6 +1766,29 @@ describe("AuroraLens", () => {
     expect((await lens.copySelection()).text).toBe(additive ? "ALPHA $50.00" : "$50.00");
     lens.clearSelection();
     expect(states.at(-1)?.selectionCounts).toEqual({ tokens: 0, context: 0, figures: 0 });
+    lens.close();
+  });
+
+  it.each([false, true])("Index Highlight selects split value paragraphs with additive=%s, exports and clears them", async additive => {
+    const states: ViewerState[] = [];
+    const lens = createViewer(document.createElement("div"), { allowEdit: true, pageSize, onStateChange: state => states.push(state) });
+    lens.loadMetadata(textMetadata("seller recorder charlie", "alpha", "unrelated", "bravo"));
+    await lens.decodeDoc(new File(["raster"], "sample.raster"), { page: 1, viewMode: "page" });
+    expect(lens.highlightIndex(1, { label: "Name", value: "charlie", source: "seller recorder", ambiguous: "NO" })).toBe(true);
+    const index = { label: "Name", value: "bravo alpha", source: "unmatched source", ambiguous: "NO" };
+    expect(lens.highlightIndex(1, index, { additive })).toBe(true);
+    expect(states.at(-1)?.selectionCounts).toEqual({ tokens: additive ? 3 : 2, context: additive ? 3 : 2, figures: 0 });
+    expect(states.at(-1)?.canCopy).toBe(true);
+    expect(lens.exportSelection().slice(-2)).toEqual([
+      { value: { token: ["ALPHA"], context: ["ALPHA"], kind: ["BODY"] } },
+      { value: { token: ["BRAVO"], context: ["BRAVO"], kind: ["BODY"] } },
+    ]);
+    expect((await lens.copySelection()).text).toBe(additive ? "CHARLIE ALPHA BRAVO" : "ALPHA BRAVO");
+    expect(lens.highlightIndex(1, index, { additive: true })).toBe(true);
+    expect(states.at(-1)?.selectionCounts).toEqual({ tokens: additive ? 3 : 2, context: additive ? 3 : 2, figures: 0 });
+    lens.clearSelection();
+    expect(states.at(-1)?.selectionCounts).toEqual({ tokens: 0, context: 0, figures: 0 });
+    expect(lens.exportSelection()).toEqual([]);
     lens.close();
   });
 

@@ -154,12 +154,72 @@ describe("ranked index highlighting", () => {
     expect(data).toEqual(original);
   });
 
-  it("retains page-wide value tokens without inventing a paragraph across separate regions", () => {
+  it("selects the existing paragraphs containing page-wide value tokens", () => {
     const helper = new MetadataHelper();
     helper.load(textMetadata("alpha", "bravo"));
     const hits = helper.highlightIndex(0, index("bravo alpha", "unmatched source"));
     expect(hits.tokens.map(token => token.token)).toEqual(["alpha", "bravo"]);
-    expect(hits.contexts).toEqual([]);
+    expect(hits.contexts.map(context => context.content)).toEqual(["alpha", "bravo"]);
+  });
+
+  it.each(["", " ", "---", "unmatched source", "bravo alpha"])("selects split value paragraphs without a complete source match: %s", source => {
+    const data = textMetadata("alpha", "unrelated", "bravo", "charlie", "alpha bravo");
+    const original = structuredClone(data);
+    const helper = new MetadataHelper();
+    helper.load(data);
+    const before = helper.search(0, "alpha bravo");
+    const hits = helper.highlightIndex(0, index("charlie bravo alpha", source));
+    expect(hits.tokens.map(token => token.polygon)).toEqual([0, 2, 3].map(position => data.pages[0].tokens[position].polygon));
+    expect(hits.contexts.map(context => context.polygon)).toEqual([0, 2, 3].map(position => data.pages[0].contexts[position].polygon));
+    expect(hits.figures).toEqual([]);
+    expect(helper.highlightIndex(0, index("charlie bravo alpha", source))).toEqual(hits);
+    expect(helper.search(0, "alpha bravo")).toEqual(before);
+    expect(data).toEqual(original);
+  });
+
+  it.each([
+    ["13963 Antler Hill Road, Spanish Fort, AL 36527", ["Mailing Address: 13963 Antler Hill Road", "Spanish Fort, AL 36527"]],
+    ["WELLS FARGX BANK NA", ["Wells Fargo", "Bank, N.A."]],
+    ["alpha alpha bravo", ["alpha", "alpha bravo"]],
+    ["successor substitute Trustee's", ["Trustee's", "substitute/successor"]],
+  ] as const)("maps normalized split value matches to their paragraphs: %s", (value, paragraphs) => {
+    const data = textMetadata(...paragraphs);
+    const helper = new MetadataHelper();
+    helper.load(data);
+    const hits = helper.highlightIndex(0, index(value, "unmatched source"));
+    expect(hits.tokens.map(token => token.polygon)).toEqual(data.pages[0].tokens
+      .filter(token => token.content !== "Mailing" && token.content !== "Address:").map(token => token.polygon));
+    expect(hits.contexts.map(context => context.content)).toEqual(paragraphs);
+  });
+
+  it("maps only existing containing paragraphs when some value tokens have no paragraph", () => {
+    const data = textMetadata("alpha", "bravo", "unrelated");
+    data.pages[0].contexts.shift();
+    const helper = new MetadataHelper();
+    helper.load(data);
+    const hits = helper.highlightIndex(0, index("bravo alpha", "unmatched source"));
+    expect(hits.tokens.map(token => token.token)).toEqual(["alpha", "bravo"]);
+    expect(hits.contexts.map(context => context.content)).toEqual(["bravo"]);
+  });
+
+  it("returns each containing paragraph once for split values and overlapping regions", () => {
+    const data = textMetadata("alpha alpha", "bravo", "unrelated");
+    data.pages[0].contexts.push({ ...data.pages[0].contexts[0], polygon: [0, 0, 10000, 0, 10000, 31, 0, 31] });
+    const helper = new MetadataHelper();
+    helper.load(data);
+    const hits = helper.highlightIndex(0, index("alpha alpha bravo"));
+    expect(hits.tokens.map(token => token.token)).toEqual(["alpha", "alpha", "bravo"]);
+    expect(hits.contexts.map(context => context.polygon)).toEqual([0, 1, 3].map(position => data.pages[0].contexts[position].polygon));
+  });
+
+  it("does not select split value paragraphs for incomplete values or matches on another page", () => {
+    const data = textMetadata("alpha", "bravo");
+    data.pages.push(textMetadata("charlie").pages[0]);
+    const helper = new MetadataHelper();
+    helper.load(data);
+    for (const value of ["alpha missing", "alpha alpha bravo", "alpha bravo charlie"]) {
+      expect(helper.highlightIndex(0, index(value, "unmatched source"))).toEqual({ tokens: [], contexts: [], figures: [] });
+    }
   });
 
   it("returns one winning value paragraph when regions overlap and source is absent", () => {

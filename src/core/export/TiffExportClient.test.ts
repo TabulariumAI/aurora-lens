@@ -22,6 +22,16 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("TiffExporter worker client", () => {
+  it("bubbles the original runtime event and cause", async () => {
+    const exporter = new TiffExporter();
+    const cause = new Error("Canvas module unavailable");
+    const event = new ErrorEvent("error", { message: "Export failed", error: new Error("Export failed", { cause }) });
+    const result = exporter.export([], defaultViewerConfig().export);
+    ExportWorker.instances[0].onerror!(event);
+    await expect(result).rejects.toBe(event);
+    expect(event.error.cause).toBe(cause);
+    expect(ExportWorker.instances[0].terminate).toHaveBeenCalledOnce();
+  });
   it("sends stored blobs and config to a module worker and forwards progress before resolving", async () => {
     const exporter = new TiffExporter();
     const progress = vi.fn();
@@ -48,7 +58,7 @@ describe("TiffExporter worker client", () => {
     const error = new Error("Export failed");
     const result = exporter.export([], defaultViewerConfig().export, () => { throw error; });
     const worker = ExportWorker.instances[0];
-    const rejected = expect(result).rejects.toBeInstanceOf(Error);
+    const rejected = failure === "crash" ? expect(result).rejects.toMatchObject({ message: "Worker crashed" }) : expect(result).rejects.toBeInstanceOf(Error);
     if (failure === "error") worker.onmessage!({ data: { kind: "error", errorCode: "raster_limit", error: "Too large" } } as MessageEvent<ExportResponse>);
     if (failure === "crash") worker.onerror!({ message: "Worker crashed" } as ErrorEvent);
     if (failure === "message") worker.onmessageerror!();

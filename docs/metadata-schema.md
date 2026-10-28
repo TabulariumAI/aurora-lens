@@ -4,6 +4,8 @@ Aurora Lens accepts page text and regions as a JSON object with a `pages` array.
 
 Decode, navigation, and index highlighting accept page names (strings or numbers). The optional `pageMap` maps each name to a zero-based decoded-page position. Without a supplied map, Lens creates `{"1":0,"2":1,...}` from the decoded page count. Unmapped numeric names use that generated mapping. `ViewerState.pageIndex` and `resolvePage(name)` return zero-based positions.
 
+`readPageName()` and `ViewerState.pageName` return an actual mapped name, or `null` when no name is available. They do not substitute the page position. Image-viewer footers display `Page [position] ([name]) of [count]`, using `ViewerState.pageIndex + 1` for the position and `ViewerState.pageCount` for the count. When the name is unavailable, omit it and its parentheses: `Page [position] of [count]`.
+
 ```json
 {
   "pageMap": { "26": 0 },
@@ -81,7 +83,7 @@ Search returns all complete exact and fuzzy occurrences. For ordinary multi-term
 1. Find complete `index.value` matches within page context regions, allowing the value terms in any order and requiring distinct normalized token positions for repeated terms. `OR` accepts one alternative. Each candidate contains one value occurrence.
 2. Rank complete value candidates ahead of source-only regions, then by the number of matching source terms, then by the lowest combined Fuse score. Equal scores retain the first occurrence in metadata order. Output only the winning occurrence.
 3. Highlight the winning context region if it also matches the complete `index.source` in query order. When no context region matches the complete source, highlight the winning value's context region alongside its value tokens. If no value candidate exists, retain the single best complete source region. Source-only matches do not highlight value tokens.
-4. If neither a complete value region nor a complete source region matches, retain the existing page-wide value search. Highlight one value occurrence without context highlights; this also works when `contexts` is empty.
+4. If neither a complete value region nor a complete source region matches, retain the existing page-wide value search. Highlight one value occurrence and the existing context regions containing its matched tokens. When `contexts` is empty, highlight only the value tokens.
 
 Source words receive token highlights only when they also match the selected value. A stored token that contributes several matching terms is returned and highlighted once.
 
